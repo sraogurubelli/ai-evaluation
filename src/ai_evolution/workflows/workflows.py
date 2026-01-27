@@ -9,7 +9,7 @@ from typing import Any
 from datetime import timedelta
 
 from temporalio import workflow
-from temporalio.common import RetryPolicy
+from temporalio.common import RetryPolicy as TemporalRetryPolicy
 
 from ai_evolution.workflows.activities import (
     load_dataset_activity,
@@ -20,7 +20,7 @@ from ai_evolution.workflows.activities import (
 logger = logging.getLogger(__name__)
 
 # Retry policy for workflows
-WORKFLOW_RETRY_POLICY = RetryPolicy(
+WORKFLOW_RETRY_POLICY = TemporalRetryPolicy(
     initial_interval=timedelta(seconds=1),
     backoff_coefficient=2.0,
     maximum_interval=timedelta(minutes=1),
@@ -63,7 +63,7 @@ class ExperimentWorkflow:
             load_dataset_activity,
             dataset_config,
             start_to_close_timeout=timedelta(minutes=5),
-            retry_policy=workflow.RetryPolicy(
+            retry_policy=TemporalRetryPolicy(
                 initial_interval=timedelta(seconds=1),
                 maximum_attempts=3,
             ),
@@ -86,7 +86,7 @@ class ExperimentWorkflow:
                 execution_config.get("concurrency_limit", 5),
             ],
             start_to_close_timeout=timedelta(hours=2),  # Long timeout for large experiments
-            retry_policy=workflow.RetryPolicy(
+            retry_policy=TemporalRetryPolicy(
                 initial_interval=timedelta(seconds=5),
                 backoff_coefficient=2.0,
                 maximum_interval=timedelta(minutes=5),
@@ -104,7 +104,7 @@ class ExperimentWorkflow:
                     emit_results_activity,
                     args=[result, sinks_config],
                     start_to_close_timeout=timedelta(minutes=5),
-                    retry_policy=workflow.RetryPolicy(
+                    retry_policy=TemporalRetryPolicy(
                         initial_interval=timedelta(seconds=1),
                         maximum_attempts=2,
                     ),
