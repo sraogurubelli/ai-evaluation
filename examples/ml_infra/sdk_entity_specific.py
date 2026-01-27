@@ -6,7 +6,7 @@ This demonstrates entity-specific evaluation patterns for different ML Infra ent
 import asyncio
 from ai_evolution import (
     Experiment,
-    MLInfraAdapter,
+    HTTPAdapter,
     DeepDiffScorer,
     DashboardQualityScorer,
     KnowledgeGraphQualityScorer,
@@ -37,7 +37,17 @@ async def example_pipeline_evaluation():
         scorers=scorers,
     )
     
-    adapter = MLInfraAdapter(base_url="http://localhost:8000")
+    # Use HTTPAdapter with ml-infra configuration
+    # Teams should create their own custom adapters - see docs/custom-adapters.md
+    adapter = HTTPAdapter(
+        base_url="http://localhost:8000",
+        context_field_name="harness_context",
+        endpoint_mapping={
+            "dashboard": "/chat/dashboard",
+            "knowledge_graph": "/chat/knowledge-graph",
+        },
+        default_endpoint="/chat/platform",
+    )
     
     result = await experiment.run(adapter=adapter, model="claude-3-7-sonnet-20250219")
     print(f"Pipeline evaluation completed: {len(result.scores)} scores")
@@ -64,7 +74,17 @@ async def example_dashboard_evaluation():
         scorers=scorers,
     )
     
-    adapter = MLInfraAdapter(base_url="http://localhost:8000")
+    # Use HTTPAdapter with ml-infra configuration
+    # Teams should create their own custom adapters - see docs/custom-adapters.md
+    adapter = HTTPAdapter(
+        base_url="http://localhost:8000",
+        context_field_name="harness_context",
+        endpoint_mapping={
+            "dashboard": "/chat/dashboard",
+            "knowledge_graph": "/chat/knowledge-graph",
+        },
+        default_endpoint="/chat/platform",
+    )
     
     result = await experiment.run(adapter=adapter, model="claude-3-7-sonnet-20250219")
     print(f"Dashboard evaluation completed: {len(result.scores)} scores")
@@ -91,7 +111,17 @@ async def example_knowledge_graph_evaluation():
         scorers=scorers,
     )
     
-    adapter = MLInfraAdapter(base_url="http://localhost:8000")
+    # Use HTTPAdapter with ml-infra configuration
+    # Teams should create their own custom adapters - see docs/custom-adapters.md
+    adapter = HTTPAdapter(
+        base_url="http://localhost:8000",
+        context_field_name="harness_context",
+        endpoint_mapping={
+            "dashboard": "/chat/dashboard",
+            "knowledge_graph": "/chat/knowledge-graph",
+        },
+        default_endpoint="/chat/platform",
+    )
     
     result = await experiment.run(adapter=adapter, model="claude-3-7-sonnet-20250219")
     print(f"Knowledge Graph evaluation completed: {len(result.scores)} scores")
@@ -118,7 +148,17 @@ async def example_service_evaluation():
         scorers=scorers,
     )
     
-    adapter = MLInfraAdapter(base_url="http://localhost:8000")
+    # Use HTTPAdapter with ml-infra configuration
+    # Teams should create their own custom adapters - see docs/custom-adapters.md
+    adapter = HTTPAdapter(
+        base_url="http://localhost:8000",
+        context_field_name="harness_context",
+        endpoint_mapping={
+            "dashboard": "/chat/dashboard",
+            "knowledge_graph": "/chat/knowledge-graph",
+        },
+        default_endpoint="/chat/platform",
+    )
     
     result = await experiment.run(adapter=adapter, model="claude-3-7-sonnet-20250219")
     print(f"Service evaluation completed: {len(result.scores)} scores")
@@ -150,7 +190,17 @@ async def example_update_operation():
         scorers=scorers,
     )
     
-    adapter = MLInfraAdapter(base_url="http://localhost:8000")
+    # Use HTTPAdapter with ml-infra configuration
+    # Teams should create their own custom adapters - see docs/custom-adapters.md
+    adapter = HTTPAdapter(
+        base_url="http://localhost:8000",
+        context_field_name="harness_context",
+        endpoint_mapping={
+            "dashboard": "/chat/dashboard",
+            "knowledge_graph": "/chat/knowledge-graph",
+        },
+        default_endpoint="/chat/platform",
+    )
     
     result = await experiment.run(adapter=adapter, model="claude-3-7-sonnet-20250219")
     print(f"Update operation evaluation completed: {len(result.scores)} scores")

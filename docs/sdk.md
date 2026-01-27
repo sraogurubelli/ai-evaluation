@@ -135,7 +135,7 @@ item = DatasetItem(
 Adapters connect to AI systems:
 
 ```python
-from ai_evolution import HTTPAdapter, MLInfraAdapter
+from ai_evolution import HTTPAdapter
 
 # Generic HTTP adapter (recommended)
 adapter = HTTPAdapter(

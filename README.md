@@ -109,7 +109,7 @@ See [SDK Documentation](docs/sdk.md) for more examples.
 
 ```bash
 # Run an experiment
-ai-evolution run --config examples/ml_infra/config.yaml  # Uses MLInfraAdapter (backward compatibility)
+ai-evolution run --config examples/ml_infra/config.yaml  # Uses HTTPAdapter with ml-infra config
 # Or use HTTPAdapter for any REST API - see examples/
 ```
 
@@ -192,7 +192,7 @@ ai-evolution/
    - `DATABASE_URL`: PostgreSQL connection string (or use Docker with `task db-up`)
    - `LANGFUSE_*`: Optional Langfuse configuration for observability
 
-**Note**: The platform includes a generic `HTTPAdapter` that can be configured for any REST API. The `MLInfraAdapter` is a compatibility wrapper with ml-infra-specific defaults. For new integrations, use `HTTPAdapter` with your API configuration.
+**Note**: The platform includes a generic `HTTPAdapter` that can be configured for any REST API. Teams should create their own custom adapters for their specific APIs. See `docs/custom-adapters.md` for guidance.
 
 ## License
 

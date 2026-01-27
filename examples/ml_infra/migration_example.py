@@ -42,7 +42,7 @@ results_df.to_csv("results/pipeline_create.csv", index=False)
 import asyncio
 from ai_evolution import (
     Experiment,
-    MLInfraAdapter,
+    HTTPAdapter,
     DeepDiffScorer,
     load_index_csv_dataset,
     CSVSink,
@@ -95,13 +95,24 @@ async def migration_example_detailed():
         scorers=scorers,
     )
     
-    # Step 4: Create adapter (equivalent to call_aidevops_service setup)
-    adapter = MLInfraAdapter(
+    # Step 4: Create adapter using HTTPAdapter with ml-infra configuration
+    # Teams should create their own custom adapters - this is just an example
+    adapter = HTTPAdapter(
         base_url="http://localhost:8000",
         auth_token="your-token",
-        account_id="account-123",
-        org_id="org-456",
-        project_id="project-789",
+        context_field_name="harness_context",
+        context_data={
+            "account_id": "account-123",
+            "org_id": "org-456",
+            "project_id": "project-789",
+        },
+        endpoint_mapping={
+            "dashboard": "/chat/dashboard",
+            "knowledge_graph": "/chat/knowledge-graph",
+        },
+        default_endpoint="/chat/platform",
+        yaml_extraction_path=["capabilities_to_run", -1, "input", "yaml"],
+        sse_completion_events=["dashboard_complete", "kg_complete"],
     )
     
     # Step 5: Run experiment (equivalent to call_aidevops_service + add_metric)
