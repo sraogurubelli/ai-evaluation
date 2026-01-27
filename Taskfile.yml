@@ -9,8 +9,8 @@ vars:
   PORT: 8000
   DOCKER_COMPOSE:
     sh: |
-      if command -v {{.DOCKER_COMPOSE}} >/dev/null 2>&1; then
-        echo "{{.DOCKER_COMPOSE}}"
+      if command -v docker-compose >/dev/null 2>&1; then
+        echo "docker-compose"
       elif docker compose version >/dev/null 2>&1; then
         echo "docker compose"
       else
