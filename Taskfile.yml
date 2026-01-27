@@ -7,15 +7,12 @@ vars:
   SRC_DIR: src
   TEST_DIR: tests
   PORT: 8000
-  DOCKER_COMPOSE:
-    sh: |
-      if command -v docker-compose >/dev/null 2>&1; then
-        echo "docker-compose"
-      elif docker compose version >/dev/null 2>&1; then
-        echo "docker compose"
-      else
-        echo ""
-      fi
+  POSTGRES_CONTAINER: ai-evolution-postgres
+  TEMPORAL_CONTAINER: ai-evolution-temporal
+  PGADMIN_CONTAINER: ai-evolution-pgadmin
+  NETWORK_NAME: ai-evolution-network
+  POSTGRES_VOLUME: ai-evolution_postgres_data
+  PGADMIN_VOLUME: ai-evolution_pgadmin_data
 
 tasks:
   default:
@@ -47,8 +44,10 @@ tasks:
       - task: clean-venv
       - |
         echo ""
-        echo "Step 2: Stopping and removing database volumes..."
-        {{.DOCKER_COMPOSE}} down -v postgres 2>/dev/null || echo "Database not running"
+        echo "Step 2: Stopping and removing database containers..."
+        docker stop {{.POSTGRES_CONTAINER}} 2>/dev/null || echo "Database not running"
+        docker rm {{.POSTGRES_CONTAINER}} 2>/dev/null || true
+        docker volume rm {{.POSTGRES_VOLUME}} 2>/dev/null || true
       - |
         echo ""
         echo "Step 3: Creating fresh virtual environment..."
@@ -374,12 +373,10 @@ tasks:
   clean-docker:
     desc: Stop and remove all Docker containers, volumes, and networks
     cmds:
-      - |
-        if [ -z "{{.DOCKER_COMPOSE}}" ]; then
-          echo "❌ Docker Compose not found! Install Docker first."
-          exit 1
-        fi
-        {{.DOCKER_COMPOSE}} down -v --remove-orphans
+      - docker stop {{.POSTGRES_CONTAINER}} {{.TEMPORAL_CONTAINER}} {{.PGADMIN_CONTAINER}} 2>/dev/null || true
+      - docker rm {{.POSTGRES_CONTAINER}} {{.TEMPORAL_CONTAINER}} {{.PGADMIN_CONTAINER}} 2>/dev/null || true
+      - docker volume rm {{.POSTGRES_VOLUME}} {{.PGADMIN_VOLUME}} 2>/dev/null || true
+      - docker network rm {{.NETWORK_NAME}} 2>/dev/null || true
       - echo "✅ Docker resources cleaned up"
 
   clean-pyc:
@@ -449,46 +446,57 @@ tasks:
     desc: Start PostgreSQL database (Docker)
     cmds:
       - |
-        if [ -z "{{.DOCKER_COMPOSE}}" ]; then
-          echo "❌ Docker Compose not found!"
+        # Check if Docker is available
+        if ! command -v docker >/dev/null 2>&1; then
+          echo "❌ Docker not found!"
           echo ""
-          echo "Please install Docker Desktop:"
-          echo "  macOS: https://www.docker.com/products/docker-desktop/"
-          echo "  Or run: brew install --cask docker"
+          echo "Please install Docker (Rancher Desktop or Docker Desktop):"
+          echo "  Rancher Desktop: https://rancherdesktop.io/"
+          echo "  Docker Desktop: https://www.docker.com/products/docker-desktop/"
           echo ""
           echo "After installation, restart your terminal and try again."
           exit 1
         fi
-        {{.DOCKER_COMPOSE}} up -d postgres
+        # Create network if it doesn't exist
+        docker network create {{.NETWORK_NAME}} 2>/dev/null || true
+        # Check if container already exists
+        if docker ps -a --format '{{.Names}}' | grep -q "^{{.POSTGRES_CONTAINER}}$"; then
+          echo "Container {{.POSTGRES_CONTAINER}} exists, starting it..."
+          docker start {{.POSTGRES_CONTAINER}}
+        else
+          echo "Creating and starting {{.POSTGRES_CONTAINER}}..."
+          docker run -d \
+            --name {{.POSTGRES_CONTAINER}} \
+            --network {{.NETWORK_NAME}} \
+            -e POSTGRES_USER=${POSTGRES_USER:-ai_evolution} \
+            -e POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-ai_evolution_dev} \
+            -e POSTGRES_DB=${POSTGRES_DB:-ai_evolution} \
+            -e PGDATA=/var/lib/postgresql/data/pgdata \
+            -p ${POSTGRES_PORT:-5432}:5432 \
+            -v {{.POSTGRES_VOLUME}}:/var/lib/postgresql/data \
+            --restart unless-stopped \
+            --health-cmd "pg_isready -U ${POSTGRES_USER:-ai_evolution}" \
+            --health-interval 5s \
+            --health-timeout 5s \
+            --health-retries 5 \
+            postgres:16-alpine
+        fi
       - echo "Waiting for database to be ready..."
       - sleep 3
-      - |
-        if [ -z "{{.DOCKER_COMPOSE}}" ]; then
-          echo "❌ Docker Compose not found! Install Docker first."
-          exit 1
-        fi
-        {{.DOCKER_COMPOSE}} ps postgres
+      - docker ps --filter "name={{.POSTGRES_CONTAINER}}" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 
   db-down:
     desc: Stop PostgreSQL database (Docker)
     cmds:
-      - |
-        if [ -z "{{.DOCKER_COMPOSE}}" ]; then
-          echo "❌ Docker Compose not found! Install Docker first."
-          exit 1
-        fi
-        {{.DOCKER_COMPOSE}} stop postgres
+      - docker stop {{.POSTGRES_CONTAINER}} 2>/dev/null || echo "Database not running"
       - echo "Database stopped"
 
   db-down-volumes:
     desc: Stop PostgreSQL database and remove volumes
     cmds:
-      - |
-        if [ -z "{{.DOCKER_COMPOSE}}" ]; then
-          echo "❌ Docker Compose not found! Install Docker first."
-          exit 1
-        fi
-        {{.DOCKER_COMPOSE}} down -v postgres
+      - docker stop {{.POSTGRES_CONTAINER}} 2>/dev/null || true
+      - docker rm {{.POSTGRES_CONTAINER}} 2>/dev/null || true
+      - docker volume rm {{.POSTGRES_VOLUME}} 2>/dev/null || true
       - echo "Database stopped and volumes removed"
 
   db-restart:
@@ -500,52 +508,38 @@ tasks:
   db-logs:
     desc: View PostgreSQL logs
     cmds:
-      - |
-        if [ -z "{{.DOCKER_COMPOSE}}" ]; then
-          echo "❌ Docker Compose not found! Install Docker first."
-          exit 1
-        fi
-        {{.DOCKER_COMPOSE}} logs -f postgres
+      - docker logs -f {{.POSTGRES_CONTAINER}}
 
   db-shell:
     desc: Open PostgreSQL shell (psql)
     cmds:
-      - |
-        {{.DOCKER_COMPOSE}} exec postgres psql -U ${POSTGRES_USER:-ai_evolution} -d ${POSTGRES_DB:-ai_evolution}
+      - docker exec -it {{.POSTGRES_CONTAINER}} psql -U ${POSTGRES_USER:-ai_evolution} -d ${POSTGRES_DB:-ai_evolution}
 
   db-reset:
     desc: Reset database (drop and recreate)
     cmds:
       - echo "This will delete all data!"
-      - |
-        if [ -z "{{.DOCKER_COMPOSE}}" ]; then
-          echo "❌ Docker Compose not found! Install Docker first."
-          exit 1
-        fi
-        {{.DOCKER_COMPOSE}} down -v postgres
+      - docker stop {{.POSTGRES_CONTAINER}} 2>/dev/null || true
+      - docker rm {{.POSTGRES_CONTAINER}} 2>/dev/null || true
+      - docker volume rm {{.POSTGRES_VOLUME}} 2>/dev/null || true
       - task: db-up
       - task: db-migrate
 
   db-stop-all:
     desc: Stop all Docker services and remove volumes
     cmds:
-      - |
-        if [ -z "{{.DOCKER_COMPOSE}}" ]; then
-          echo "❌ Docker Compose not found! Install Docker first."
-          exit 1
-        fi
-        {{.DOCKER_COMPOSE}} down -v
+      - docker stop {{.POSTGRES_CONTAINER}} {{.TEMPORAL_CONTAINER}} {{.PGADMIN_CONTAINER}} 2>/dev/null || true
+      - docker rm {{.POSTGRES_CONTAINER}} {{.TEMPORAL_CONTAINER}} {{.PGADMIN_CONTAINER}} 2>/dev/null || true
+      - docker volume rm {{.POSTGRES_VOLUME}} {{.PGADMIN_VOLUME}} 2>/dev/null || true
       - echo "All services stopped and volumes removed"
 
   db-cleanup:
     desc: Stop all services, remove containers, networks, and volumes
     cmds:
-      - |
-        if [ -z "{{.DOCKER_COMPOSE}}" ]; then
-          echo "❌ Docker Compose not found! Install Docker first."
-          exit 1
-        fi
-        {{.DOCKER_COMPOSE}} down -v --remove-orphans
+      - docker stop {{.POSTGRES_CONTAINER}} {{.TEMPORAL_CONTAINER}} {{.PGADMIN_CONTAINER}} 2>/dev/null || true
+      - docker rm {{.POSTGRES_CONTAINER}} {{.TEMPORAL_CONTAINER}} {{.PGADMIN_CONTAINER}} 2>/dev/null || true
+      - docker volume rm {{.POSTGRES_VOLUME}} {{.PGADMIN_VOLUME}} 2>/dev/null || true
+      - docker network rm {{.NETWORK_NAME}} 2>/dev/null || true
       - echo "All Docker resources cleaned up"
 
   db-migrate:
@@ -595,11 +589,25 @@ tasks:
     desc: Start pgAdmin (database management UI)
     cmds:
       - |
-        if [ -z "{{.DOCKER_COMPOSE}}" ]; then
-          echo "❌ Docker Compose not found! Install Docker first."
-          exit 1
+        # Ensure network exists
+        docker network create {{.NETWORK_NAME}} 2>/dev/null || true
+        # Check if container already exists
+        if docker ps -a --format '{{.Names}}' | grep -q "^{{.PGADMIN_CONTAINER}}$"; then
+          echo "Container {{.PGADMIN_CONTAINER}} exists, starting it..."
+          docker start {{.PGADMIN_CONTAINER}}
+        else
+          echo "Creating and starting {{.PGADMIN_CONTAINER}}..."
+          docker run -d \
+            --name {{.PGADMIN_CONTAINER}} \
+            --network {{.NETWORK_NAME}} \
+            -e PGADMIN_DEFAULT_EMAIL=${PGADMIN_EMAIL:-admin@ai-evolution.local} \
+            -e PGADMIN_DEFAULT_PASSWORD=${PGADMIN_PASSWORD:-admin} \
+            -e PGADMIN_CONFIG_SERVER_MODE=False \
+            -p ${PGADMIN_PORT:-5050}:80 \
+            -v {{.PGADMIN_VOLUME}}:/var/lib/pgadmin \
+            --restart unless-stopped \
+            dpage/pgadmin4:latest
         fi
-        {{.DOCKER_COMPOSE}} --profile tools up -d pgadmin
       - |
         echo "pgAdmin available at: http://localhost:${PGADMIN_PORT:-5050}"
         echo "Email: ${PGADMIN_EMAIL:-admin@ai-evolution.local}"
@@ -608,12 +616,7 @@ tasks:
   pgadmin-stop:
     desc: Stop pgAdmin
     cmds:
-      - |
-        if [ -z "{{.DOCKER_COMPOSE}}" ]; then
-          echo "❌ Docker Compose not found! Install Docker first."
-          exit 1
-        fi
-        {{.DOCKER_COMPOSE}} --profile tools stop pgadmin
+      - docker stop {{.PGADMIN_CONTAINER}} 2>/dev/null || echo "pgAdmin not running"
 
   # ============================================================================
   # Temporal
@@ -621,36 +624,47 @@ tasks:
 
   temporal-up:
     desc: Start Temporal server (Docker)
+    deps: [db-up]
     cmds:
       - |
-        if [ -z "{{.DOCKER_COMPOSE}}" ]; then
-          echo "❌ Docker Compose not found! Install Docker first."
-          exit 1
+        # Wait a bit for PostgreSQL to be fully ready
+        sleep 3
+        # Ensure network exists
+        docker network create {{.NETWORK_NAME}} 2>/dev/null || true
+        # Check if container already exists
+        if docker ps -a --format '{{.Names}}' | grep -q "^{{.TEMPORAL_CONTAINER}}$"; then
+          echo "Container {{.TEMPORAL_CONTAINER}} exists, starting it..."
+          docker start {{.TEMPORAL_CONTAINER}}
+        else
+          echo "Creating and starting {{.TEMPORAL_CONTAINER}}..."
+          docker run -d \
+            --name {{.TEMPORAL_CONTAINER}} \
+            --network {{.NETWORK_NAME}} \
+            -e DB=postgresql \
+            -e DB_PORT=5432 \
+            -e POSTGRES_USER=${POSTGRES_USER:-ai_evolution} \
+            -e POSTGRES_PWD=${POSTGRES_PASSWORD:-ai_evolution_dev} \
+            -e POSTGRES_SEEDS={{.POSTGRES_CONTAINER}} \
+            -e SKIP_DB_CREATE=true \
+            -e SKIP_DEFAULT_NAMESPACE_CREATE=true \
+            -p ${TEMPORAL_PORT:-7233}:7233 \
+            -p ${TEMPORAL_UI_PORT:-8088}:8088 \
+            --restart unless-stopped \
+            temporalio/auto-setup:latest
         fi
-        {{.DOCKER_COMPOSE}} up -d temporal
       - echo "Temporal server starting..."
-      - echo "Temporal UI available at http://localhost:8088"
-      - echo "Temporal gRPC available at localhost:7233"
+      - echo "Temporal UI available at http://localhost:${TEMPORAL_UI_PORT:-8088}"
+      - echo "Temporal gRPC available at localhost:${TEMPORAL_PORT:-7233}"
 
   temporal-down:
     desc: Stop Temporal server
     cmds:
-      - |
-        if [ -z "{{.DOCKER_COMPOSE}}" ]; then
-          echo "❌ Docker Compose not found! Install Docker first."
-          exit 1
-        fi
-        {{.DOCKER_COMPOSE}} stop temporal
+      - docker stop {{.TEMPORAL_CONTAINER}} 2>/dev/null || echo "Temporal not running"
 
   temporal-logs:
     desc: View Temporal server logs
     cmds:
-      - |
-        if [ -z "{{.DOCKER_COMPOSE}}" ]; then
-          echo "❌ Docker Compose not found! Install Docker first."
-          exit 1
-        fi
-        {{.DOCKER_COMPOSE}} logs -f temporal
+      - docker logs -f {{.TEMPORAL_CONTAINER}}
 
   temporal-worker:
     desc: Start Temporal worker
