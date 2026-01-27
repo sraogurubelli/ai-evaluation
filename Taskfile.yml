@@ -629,8 +629,8 @@ tasks:
         fi
         {{.DOCKER_COMPOSE}} up -d temporal
       - echo "Temporal server starting..."
-      - echo "Temporal UI: http://localhost:8088"
-      - echo "Temporal gRPC: localhost:7233"
+      - echo "Temporal UI available at http://localhost:8088"
+      - echo "Temporal gRPC available at localhost:7233"
 
   temporal-down:
     desc: Stop Temporal server
