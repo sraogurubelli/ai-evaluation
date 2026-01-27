@@ -22,6 +22,27 @@ services:
     networks:
       - ai-evolution-network
 
+  # Temporal Server
+  temporal:
+    image: temporalio/auto-setup:latest
+    container_name: ai-evolution-temporal
+    ports:
+      - "${TEMPORAL_PORT:-7233}:7233"  # gRPC
+      - "${TEMPORAL_UI_PORT:-8088}:8088"  # Web UI
+    environment:
+      - DB=postgresql
+      - DB_PORT=5432
+      - POSTGRES_USER=${POSTGRES_USER:-ai_evolution}
+      - POSTGRES_PWD=${POSTGRES_PASSWORD:-ai_evolution_dev}
+      - POSTGRES_SEEDS=postgres
+      - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development-sql.yaml
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - ai-evolution-network
+    restart: unless-stopped
+
   # Optional: pgAdmin for database management
   pgadmin:
     image: dpage/pgadmin4:latest

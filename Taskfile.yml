@@ -616,6 +616,54 @@ tasks:
         {{.DOCKER_COMPOSE}} --profile tools stop pgadmin
 
   # ============================================================================
+  # Temporal
+  # ============================================================================
+
+  temporal-up:
+    desc: Start Temporal server (Docker)
+    cmds:
+      - |
+        if [ -z "{{.DOCKER_COMPOSE}}" ]; then
+          echo "❌ Docker Compose not found! Install Docker first."
+          exit 1
+        fi
+        {{.DOCKER_COMPOSE}} up -d temporal
+      - echo "Temporal server starting..."
+      - echo "Temporal UI: http://localhost:8088"
+      - echo "Temporal gRPC: localhost:7233"
+
+  temporal-down:
+    desc: Stop Temporal server
+    cmds:
+      - |
+        if [ -z "{{.DOCKER_COMPOSE}}" ]; then
+          echo "❌ Docker Compose not found! Install Docker first."
+          exit 1
+        fi
+        {{.DOCKER_COMPOSE}} stop temporal
+
+  temporal-logs:
+    desc: View Temporal server logs
+    cmds:
+      - |
+        if [ -z "{{.DOCKER_COMPOSE}}" ]; then
+          echo "❌ Docker Compose not found! Install Docker first."
+          exit 1
+        fi
+        {{.DOCKER_COMPOSE}} logs -f temporal
+
+  temporal-worker:
+    desc: Start Temporal worker
+    cmds:
+      - |
+        if [ -d {{.VENV_DIR}} ]; then
+          source {{.VENV_DIR}}/bin/activate && python -m ai_evolution.workflows.worker
+        else
+          echo "⚠️  Virtual environment not found. Run: task setup"
+          exit 1
+        fi
+
+  # ============================================================================
   # Documentation
   # ============================================================================
 
