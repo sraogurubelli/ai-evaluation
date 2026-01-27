@@ -445,6 +445,12 @@ tasks:
       - docker-compose stop postgres
       - echo "Database stopped"
 
+  db-down-volumes:
+    desc: Stop PostgreSQL database and remove volumes
+    cmds:
+      - docker-compose down -v postgres
+      - echo "Database stopped and volumes removed"
+
   db-restart:
     desc: Restart PostgreSQL database
     cmds:
