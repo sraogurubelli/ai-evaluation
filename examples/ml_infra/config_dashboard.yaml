@@ -1,0 +1,31 @@
+experiment:
+  name: "dashboard_creation_benchmark"
+  description: "Test dashboard creation"
+
+dataset:
+  type: "index_csv"
+  index_file: "benchmarks/datasets/index.csv"
+  base_dir: "benchmarks/datasets"
+  filters:
+    entity_type: "dashboard"
+    operation_type: "create"
+
+adapter:
+  type: "ml_infra"
+  base_url: "${CHAT_BASE_URL}"
+  auth_token: "${CHAT_PLATFORM_AUTH_TOKEN}"
+
+models:
+  - "claude-haiku-4-5-20251001"
+
+scorers:
+  - type: "dashboard_quality"
+
+execution:
+  concurrency_limit: 5
+
+output:
+  sinks:
+    - type: "csv"
+      path: "results/dashboard_{timestamp}.csv"
+    - type: "stdout"

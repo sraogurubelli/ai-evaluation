@@ -1,0 +1,561 @@
+version: '3'
+
+vars:
+  PYTHON: python3
+  VENV_DIR: .venv
+  SRC_DIR: src
+  TEST_DIR: tests
+  PORT: 8000
+
+tasks:
+  default:
+    desc: Show available tasks
+    cmds:
+      - task --list
+
+  # ============================================================================
+  # Setup & Installation
+  # ============================================================================
+
+  setup:
+    desc: Set up development environment
+    deps: [venv, install, install-dev]
+    cmds:
+      - task: copy-env
+      - task: db-up
+      - echo "Development environment ready!"
+      - echo "Database is starting. Run 'task db-migrate' after it's ready."
+
+  fresh:
+    desc: Fresh start - cleanup everything and rebuild from scratch
+    cmds:
+      - |
+        echo "Starting fresh environment setup..."
+        echo ""
+        echo "Step 1: Cleaning up old artifacts..."
+      - task: clean
+      - task: clean-venv
+      - |
+        echo ""
+        echo "Step 2: Stopping and removing database..."
+        docker-compose down -v postgres 2>/dev/null || echo "Database not running"
+      - |
+        echo ""
+        echo "Step 3: Creating fresh virtual environment..."
+      - task: venv
+      - |
+        echo ""
+        echo "Step 4: Installing dependencies..."
+      - task: install
+      - task: install-dev
+      - |
+        echo ""
+        echo "Step 5: Setting up environment file..."
+      - task: copy-env
+      - |
+        echo ""
+        echo "Step 6: Starting database..."
+      - task: db-up
+      - |
+        echo ""
+        echo "Step 7: Waiting for database to be ready..."
+        sleep 5
+      - |
+        echo ""
+        echo "Step 8: Running database migrations..."
+      - task: db-migrate
+      - |
+        echo ""
+        echo "Fresh environment setup complete!"
+        echo ""
+        echo "Next steps:"
+        echo "  - Start the server: task server"
+        echo "  - Run tests: task test"
+        echo "  - View database: task pgadmin (optional)"
+
+  venv:
+    desc: Create Python virtual environment
+    cmds:
+      - |
+        if [ ! -d {{.VENV_DIR}} ]; then
+          {{.PYTHON}} -m venv {{.VENV_DIR}}
+          echo "Virtual environment created"
+        else
+          echo "Virtual environment already exists"
+        fi
+
+  install:
+    desc: Install package in editable mode
+    cmds:
+      - |
+        if [ -d {{.VENV_DIR}} ]; then
+          source {{.VENV_DIR}}/bin/activate && pip install -e .
+        else
+          pip install -e .
+        fi
+
+  install-requirements:
+    desc: Install from requirements.txt
+    cmds:
+      - |
+        if [ -d {{.VENV_DIR}} ]; then
+          source {{.VENV_DIR}}/bin/activate && pip install -r requirements.txt
+        else
+          pip install -r requirements.txt
+        fi
+
+  install-requirements-dev:
+    desc: Install development requirements
+    cmds:
+      - |
+        if [ -d {{.VENV_DIR}} ]; then
+          source {{.VENV_DIR}}/bin/activate && pip install -r requirements-dev.txt
+        else
+          pip install -r requirements-dev.txt
+        fi
+
+  install-requirements-llm:
+    desc: Install LLM requirements
+    cmds:
+      - |
+        if [ -d {{.VENV_DIR}} ]; then
+          source {{.VENV_DIR}}/bin/activate && pip install -r requirements-llm.txt
+        else
+          pip install -r requirements-llm.txt
+        fi
+
+  install-dev:
+    desc: Install development dependencies
+    cmds:
+      - |
+        if [ -d {{.VENV_DIR}} ]; then
+          source {{.VENV_DIR}}/bin/activate && pip install -e ".[dev]"
+        else
+          pip install -e ".[dev]"
+        fi
+
+  install-llm:
+    desc: Install LLM dependencies (OpenAI, Anthropic)
+    cmds:
+      - |
+        if [ -d {{.VENV_DIR}} ]; then
+          source {{.VENV_DIR}}/bin/activate && pip install -e ".[llm]"
+        else
+          pip install -e ".[llm]"
+        fi
+
+  copy-env:
+    desc: Copy .env.example to .env if it doesn't exist
+    cmds:
+      - |
+        if [ ! -f .env ]; then
+          cp .env.example .env
+          echo "✅ Created .env file from .env.example"
+          echo "⚠️  Please update .env with your configuration"
+        else
+          echo "ℹ️  .env file already exists"
+        fi
+
+  # ============================================================================
+  # Code Quality
+  # ============================================================================
+
+  lint:
+    desc: Run Ruff linter
+    cmds:
+      - |
+        if [ -d {{.VENV_DIR}} ]; then
+          source {{.VENV_DIR}}/bin/activate && ruff check {{.SRC_DIR}} {{.TEST_DIR}}
+        else
+          ruff check {{.SRC_DIR}} {{.TEST_DIR}}
+        fi
+
+  lint-fix:
+    desc: Run Ruff linter and auto-fix issues
+    cmds:
+      - |
+        if [ -d {{.VENV_DIR}} ]; then
+          source {{.VENV_DIR}}/bin/activate && ruff check --fix {{.SRC_DIR}} {{.TEST_DIR}}
+        else
+          ruff check --fix {{.SRC_DIR}} {{.TEST_DIR}}
+        fi
+
+  format:
+    desc: Format code with Ruff
+    cmds:
+      - |
+        if [ -d {{.VENV_DIR}} ]; then
+          source {{.VENV_DIR}}/bin/activate && ruff format {{.SRC_DIR}} {{.TEST_DIR}}
+        else
+          ruff format {{.SRC_DIR}} {{.TEST_DIR}}
+        fi
+
+  typecheck:
+    desc: Run MyPy type checker
+    cmds:
+      - |
+        if [ -d {{.VENV_DIR}} ]; then
+          source {{.VENV_DIR}}/bin/activate && mypy {{.SRC_DIR}}
+        else
+          mypy {{.SRC_DIR}}
+        fi
+
+  check:
+    desc: Run all code quality checks (lint, format check, typecheck)
+    deps: [lint, typecheck]
+    cmds:
+      - echo "All checks passed!"
+
+  # ============================================================================
+  # Testing
+  # ============================================================================
+
+  test:
+    desc: Run all tests
+    cmds:
+      - |
+        if [ -d {{.VENV_DIR}} ]; then
+          source {{.VENV_DIR}}/bin/activate && pytest {{.TEST_DIR}} -v
+        else
+          pytest {{.TEST_DIR}} -v
+        fi
+
+  test-unit:
+    desc: Run unit tests only
+    cmds:
+      - |
+        if [ -d {{.VENV_DIR}} ]; then
+          source {{.VENV_DIR}}/bin/activate && pytest {{.TEST_DIR}}/unit -v
+        else
+          pytest {{.TEST_DIR}}/unit -v
+        fi
+
+  test-integration:
+    desc: Run integration tests only
+    cmds:
+      - |
+        if [ -d {{.VENV_DIR}} ]; then
+          source {{.VENV_DIR}}/bin/activate && pytest {{.TEST_DIR}}/integration -v
+        else
+          pytest {{.TEST_DIR}}/integration -v
+        fi
+
+  test-coverage:
+    desc: Run tests with coverage report
+    cmds:
+      - |
+        if [ -d {{.VENV_DIR}} ]; then
+          source {{.VENV_DIR}}/bin/activate && pytest {{.TEST_DIR}} --cov={{.SRC_DIR}}/ai_evolution --cov-report=html --cov-report=term
+        else
+          pytest {{.TEST_DIR}} --cov={{.SRC_DIR}}/ai_evolution --cov-report=html --cov-report=term
+        fi
+    generates:
+      - htmlcov/index.html
+
+  test-watch:
+    desc: Run tests in watch mode (requires pytest-watch)
+    cmds:
+      - |
+        if [ -d {{.VENV_DIR}} ]; then
+          source {{.VENV_DIR}}/bin/activate && ptw {{.TEST_DIR}} -- -v
+        else
+          ptw {{.TEST_DIR}} -- -v
+        fi
+
+  # ============================================================================
+  # Development Server
+  # ============================================================================
+
+  server:
+    desc: Start the FastAPI development server
+    cmds:
+      - |
+        if [ -d {{.VENV_DIR}} ]; then
+          source {{.VENV_DIR}}/bin/activate && uvicorn ai_evolution.api.app:create_app --host 0.0.0.0 --port {{.PORT}} --reload
+        else
+          uvicorn ai_evolution.api.app:create_app --host 0.0.0.0 --port {{.PORT}} --reload
+        fi
+
+  server-prod:
+    desc: Start the FastAPI production server
+    cmds:
+      - |
+        if [ -d {{.VENV_DIR}} ]; then
+          source {{.VENV_DIR}}/bin/activate && uvicorn ai_evolution.api.app:create_app --host 0.0.0.0 --port {{.PORT}} --workers 4
+        else
+          uvicorn ai_evolution.api.app:create_app --host 0.0.0.0 --port {{.PORT}} --workers 4
+        fi
+
+  # ============================================================================
+  # CLI Commands
+  # ============================================================================
+
+  cli-run:
+    desc: Run CLI evaluation (requires config file)
+    cmds:
+      - |
+        if [ -d {{.VENV_DIR}} ]; then
+          source {{.VENV_DIR}}/bin/activate && ai-evolution run --config {{.CLI_CONFIG}}
+        else
+          ai-evolution run --config {{.CLI_CONFIG}}
+        fi
+    vars:
+      CLI_CONFIG:
+        sh: echo "examples/ml_infra/config.yaml"
+
+  cli-compare:
+    desc: Compare experiment runs via CLI
+    cmds:
+      - |
+        if [ -d {{.VENV_DIR}} ]; then
+          source {{.VENV_DIR}}/bin/activate && ai-evolution compare {{.RUN1}} {{.RUN2}}
+        else
+          ai-evolution compare {{.RUN1}} {{.RUN2}}
+        fi
+    vars:
+      RUN1:
+        sh: echo "run1.json"
+      RUN2:
+        sh: echo "run2.json"
+
+  # ============================================================================
+  # Examples
+  # ============================================================================
+
+  example-api:
+    desc: Run API example script
+    cmds:
+      - |
+        if [ -d {{.VENV_DIR}} ]; then
+          source {{.VENV_DIR}}/bin/activate && python examples/api_example.py
+        else
+          python examples/api_example.py
+        fi
+
+  example-simple:
+    desc: Run simple evaluation example
+    cmds:
+      - |
+        if [ -d {{.VENV_DIR}} ]; then
+          source {{.VENV_DIR}}/bin/activate && python examples/general/simple_eval.py
+        else
+          python examples/general/simple_eval.py
+        fi
+
+  # ============================================================================
+  # Cleanup
+  # ============================================================================
+
+  clean:
+    desc: Clean all generated files and caches
+    deps: [clean-pyc, clean-test, clean-build, clean-cache]
+    cmds:
+      - echo "All cleanup tasks completed"
+
+  clean-pyc:
+    desc: Remove Python cache files
+    cmds:
+      - find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+      - find . -type f -name "*.pyc" -delete
+      - find . -type f -name "*.pyo" -delete
+      - echo "Cleaned Python cache files"
+
+  clean-test:
+    desc: Remove test artifacts
+    cmds:
+      - rm -rf .pytest_cache
+      - rm -rf .coverage
+      - rm -rf htmlcov
+      - rm -rf .mypy_cache
+      - echo "✅ Cleaned test artifacts"
+
+  clean-build:
+    desc: Remove build artifacts
+    cmds:
+      - rm -rf build
+      - rm -rf dist
+      - rm -rf *.egg-info
+      - echo "Cleaned build artifacts"
+
+  clean-cache:
+    desc: Remove Ruff cache
+    cmds:
+      - rm -rf .ruff_cache
+      - echo "✅ Cleaned Ruff cache"
+
+  clean-venv:
+    desc: Remove virtual environment
+    cmds:
+      - rm -rf {{.VENV_DIR}}
+      - echo "Removed virtual environment"
+
+  # ============================================================================
+  # Development Workflow
+  # ============================================================================
+
+  dev:
+    desc: Run development workflow (format, lint, test)
+    deps: [format, lint, test]
+    cmds:
+      - echo "Development workflow completed!"
+
+  pre-commit:
+    desc: Run pre-commit checks (format, lint, typecheck, test)
+    deps: [format, lint, typecheck, test]
+    cmds:
+      - echo "✅ Pre-commit checks passed!"
+
+  ci:
+    desc: Run CI pipeline checks
+    deps: [lint, typecheck, test]
+    cmds:
+      - echo "CI checks passed!"
+
+  # ============================================================================
+  # Database
+  # ============================================================================
+
+  db-up:
+    desc: Start PostgreSQL database (Docker)
+    cmds:
+      - docker-compose up -d postgres
+      - echo "Waiting for database to be ready..."
+      - sleep 3
+      - docker-compose ps postgres
+
+  db-down:
+    desc: Stop PostgreSQL database (Docker)
+    cmds:
+      - docker-compose stop postgres
+      - echo "Database stopped"
+
+  db-restart:
+    desc: Restart PostgreSQL database
+    cmds:
+      - task: db-down
+      - task: db-up
+
+  db-logs:
+    desc: View PostgreSQL logs
+    cmds:
+      - docker-compose logs -f postgres
+
+  db-shell:
+    desc: Open PostgreSQL shell (psql)
+    cmds:
+      - |
+        docker-compose exec postgres psql -U ${POSTGRES_USER:-ai_evolution} -d ${POSTGRES_DB:-ai_evolution}
+
+  db-reset:
+    desc: Reset database (drop and recreate)
+    cmds:
+      - echo "This will delete all data!"
+      - docker-compose down -v postgres
+      - task: db-up
+      - task: db-migrate
+
+  db-migrate:
+    desc: Run database migrations
+    cmds:
+      - |
+        if [ -d {{.VENV_DIR}} ]; then
+          source {{.VENV_DIR}}/bin/activate && alembic upgrade head
+        else
+          alembic upgrade head
+        fi
+
+  db-migrate-create:
+    desc: Create a new migration
+    cmds:
+      - |
+        if [ -d {{.VENV_DIR}} ]; then
+          source {{.VENV_DIR}}/bin/activate && alembic revision --autogenerate -m "{{.MESSAGE}}"
+        else
+          alembic revision --autogenerate -m "{{.MESSAGE}}"
+        fi
+    vars:
+      MESSAGE:
+        sh: echo "auto migration"
+
+  db-migrate-downgrade:
+    desc: Downgrade database by one revision
+    cmds:
+      - |
+        if [ -d {{.VENV_DIR}} ]; then
+          source {{.VENV_DIR}}/bin/activate && alembic downgrade -1
+        else
+          alembic downgrade -1
+        fi
+
+  db-init:
+    desc: Initialize database (create tables)
+    cmds:
+      - |
+        if [ -d {{.VENV_DIR}} ]; then
+          source {{.VENV_DIR}}/bin/activate && python -c "import asyncio; from ai_evolution.db.session import init_db; asyncio.run(init_db())"
+        else
+          python -c "import asyncio; from ai_evolution.db.session import init_db; asyncio.run(init_db())"
+        fi
+
+  pgadmin:
+    desc: Start pgAdmin (database management UI)
+    cmds:
+      - docker-compose --profile tools up -d pgadmin
+      - |
+        echo "pgAdmin available at: http://localhost:${PGADMIN_PORT:-5050}"
+        echo "Email: ${PGADMIN_EMAIL:-admin@ai-evolution.local}"
+        echo "Password: ${PGADMIN_PASSWORD:-admin}"
+
+  pgadmin-stop:
+    desc: Stop pgAdmin
+    cmds:
+      - docker-compose --profile tools stop pgadmin
+
+  # ============================================================================
+  # Documentation
+  # ============================================================================
+
+  docs-serve:
+    desc: Serve API documentation (requires docs server)
+    cmds:
+      - |
+        echo "API documentation available at:"
+        echo "   - Swagger UI: http://localhost:{{.PORT}}/docs"
+        echo "   - ReDoc: http://localhost:{{.PORT}}/redoc"
+        echo "   - OpenAPI JSON: http://localhost:{{.PORT}}/openapi.json"
+        echo ""
+        echo "Start the server with: task server"
+
+  # ============================================================================
+  # Utilities
+  # ============================================================================
+
+  shell:
+    desc: Activate virtual environment shell
+    cmds:
+      - |
+        if [ -d {{.VENV_DIR}} ]; then
+          echo "Activating virtual environment..."
+          echo "Run 'deactivate' to exit"
+          exec $SHELL -c "source {{.VENV_DIR}}/bin/activate && exec $SHELL"
+        else
+          echo "Virtual environment not found. Run 'task setup' first."
+          exit 1
+        fi
+
+  version:
+    desc: Show Python and package versions
+    cmds:
+      - |
+        echo "Python version:"
+        {{.PYTHON}} --version
+        echo ""
+        echo "Package version:"
+        {{.PYTHON}} -c "import sys; sys.path.insert(0, '{{.SRC_DIR}}'); from ai_evolution import __version__; print(__version__)" 2>/dev/null || echo "Not installed"
+        echo ""
+        echo "Installed packages:"
+        if [ -d {{.VENV_DIR}} ]; then
+          source {{.VENV_DIR}}/bin/activate && pip list | grep -E "(pydantic|typer|fastapi|uvicorn|pytest|ruff|mypy)"
+        else
+          pip list | grep -E "(pydantic|typer|fastapi|uvicorn|pytest|ruff|mypy)"
+        fi

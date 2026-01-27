@@ -1,0 +1,44 @@
+experiment:
+  name: "pipeline_creation_benchmark"
+  description: "Test pipeline creation across models"
+
+dataset:
+  type: "index_csv"
+  index_file: "benchmarks/datasets/index.csv"
+  base_dir: "benchmarks/datasets"
+  filters:
+    entity_type: "pipeline"
+    operation_type: "create"
+  offline: false
+  actual_suffix: "actual"
+
+adapter:
+  type: "ml_infra"
+  base_url: "${CHAT_BASE_URL}"
+  auth_token: "${CHAT_PLATFORM_AUTH_TOKEN}"
+  account_id: "${ACCOUNT_ID}"
+  org_id: "${ORG_ID}"
+  project_id: "${PROJECT_ID}"
+
+models:
+  - "claude-3-7-sonnet-20250219"
+  - "gpt-4o"
+
+scorers:
+  - type: "deep_diff"
+    version: "v3"
+  - type: "deep_diff"
+    version: "v2"
+  - type: "schema_validation"
+
+execution:
+  concurrency_limit: 5
+  sample_size: null
+
+output:
+  sinks:
+    - type: "csv"
+      path: "results/{experiment_name}_{timestamp}.csv"
+    - type: "stdout"
+    - type: "langfuse"
+      project: "ml-infra-evals"

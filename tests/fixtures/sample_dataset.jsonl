@@ -1,0 +1,2 @@
+{"id": "test-001", "input": {"prompt": "What is 2+2?"}, "expected": {"contains": "4"}}
+{"id": "test-002", "input": {"prompt": "Capital of France?"}, "expected": {"contains": "Paris"}}
