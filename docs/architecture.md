@@ -36,7 +36,7 @@ Unified abstraction for evaluation:
 Interface for different AI systems:
 
 - **HTTPAdapter**: Generic HTTP/REST adapter (recommended, configurable for any API)
-- **MLInfraAdapter**: Compatibility wrapper for ml-infra server (uses HTTPAdapter internally)
+- **HTTPAdapter**: Generic HTTP adapter that can be configured for any REST API
 - **Extensible**: Easy to add new adapters by implementing the Adapter interface
 
 ### 5. Sink System

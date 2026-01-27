@@ -146,7 +146,7 @@ adapter = HTTPAdapter(
 )
 
 # ML Infra adapter (backward compatibility)
-adapter = MLInfraAdapter(
+adapter = HTTPAdapter(
     base_url="http://ml-infra-server.com",
     auth_token="token",
     account_id="account-123",
@@ -286,7 +286,7 @@ See `examples/sdk_example.py` for complete examples.
 ### Adapters
 
 - `HTTPAdapter`: Generic HTTP/REST adapter
-- `MLInfraAdapter`: ML Infra compatibility adapter
+- `HTTPAdapter`: Generic HTTP adapter (configure for your API)
 - `LangfuseAdapter`: Langfuse adapter
 
 ### Scorers
