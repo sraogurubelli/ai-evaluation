@@ -6,7 +6,6 @@ authors = [
     {name = "AI Evolution Contributors"}
 ]
 readme = "README.md"
-requires-python = ">=3.11"
 license = {text = "MIT"}
 keywords = ["ai", "evaluation", "evals", "experimentation", "llm", "testing"]
 classifiers = [
@@ -52,7 +51,7 @@ ai-evolution = "ai_evolution.cli.main:app"
 ai-evolution-server = "ai_evolution.api.server:main"
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling>=1.0", "setuptools>=65.0", "wheel"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]

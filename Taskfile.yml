@@ -89,9 +89,9 @@ tasks:
     cmds:
       - |
         if [ -d {{.VENV_DIR}} ]; then
-          source {{.VENV_DIR}}/bin/activate && pip install -e .
+          source {{.VENV_DIR}}/bin/activate && pip install --upgrade pip setuptools wheel && pip install -e .
         else
-          pip install -e .
+          pip install --upgrade pip setuptools wheel && pip install -e .
         fi
 
   install-requirements:
@@ -129,9 +129,9 @@ tasks:
     cmds:
       - |
         if [ -d {{.VENV_DIR}} ]; then
-          source {{.VENV_DIR}}/bin/activate && pip install -e ".[dev]"
+          source {{.VENV_DIR}}/bin/activate && pip install --upgrade pip setuptools wheel && pip install -e ".[dev]"
         else
-          pip install -e ".[dev]"
+          pip install --upgrade pip setuptools wheel && pip install -e ".[dev]"
         fi
 
   install-llm:
@@ -139,9 +139,9 @@ tasks:
     cmds:
       - |
         if [ -d {{.VENV_DIR}} ]; then
-          source {{.VENV_DIR}}/bin/activate && pip install -e ".[llm]"
+          source {{.VENV_DIR}}/bin/activate && pip install --upgrade pip setuptools wheel && pip install -e ".[llm]"
         else
-          pip install -e ".[llm]"
+          pip install --upgrade pip setuptools wheel && pip install -e ".[llm]"
         fi
 
   copy-env:
