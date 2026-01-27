@@ -35,7 +35,8 @@ services:
       - POSTGRES_USER=${POSTGRES_USER:-ai_evolution}
       - POSTGRES_PWD=${POSTGRES_PASSWORD:-ai_evolution_dev}
       - POSTGRES_SEEDS=postgres
-      - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development-sql.yaml
+      - SKIP_DB_CREATE=true
+      - SKIP_DEFAULT_NAMESPACE_CREATE=true
     depends_on:
       postgres:
         condition: service_healthy
