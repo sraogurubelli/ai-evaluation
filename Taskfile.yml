@@ -38,7 +38,7 @@ tasks:
       - task: clean-venv
       - |
         echo ""
-        echo "Step 2: Stopping and removing database..."
+        echo "Step 2: Stopping and removing database volumes..."
         docker-compose down -v postgres 2>/dev/null || echo "Database not running"
       - |
         echo ""
@@ -362,6 +362,12 @@ tasks:
     cmds:
       - echo "All cleanup tasks completed"
 
+  clean-docker:
+    desc: Stop and remove all Docker containers, volumes, and networks
+    cmds:
+      - docker-compose down -v --remove-orphans
+      - echo "✅ Docker resources cleaned up"
+
   clean-pyc:
     desc: Remove Python cache files
     cmds:
@@ -463,6 +469,18 @@ tasks:
       - docker-compose down -v postgres
       - task: db-up
       - task: db-migrate
+
+  db-stop-all:
+    desc: Stop all Docker services and remove volumes
+    cmds:
+      - docker-compose down -v
+      - echo "All services stopped and volumes removed"
+
+  db-cleanup:
+    desc: Stop all services, remove containers, networks, and volumes
+    cmds:
+      - docker-compose down -v --remove-orphans
+      - echo "All Docker resources cleaned up"
 
   db-migrate:
     desc: Run database migrations
