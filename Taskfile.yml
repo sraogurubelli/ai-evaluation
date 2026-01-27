@@ -175,9 +175,9 @@ tasks:
     cmds:
       - |
         if [ -d {{.VENV_DIR}} ]; then
-          source {{.VENV_DIR}}/bin/activate && ruff check {{.SRC_DIR}} {{.TEST_DIR}}
+          source {{.VENV_DIR}}/bin/activate && ruff check {{.SRC_DIR}} {{.TEST_DIR}} || (echo "⚠️  Ruff not found. Install with: task install-dev" && exit 1)
         else
-          ruff check {{.SRC_DIR}} {{.TEST_DIR}}
+          echo "⚠️  Virtual environment not found. Run: task setup" && exit 1
         fi
 
   lint-fix:
@@ -185,9 +185,9 @@ tasks:
     cmds:
       - |
         if [ -d {{.VENV_DIR}} ]; then
-          source {{.VENV_DIR}}/bin/activate && ruff check --fix {{.SRC_DIR}} {{.TEST_DIR}}
+          source {{.VENV_DIR}}/bin/activate && ruff check --fix {{.SRC_DIR}} {{.TEST_DIR}} || (echo "⚠️  Ruff not found. Install with: task install-dev" && exit 1)
         else
-          ruff check --fix {{.SRC_DIR}} {{.TEST_DIR}}
+          echo "⚠️  Virtual environment not found. Run: task setup" && exit 1
         fi
 
   format:
@@ -195,9 +195,9 @@ tasks:
     cmds:
       - |
         if [ -d {{.VENV_DIR}} ]; then
-          source {{.VENV_DIR}}/bin/activate && ruff format {{.SRC_DIR}} {{.TEST_DIR}}
+          source {{.VENV_DIR}}/bin/activate && ruff format {{.SRC_DIR}} {{.TEST_DIR}} || (echo "⚠️  Ruff not found. Install with: task install-dev" && exit 1)
         else
-          ruff format {{.SRC_DIR}} {{.TEST_DIR}}
+          echo "⚠️  Virtual environment not found. Run: task setup" && exit 1
         fi
 
   typecheck:
@@ -205,9 +205,9 @@ tasks:
     cmds:
       - |
         if [ -d {{.VENV_DIR}} ]; then
-          source {{.VENV_DIR}}/bin/activate && mypy {{.SRC_DIR}}
+          source {{.VENV_DIR}}/bin/activate && mypy {{.SRC_DIR}} || (echo "⚠️  MyPy not found. Install with: task install-dev" && exit 1)
         else
-          mypy {{.SRC_DIR}}
+          echo "⚠️  Virtual environment not found. Run: task setup" && exit 1
         fi
 
   check:
@@ -225,9 +225,9 @@ tasks:
     cmds:
       - |
         if [ -d {{.VENV_DIR}} ]; then
-          source {{.VENV_DIR}}/bin/activate && pytest {{.TEST_DIR}} -v
+          source {{.VENV_DIR}}/bin/activate && pytest {{.TEST_DIR}} -v || (echo "⚠️  Pytest not found. Install with: task install-dev" && exit 1)
         else
-          pytest {{.TEST_DIR}} -v
+          echo "⚠️  Virtual environment not found. Run: task setup" && exit 1
         fi
 
   test-unit:
