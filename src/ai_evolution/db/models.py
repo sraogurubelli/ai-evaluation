@@ -43,7 +43,7 @@ class Task(Base):
     started_at = Column(DateTime, nullable=True)
     completed_at = Column(DateTime, nullable=True)
     error = Column(Text, nullable=True)
-    metadata = Column(JSON, nullable=True, default=dict)
+    meta = Column("meta_data", JSON, nullable=True, default=dict)
     
     # Relationships
     result = relationship("TaskResult", back_populates="task", uselist=False, cascade="all, delete-orphan")
@@ -58,7 +58,7 @@ class Task(Base):
             "started_at": self.started_at.isoformat() if self.started_at else None,
             "completed_at": self.completed_at.isoformat() if self.completed_at else None,
             "error": self.error,
-            "metadata": self.metadata or {},
+            "metadata": self.meta or {},
         }
 
 
@@ -71,7 +71,7 @@ class TaskResult(Base):
     task_id = Column(UUID(as_uuid=False), ForeignKey("tasks.id"), nullable=False, unique=True, index=True)
     experiment_run_id = Column(UUID(as_uuid=False), ForeignKey("experiment_runs.id"), nullable=True, index=True)
     execution_time_seconds = Column(Float, nullable=False)
-    metadata = Column(JSON, nullable=True, default=dict)
+    meta = Column("meta_data", JSON, nullable=True, default=dict)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     
     # Relationships
@@ -84,7 +84,7 @@ class TaskResult(Base):
             "task_id": str(self.task_id),
             "experiment_run": self.experiment_run.to_dict() if self.experiment_run else None,
             "execution_time_seconds": self.execution_time_seconds,
-            "metadata": self.metadata or {},
+            "metadata": self.meta or {},
         }
 
 
@@ -100,7 +100,7 @@ class Experiment(Base):
     scorers_config = Column(JSON, nullable=False)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
-    metadata = Column(JSON, nullable=True, default=dict)
+    meta = Column("meta_data", JSON, nullable=True, default=dict)
     
     # Relationships
     runs = relationship("ExperimentRun", back_populates="experiment", cascade="all, delete-orphan")
@@ -115,7 +115,7 @@ class Experiment(Base):
             "scorers_config": self.scorers_config,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
-            "metadata": self.metadata or {},
+            "metadata": self.meta or {},
         }
 
 
@@ -130,7 +130,7 @@ class ExperimentRun(Base):
     dataset_id = Column(String(255), nullable=False, index=True)
     model = Column(String(255), nullable=True, index=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
-    metadata = Column(JSON, nullable=True, default=dict)
+    meta = Column("meta_data", JSON, nullable=True, default=dict)
     
     # Relationships
     experiment = relationship("Experiment", back_populates="runs")
@@ -144,7 +144,7 @@ class ExperimentRun(Base):
             "run_id": self.run_id,
             "dataset_id": self.dataset_id,
             "scores": [score.to_dict() for score in self.scores],
-            "metadata": self.metadata or {},
+            "metadata": self.meta or {},
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 
@@ -160,7 +160,7 @@ class Score(Base):
     value = Column(Float, nullable=False)
     eval_id = Column(String(255), nullable=False, index=True)
     comment = Column(Text, nullable=True)
-    metadata = Column(JSON, nullable=True, default=dict)
+    meta = Column("meta_data", JSON, nullable=True, default=dict)
     trace_id = Column(String(255), nullable=True, index=True)
     observation_id = Column(String(255), nullable=True, index=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
@@ -175,7 +175,7 @@ class Score(Base):
             "value": self.value,
             "eval_id": self.eval_id,
             "comment": self.comment,
-            "metadata": self.metadata or {},
+            "metadata": self.meta or {},
             "trace_id": self.trace_id,
             "observation_id": self.observation_id,
         }

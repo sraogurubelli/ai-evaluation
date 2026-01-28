@@ -596,7 +596,7 @@ def create_app() -> FastAPI:
                     run_id=None,
                     experiment_id=task.experiment_name,
                     scores=None,
-                    metadata=task.metadata,
+                    metadata=task.meta,
                 )
             else:
                 # Return run
@@ -606,7 +606,7 @@ def create_app() -> FastAPI:
                     run_id=run.run_id,
                     experiment_id=run.experiment_id,
                     scores=[score.to_dict() for score in run.scores],
-                    metadata=run.metadata,
+                    metadata=run.meta,
                 )
         except Exception as e:
             logger.error(f"Error in unified evaluation: {e}", exc_info=True)

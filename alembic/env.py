@@ -15,7 +15,8 @@ from alembic import context
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 # Import Base and models
-from ai_evolution.db.session import Base, get_database_url
+from ai_evolution.db.models import Base
+from ai_evolution.db.session import get_database_url
 from ai_evolution.db.models import Task, TaskResult, Experiment, ExperimentRun, Score
 
 # this is the Alembic Config object
@@ -23,7 +24,8 @@ config = context.config
 
 # Override sqlalchemy.url with environment variable
 database_url = get_database_url()
-config.set_main_option("sqlalchemy.url", database_url.replace("+asyncpg", ""))
+# Alembic needs synchronous driver (psycopg2), not asyncpg
+config.set_main_option("sqlalchemy.url", database_url.replace("+asyncpg", "+psycopg2"))
 
 # Interpret the config file for Python logging.
 if config.config_file_name is not None:
@@ -76,7 +78,16 @@ async def run_async_migrations() -> None:
 
 def run_migrations_online() -> None:
     """Run migrations in 'online' mode."""
-    asyncio.run(run_async_migrations())
+    # Use synchronous migrations (alembic doesn't fully support async yet)
+    connectable = config.attributes.get("connection", None)
+    if connectable is None:
+        from sqlalchemy import create_engine
+        connectable = create_engine(config.get_main_option("sqlalchemy.url"))
+    
+    with connectable.connect() as connection:
+        context.configure(connection=connection, target_metadata=target_metadata)
+        with context.begin_transaction():
+            context.run_migrations()
 
 
 if context.is_offline_mode():
