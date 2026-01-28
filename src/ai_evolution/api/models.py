@@ -238,18 +238,30 @@ class EvaluationRequest(BaseModel):
     
     experiment_name: str = Field(..., description="Name of the experiment")
     dataset_config: dict[str, Any] = Field(..., description="Dataset configuration")
-    scorers_config: list[dict[str, Any]] = Field(..., description="List of scorer configurations")
+    scorers_config: list[dict[str, Any]] = Field(..., description="List of scorer configurations (metrics/scorers)")
     adapter_config: dict[str, Any] = Field(..., description="Adapter configuration")
-    model: str | None = Field(None, description="Optional model name")
+    models: list[str] | None = Field(None, description="List of models to evaluate (one experiment run per model)")
+    model: str | None = Field(None, description="[Deprecated] Single model name (use 'models' instead)")
     concurrency_limit: int = Field(default=5, description="Concurrency limit")
     run_async: bool = Field(default=False, description="Run asynchronously")
+    
+    def get_models_list(self) -> list[str | None]:
+        """Normalize models input - prioritize models over model for backward compatibility."""
+        if self.models:
+            return self.models
+        elif self.model:
+            return [self.model]
+        else:
+            return [None]  # Use adapter default
 
 
 class EvaluationResponse(BaseModel):
     """Response from unified evaluation."""
     
     task_id: str | None = Field(None, description="Task ID (if run_async=True)")
-    run_id: str | None = Field(None, description="Run ID (if run_async=False)")
+    runs: list[dict[str, Any]] | None = Field(None, description="Multiple runs (one per model, if multiple models)")
+    run_id: str | None = Field(None, description="Single run ID (backward compatibility, if single model)")
     experiment_id: str
-    scores: list[dict[str, Any]] | None = Field(None, description="Scores (if run_async=False)")
+    scores: list[dict[str, Any]] | None = Field(None, description="Scores from single run (if run_async=False and single model)")
+    comparison: dict[str, Any] | None = Field(None, description="Model comparison metrics (if multiple models)")
     metadata: dict[str, Any]

@@ -269,6 +269,36 @@ def evaluate(
 
 See `examples/sdk_example.py` for complete examples.
 
+## Unit-Level Testing
+
+For ML Infra teams writing unit-level evaluation tests, see the [Unit Testing Guide](sdk-unit-testing.md) for:
+- Single test case examples
+- pytest integration
+- Small test suites
+- Threshold-based testing
+- Offline unit testing
+
+Quick reference:
+
+```python
+from ai_evolution import load_index_csv_dataset, Experiment, DeepDiffScorer, HTTPAdapter
+
+# Load single test case
+dataset = load_index_csv_dataset(
+    index_file="benchmarks/datasets/index.csv",
+    test_id="pipeline_create_001",
+)
+
+# Run test
+scorer = DeepDiffScorer(version="v3")
+adapter = HTTPAdapter(base_url="http://localhost:8000")
+experiment = Experiment(name="unit_test", dataset=dataset, scorers=[scorer])
+result = await experiment.run(adapter=adapter, model="claude-3-7-sonnet")
+
+# Assert threshold
+assert result.scores[0].value >= 0.9
+```
+
 ## API Reference
 
 ### Core Types

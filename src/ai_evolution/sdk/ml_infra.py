@@ -16,7 +16,8 @@ from ai_evolution import (
     CSVSink,
     StdoutSink,
 )
-from ai_evolution.core.types import DatasetItem, ExperimentRun
+from ai_evolution.core.types import DatasetItem, ExperimentRun, Score
+from ai_evolution.scorers.base import Scorer
 
 logger = logging.getLogger(__name__)
 
@@ -335,3 +336,247 @@ def create_ml_infra_sinks(
     sinks.append(CSVSink(csv_path))
     
     return sinks
+
+
+def load_single_test_case(
+    index_file: str | Path,
+    test_id: str,
+    base_dir: str | Path = "benchmarks/datasets",
+    offline: bool = False,
+    actual_suffix: str = "actual",
+) -> DatasetItem:
+    """
+    Load a single test case by test_id (convenience function for unit testing).
+    
+    Args:
+        index_file: Path to index.csv file
+        test_id: Test ID to load
+        base_dir: Base directory for dataset files
+        offline: Use offline mode (load pre-generated outputs)
+        actual_suffix: Suffix for actual files (default: "actual")
+    
+    Returns:
+        Single DatasetItem
+    
+    Raises:
+        ValueError: If test_id not found or multiple test cases found
+    
+    Example:
+        test_case = load_single_test_case(
+            index_file="benchmarks/datasets/index.csv",
+            test_id="pipeline_create_001",
+        )
+    """
+    dataset = load_index_csv_dataset(
+        index_file=index_file,
+        base_dir=base_dir,
+        test_id=test_id,
+        offline=offline,
+        actual_suffix=actual_suffix,
+    )
+    
+    if len(dataset) == 0:
+        raise ValueError(f"Test case '{test_id}' not found in index file")
+    if len(dataset) > 1:
+        raise ValueError(f"Multiple test cases found for '{test_id}' (expected 1)")
+    
+    return dataset[0]
+
+
+def score_single_output(
+    generated: Any,
+    expected: Any,
+    scorer: Scorer,
+    metadata: dict[str, Any] | None = None,
+) -> Score:
+    """
+    Score a single output without running an experiment (convenience function for unit testing).
+    
+    Args:
+        generated: Generated output (YAML string, dict, etc.)
+        expected: Expected output (YAML string, dict, etc.)
+        scorer: Scorer instance to use
+        metadata: Additional metadata (optional)
+    
+    Returns:
+        Score object
+    
+    Example:
+        from ai_evolution import DeepDiffScorer
+        
+        scorer = DeepDiffScorer(version="v3")
+        score = score_single_output(
+            generated=generated_yaml,
+            expected=expected_yaml,
+            scorer=scorer,
+            metadata={"test_id": "pipeline_create_001"},
+        )
+        print(f"Score: {score.value}")
+    """
+    from ai_evolution.core.types import Score
+    
+    if metadata is None:
+        metadata = {}
+    
+    return scorer.score(
+        generated=generated,
+        expected=expected,
+        metadata=metadata,
+    )
+
+
+async def run_single_test(
+    test_id: str,
+    index_file: str | Path,
+    adapter: HTTPAdapter,
+    scorer: Scorer,
+    model: str,
+    base_dir: str | Path = "benchmarks/datasets",
+    concurrency_limit: int = 1,
+) -> ExperimentRun:
+    """
+    Run a single test case end-to-end (convenience function for unit testing).
+    
+    Args:
+        test_id: Test ID to run
+        index_file: Path to index.csv file
+        adapter: Adapter instance
+        scorer: Scorer instance
+        model: Model name to use
+        base_dir: Base directory for dataset files
+        concurrency_limit: Maximum concurrent API calls (default: 1 for single test)
+    
+    Returns:
+        ExperimentRun result
+    
+    Example:
+        from ai_evolution import HTTPAdapter, DeepDiffScorer
+        
+        adapter = HTTPAdapter(base_url="http://localhost:8000")
+        scorer = DeepDiffScorer(version="v3")
+        
+        result = await run_single_test(
+            test_id="pipeline_create_001",
+            index_file="benchmarks/datasets/index.csv",
+            adapter=adapter,
+            scorer=scorer,
+            model="claude-3-7-sonnet",
+        )
+        print(f"Score: {result.scores[0].value}")
+    """
+    # Load single test case
+    test_case = load_single_test_case(
+        index_file=index_file,
+        test_id=test_id,
+        base_dir=base_dir,
+    )
+    
+    # Create experiment with single test case
+    experiment = Experiment(
+        name=f"unit_test_{test_id}",
+        dataset=[test_case],
+        scorers=[scorer],
+    )
+    
+    # Run experiment
+    result = await experiment.run(
+        adapter=adapter,
+        model=model,
+        concurrency_limit=concurrency_limit,
+    )
+    
+    return result
+
+
+async def verify_test_compatibility(
+    test_id: str,
+    index_file: str | Path = "benchmarks/datasets/index.csv",
+    ml_infra_results_csv: str | Path | None = None,
+    ai_evolution_results_csv: str | Path | None = None,
+    tolerance: float = 0.01,
+    base_dir: str | Path = "benchmarks/datasets",
+) -> bool:
+    """
+    Verify that a test case produces compatible results between ml-infra/evals and ai-evolution.
+    
+    This function helps validate migration by comparing results from both systems.
+    
+    Args:
+        test_id: Test ID to verify
+        index_file: Path to index.csv file
+        ml_infra_results_csv: Path to ml-infra/evals CSV results (optional, will search if not provided)
+        ai_evolution_results_csv: Path to ai-evolution CSV results (optional, will search if not provided)
+        tolerance: Tolerance for score differences
+        base_dir: Base directory for dataset files
+    
+    Returns:
+        True if results are compatible (within tolerance), False otherwise
+    
+    Example:
+        is_compatible = await verify_test_compatibility(
+            test_id="pipeline_create_001",
+            ml_infra_results_csv="ml-infra/evals/results.csv",
+            ai_evolution_results_csv="ai-evolution/results.csv",
+        )
+        assert is_compatible, "Test results don't match"
+    """
+    import os
+    import glob
+    
+    # If CSV paths not provided, try to find them
+    if ml_infra_results_csv is None:
+        # Look for common ml-infra/evals result file patterns
+        possible_paths = [
+            "ml-infra/evals/results.csv",
+            "results/ml_infra.csv",
+            "results/results.csv",
+        ]
+        for path in possible_paths:
+            if Path(path).exists():
+                ml_infra_results_csv = path
+                break
+    
+    if ai_evolution_results_csv is None:
+        # Look for ai-evolution result files
+        result_files = glob.glob("results/*.csv") + glob.glob("ai-evolution/results/*.csv")
+        if result_files:
+            # Use most recent file
+            ai_evolution_results_csv = max(result_files, key=os.path.getmtime)
+    
+    if ml_infra_results_csv is None or ai_evolution_results_csv is None:
+        logger.warning(
+            "Could not find result CSV files. "
+            "Please provide ml_infra_results_csv and ai_evolution_results_csv paths."
+        )
+        return False
+    
+    # Compare CSV results
+    comparison = compare_csv_results(
+        csv1_path=ml_infra_results_csv,
+        csv2_path=ai_evolution_results_csv,
+        tolerance=tolerance,
+    )
+    
+    # Check if test_id results match
+    if comparison["differences"] == 0:
+        return True
+    
+    # Check specific test_id
+    score_diffs = [
+        diff for diff in comparison["score_differences"]
+        if diff.get("test_id") == test_id
+    ]
+    
+    if len(score_diffs) == 0:
+        # No differences for this test_id
+        return True
+    
+    # Check if differences are within tolerance
+    for diff in score_diffs:
+        if diff.get("difference", float("inf")) > tolerance:
+            logger.warning(
+                f"Test {test_id} has score difference > tolerance: {diff}"
+            )
+            return False
+    
+    return True

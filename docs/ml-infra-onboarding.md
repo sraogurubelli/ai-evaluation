@@ -39,6 +39,21 @@ result = await run_ml_infra_eval(
 )
 ```
 
+## Key Concepts: Metrics → Scorers
+
+**Important**: In ml-infra/evals, evaluation functions are called "metrics" (e.g., `deep_diff_v1`, `deep_diff_v2`, `deep_diff_v3`). In AI Evolution, these are called "scorers" (e.g., `DeepDiffScorer` with `version="v1"`). They are the same concept with different naming.
+
+### Mapping
+
+| ml-infra/evals | AI Evolution |
+|----------------|--------------|
+| `--metrics deep_diff_v3` | `{"type": "deep_diff", "version": "v3"}` |
+| `--metrics deep_diff_v2` | `{"type": "deep_diff", "version": "v2"}` |
+| `--metrics deep_diff_v1` | `{"type": "deep_diff", "version": "v1"}` |
+| `--models claude-3-7-sonnet gpt-4o` | `"models": ["claude-3-7-sonnet", "gpt-4o"]` |
+
+See [Metrics and Scorers Guide](metrics-and-scorers.md) for detailed explanation.
+
 ## Migration Path
 
 ### Phase 1: Parallel Running (Validation)
@@ -306,10 +321,36 @@ Before migrating, verify:
 2. **Check network latency**: Review API call timing
 3. **Monitor server capacity**: Ensure ml-infra server can handle load
 
+## Unit-Level Testing
+
+For unit-level evaluation testing (individual test cases, pytest integration, small test suites), see the [Unit Testing Guide](sdk-unit-testing.md).
+
+Quick example:
+
+```python
+from ai_evolution.sdk.ml_infra import run_single_test, DeepDiffScorer, HTTPAdapter
+
+result = await run_single_test(
+    test_id="pipeline_create_001",
+    index_file="benchmarks/datasets/index.csv",
+    adapter=HTTPAdapter(base_url="http://localhost:8000"),
+    scorer=DeepDiffScorer(version="v3"),
+    model="claude-3-7-sonnet",
+)
+
+assert result.scores[0].value >= 0.9
+```
+
+See also:
+- [Unit Testing Guide](sdk-unit-testing.md) - Comprehensive unit testing guide
+- [Migration Checklist](ml-infra-unit-testing-migration.md) - Step-by-step migration checklist
+- `examples/ml_infra/unit_tests/` - Example test files
+
 ## Examples
 
 See `examples/ml_infra/` for complete examples:
 
+- `unit_tests/`: Unit-level testing examples (pytest, single cases, suites)
 - `sdk_offline_eval.py`: Offline evaluation workflow
 - `sdk_multi_model.py`: Multi-model comparison
 - `sdk_entity_specific.py`: Entity-specific patterns

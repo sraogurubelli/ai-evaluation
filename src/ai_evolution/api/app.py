@@ -578,12 +578,16 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=503, detail="Evaluation agent not initialized")
         
         try:
+            # Get normalized models list
+            models_list = request.get_models_list()
+            
             result = await evaluation_agent.evaluate(
                 experiment_name=request.experiment_name,
                 dataset_config=request.dataset_config,
                 scorers_config=request.scorers_config,
                 adapter_config=request.adapter_config,
-                model=request.model,
+                model=request.model,  # For backward compatibility
+                models=request.models,  # New multi-model support
                 concurrency_limit=request.concurrency_limit,
                 run_async=request.run_async,
             )
@@ -594,20 +598,42 @@ def create_app() -> FastAPI:
                 return EvaluationResponse(
                     task_id=task.id,
                     run_id=None,
+                    runs=None,
                     experiment_id=task.experiment_name,
                     scores=None,
+                    comparison=None,
                     metadata=task.meta,
                 )
             else:
-                # Return run
-                run = result
-                return EvaluationResponse(
-                    task_id=None,
-                    run_id=run.run_id,
-                    experiment_id=run.experiment_id,
-                    scores=[score.to_dict() for score in run.scores],
-                    metadata=run.meta,
-                )
+                # Handle single or multiple runs
+                if isinstance(result, list):
+                    # Multiple models - return comparison
+                    from ai_evolution.sdk.comparison import compare_multiple_runs
+                    
+                    runs = result
+                    comparison = compare_multiple_runs(runs, models_list)
+                    
+                    return EvaluationResponse(
+                        task_id=None,
+                        run_id=None,  # No single run_id for multiple models
+                        runs=[run.to_dict() for run in runs],
+                        experiment_id=runs[0].experiment_id if runs else request.experiment_name,
+                        scores=None,  # Scores are in individual runs
+                        comparison=comparison,
+                        metadata={"model_count": len(runs)},
+                    )
+                else:
+                    # Single model - backward compatibility
+                    run = result
+                    return EvaluationResponse(
+                        task_id=None,
+                        run_id=run.run_id,
+                        runs=None,
+                        experiment_id=run.experiment_id,
+                        scores=[score.to_dict() for score in run.scores],
+                        comparison=None,
+                        metadata=run.meta,
+                    )
         except Exception as e:
             logger.error(f"Error in unified evaluation: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail=str(e))

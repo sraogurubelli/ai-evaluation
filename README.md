@@ -105,6 +105,26 @@ result = await experiment.run(adapter=adapter, model="gpt-4o")
 
 See [SDK Documentation](docs/sdk.md) for more examples.
 
+### Unit-Level Testing (ML Infra Teams)
+
+For unit-level evaluation testing:
+
+```python
+from ai_evolution.sdk.ml_infra import run_single_test, DeepDiffScorer, HTTPAdapter
+
+result = await run_single_test(
+    test_id="pipeline_create_001",
+    index_file="benchmarks/datasets/index.csv",
+    adapter=HTTPAdapter(base_url="http://localhost:8000"),
+    scorer=DeepDiffScorer(version="v3"),
+    model="claude-3-7-sonnet",
+)
+
+assert result.scores[0].value >= 0.9
+```
+
+See [Unit Testing Guide](docs/sdk-unit-testing.md) for comprehensive examples.
+
 ### CLI Usage
 
 ```bash

@@ -51,32 +51,42 @@ class EvaluationAgent(BaseEvaluationAgent):
         scorers_config: list[dict[str, Any]],
         adapter_config: dict[str, Any],
         model: str | None = None,
+        models: list[str] | None = None,
         concurrency_limit: int = 5,
         run_async: bool = False,
         **kwargs: Any,
-    ) -> Task | ExperimentRun:
+    ) -> Task | ExperimentRun | list[ExperimentRun]:
         """
         Run a complete evaluation workflow.
         
         This orchestrates:
         1. Creating an experiment
-        2. Running the experiment
+        2. Running the experiment for each model (if multiple models provided)
         3. Optionally creating a task for async execution
         
         Args:
             experiment_name: Name of the experiment
             dataset_config: Dataset configuration
-            scorers_config: List of scorer configurations
+            scorers_config: List of scorer configurations (metrics/scorers)
             adapter_config: Adapter configuration
-            model: Optional model name
+            model: [Deprecated] Optional single model name (use 'models' instead)
+            models: Optional list of model names to evaluate
             concurrency_limit: Concurrency limit for parallel execution
             run_async: If True, create a task for async execution
             **kwargs: Additional parameters
             
         Returns:
-            Task (if run_async=True) or ExperimentRun (if run_async=False)
+            Task (if run_async=True) or ExperimentRun/list[ExperimentRun] (if run_async=False)
         """
         self.logger.info(f"Starting evaluation: {experiment_name}")
+        
+        # Normalize models input - prioritize models over model for backward compatibility
+        if models:
+            model_list = models
+        elif model:
+            model_list = [model]  # Backward compatibility
+        else:
+            model_list = [None]  # Use adapter default
         
         if run_async:
             # Create task for async execution
@@ -87,7 +97,7 @@ class EvaluationAgent(BaseEvaluationAgent):
                 "execution": {
                     "concurrency_limit": concurrency_limit,
                 },
-                "models": [model] if model else [None],
+                "models": model_list,
             }
             
             task = await self.task_agent.create_task(
@@ -100,24 +110,34 @@ class EvaluationAgent(BaseEvaluationAgent):
         
         else:
             # Run synchronously
-            # Create experiment
+            # Create experiment (shared across all model runs)
             experiment = await self.experiment_agent.create_experiment(
                 name=experiment_name,
                 dataset_config=dataset_config,
                 scorers_config=scorers_config,
             )
             
-            # Run experiment
-            run = await self.experiment_agent.run_experiment(
-                experiment=experiment,
-                adapter_config=adapter_config,
-                model=model,
-                concurrency_limit=concurrency_limit,
-                **kwargs,
-            )
+            # Run experiment for each model
+            runs = []
+            for model_name in model_list:
+                self.logger.info(f"Running experiment with model: {model_name or 'default'}")
+                run = await self.experiment_agent.run_experiment(
+                    experiment=experiment,
+                    adapter_config=adapter_config,
+                    model=model_name,
+                    concurrency_limit=concurrency_limit,
+                    **kwargs,
+                )
+                runs.append(run)
+                self.logger.info(f"Completed run {run.run_id} for model: {model_name or 'default'}")
             
-            self.logger.info(f"Evaluation completed: {run.run_id}")
-            return run
+            # Return single run if only one model, list if multiple
+            if len(runs) == 1:
+                self.logger.info(f"Evaluation completed: {runs[0].run_id}")
+                return runs[0]
+            else:
+                self.logger.info(f"Evaluation completed: {len(runs)} runs for {len(model_list)} models")
+                return runs
     
     async def stream_evaluation(
         self,
@@ -156,6 +176,7 @@ class EvaluationAgent(BaseEvaluationAgent):
             scorers_config=scorers_config,
             adapter_config=adapter_config,
             model=model,
+            models=models,
             concurrency_limit=concurrency_limit,
             run_async=False,
             **kwargs,

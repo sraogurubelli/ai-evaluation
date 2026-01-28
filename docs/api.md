@@ -687,6 +687,8 @@ Cancel a task using the task agent.
 Unified evaluation endpoint that orchestrates all agents for end-to-end evaluation (similar to `/chat/unified` in ml-infra).
 
 **Request Body:**
+
+Single model (backward compatible):
 ```json
 {
   "experiment_name": "pipeline_creation_benchmark",
@@ -715,6 +717,39 @@ Unified evaluation endpoint that orchestrates all agents for end-to-end evaluati
 }
 ```
 
+Multiple models (new):
+```json
+{
+  "experiment_name": "pipeline_creation_benchmark",
+  "dataset_config": {
+    "type": "index_csv",
+    "index_file": "benchmarks/datasets/index.csv",
+    "base_dir": "benchmarks/datasets",
+    "filters": {
+      "entity_type": "pipeline",
+      "operation_type": "create"
+    }
+  },
+  "scorers_config": [
+    {
+      "type": "deep_diff",
+      "version": "v3"
+    },
+    {
+      "type": "deep_diff",
+      "version": "v2"
+    }
+  ],
+  "adapter_config": {
+    "type": "ml_infra",
+    "base_url": "http://localhost:8000"
+  },
+  "models": ["claude-3-7-sonnet-20250219", "gpt-4o"],
+  "concurrency_limit": 5,
+  "run_async": false
+}
+```
+
 **Response:** `200 OK`
 
 If `run_async=true`:
@@ -722,20 +757,76 @@ If `run_async=true`:
 {
   "task_id": "task-uuid",
   "run_id": null,
+  "runs": null,
   "experiment_id": "pipeline_creation_benchmark",
   "scores": null,
+  "comparison": null,
   "metadata": {}
 }
 ```
 
-If `run_async=false`:
+If `run_async=false` and single model:
 ```json
 {
   "task_id": null,
   "run_id": "run-uuid",
+  "runs": null,
   "experiment_id": "exp-uuid",
   "scores": [...],
+  "comparison": null,
   "metadata": {...}
+}
+```
+
+If `run_async=false` and multiple models:
+```json
+{
+  "task_id": null,
+  "run_id": null,
+  "runs": [
+    {
+      "experiment_id": "exp-uuid",
+      "run_id": "run-uuid-1",
+      "dataset_id": "dataset-id",
+      "scores": [...],
+      "metadata": {...},
+      "created_at": "2026-01-27T10:00:00"
+    },
+    {
+      "experiment_id": "exp-uuid",
+      "run_id": "run-uuid-2",
+      "dataset_id": "dataset-id",
+      "scores": [...],
+      "metadata": {...},
+      "created_at": "2026-01-27T10:05:00"
+    }
+  ],
+  "experiment_id": "exp-uuid",
+  "scores": null,
+  "comparison": {
+    "scoreboard": {
+      "deep_diff_v3": {
+        "claude-3-7-sonnet-20250219": {
+          "mean": 0.95,
+          "count": 10,
+          "total": 10
+        },
+        "gpt-4o": {
+          "mean": 0.92,
+          "count": 10,
+          "total": 10
+        }
+      }
+    },
+    "summary": {
+      "total_models": 2,
+      "total_scorers": 1,
+      "scorers": ["deep_diff_v3"],
+      "models": ["claude-3-7-sonnet-20250219", "gpt-4o"]
+    },
+    "model_scores": {...}
+  },
+  "metadata": {"model_count": 2}
 }
 ```
 

@@ -95,6 +95,10 @@ try:
         run_ml_infra_eval,
         compare_csv_results,
         create_ml_infra_sinks,
+        load_single_test_case,
+        score_single_output,
+        run_single_test,
+        verify_test_compatibility,
     )
     ML_INFRA_HELPERS_AVAILABLE = True
 except ImportError:
@@ -146,8 +150,9 @@ __all__ = [
     "AssertionScorer",
     # Comparison
     "compare_runs",
+    "compare_multiple_runs",
     "RunComparison",
     "get_regressions",
     # ML Infra helpers (if available)
-    *(["create_ml_infra_experiment", "run_ml_infra_eval", "compare_csv_results", "create_ml_infra_sinks"] if ML_INFRA_HELPERS_AVAILABLE else []),
+    *(["create_ml_infra_experiment", "run_ml_infra_eval", "compare_csv_results", "create_ml_infra_sinks", "load_single_test_case", "score_single_output", "run_single_test", "verify_test_compatibility"] if ML_INFRA_HELPERS_AVAILABLE else []),
 ]

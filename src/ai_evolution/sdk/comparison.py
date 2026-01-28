@@ -174,3 +174,118 @@ def get_regressions(comparison: RunComparison, min_regressions: int = 1) -> dict
         for name, count in comparison.regressions.items()
         if count >= min_regressions
     }
+
+
+def compare_multiple_runs(
+    runs: list[ExperimentRun],
+    model_names: list[str | None] | None = None,
+) -> dict[str, Any]:
+    """
+    Compare multiple experiment runs (one per model) and generate scoreboard.
+    
+    Similar to ml-infra/evals scoreboard, this provides:
+    - Mean scores per model per scorer
+    - Model comparison across all scorers
+    - Summary statistics
+    
+    Args:
+        runs: List of experiment runs (one per model)
+        model_names: Optional list of model names (if None, uses run.run_id)
+    
+    Returns:
+        Dictionary with comparison metrics and scoreboard data
+    
+    Example:
+        runs = [run_claude, run_gpt4]
+        comparison = compare_multiple_runs(runs, ["claude-3-7-sonnet", "gpt-4o"])
+        print(comparison["scoreboard"])
+    """
+    if not runs:
+        return {
+            "scoreboard": {},
+            "summary": {},
+            "model_scores": {},
+        }
+    
+    # Use provided model names or generate from run IDs
+    if model_names is None:
+        model_names = [f"model_{i}" for i in range(len(runs))]
+    elif len(model_names) != len(runs):
+        # Pad or truncate to match runs length
+        if len(model_names) < len(runs):
+            model_names.extend([f"model_{i}" for i in range(len(model_names), len(runs))])
+        else:
+            model_names = model_names[:len(runs)]
+    
+    # Group scores by scorer name and model
+    # Structure: scorer_name -> model_name -> list of scores
+    scorer_scores: dict[str, dict[str, list[float]]] = {}
+    
+    for run, model_name in zip(runs, model_names):
+        model_display = model_name or "default"
+        
+        # Group scores by scorer name
+        for score in run.scores:
+            scorer_name = score.name
+            if scorer_name not in scorer_scores:
+                scorer_scores[scorer_name] = {}
+            if model_display not in scorer_scores[scorer_name]:
+                scorer_scores[scorer_name][model_display] = []
+            
+            # Convert score value to float
+            val = score.value
+            if isinstance(val, bool):
+                val = float(val)
+            elif val is None:
+                continue
+            else:
+                try:
+                    val = float(val)
+                except (ValueError, TypeError):
+                    continue
+            
+            scorer_scores[scorer_name][model_display].append(val)
+    
+    # Calculate statistics per scorer per model
+    scoreboard: dict[str, dict[str, dict[str, float]]] = {}
+    model_scores: dict[str, dict[str, float]] = {}
+    
+    for scorer_name, model_data in scorer_scores.items():
+        scoreboard[scorer_name] = {}
+        
+        for model_name, scores in model_data.items():
+            if not scores:
+                continue
+            
+            # Calculate mean, handling NaN values
+            valid_scores = [s for s in scores if not (isinstance(s, float) and (s != s or s == float('inf') or s == float('-inf')))]
+            
+            if not valid_scores:
+                mean_score = float('nan')
+            else:
+                mean_score = sum(valid_scores) / len(valid_scores)
+            
+            scoreboard[scorer_name][model_name] = {
+                "mean": round(mean_score, 4),
+                "count": len(valid_scores),
+                "total": len(scores),
+            }
+            
+            # Track per-model scores
+            if model_name not in model_scores:
+                model_scores[model_name] = {}
+            model_scores[model_name][scorer_name] = mean_score
+    
+    # Generate summary
+    summary = {
+        "total_models": len(model_names),
+        "total_scorers": len(scorer_scores),
+        "scorers": list(scorer_scores.keys()),
+        "models": [m or "default" for m in model_names],
+    }
+    
+    return {
+        "scoreboard": scoreboard,
+        "summary": summary,
+        "model_scores": model_scores,
+    }

@@ -217,7 +217,8 @@ def _create_sinks(config: dict[str, Any]) -> list:
 @app.command()
 def run(
     config: str = typer.Option(..., "--config", "-c", help="Path to YAML config file"),
-    model: str | None = typer.Option(None, "--model", "-m", help="Override model from config"),
+    model: str | None = typer.Option(None, "--model", "-m", help="[Deprecated] Override model from config (use --models instead)"),
+    models: str | None = typer.Option(None, "--models", help="Comma-separated list of models to evaluate (e.g., 'claude-3-7-sonnet,gpt-4o')"),
 ):
     """Run an experiment from config file."""
     # Load config
@@ -231,7 +232,7 @@ def run(
     # Create scorers
     print("Creating scorers...")
     scorers = _create_scorers(config_dict)
-    print(f"Created {len(scorers)} scorers")
+    print(f"Created {len(scorers)} scorers: {[s.name for s in scorers]}")
     
     # Create adapter
     print("Creating adapter...")
@@ -249,21 +250,26 @@ def run(
         scorers=scorers,
     )
     
-    # Get model
-    models = config_dict.get("models", [])
-    if model:
-        models = [model]
-    elif models:
-        models = models
+    # Get models list - prioritize CLI args over config
+    if models:
+        # Parse comma-separated models
+        model_list = [m.strip() for m in models.split(",") if m.strip()]
+    elif model:
+        # Backward compatibility
+        model_list = [model]
     else:
-        models = [None]  # Use adapter default
+        # Use config
+        model_list = config_dict.get("models", [])
+        if not model_list:
+            model_list = [None]  # Use adapter default
     
     # Get execution config
     execution_config = config_dict.get("execution", {})
     concurrency_limit = execution_config.get("concurrency_limit", 5)
     
     # Run experiment for each model
-    for model_name in models:
+    run_results = []
+    for model_name in model_list:
         print(f"\nRunning experiment with model: {model_name or 'default'}")
         
         # Run experiment
@@ -280,7 +286,26 @@ def run(
             sink.emit_run(run_result)
             sink.flush()
         
+        run_results.append(run_result)
         print(f"Experiment run completed: {run_result.run_id}")
+    
+    # If multiple models, show comparison
+    if len(run_results) > 1:
+        print("\n" + "="*60)
+        print("MODEL COMPARISON")
+        print("="*60)
+        from ai_evolution.sdk.comparison import compare_multiple_runs
+        comparison = compare_multiple_runs(run_results, model_list)
+        
+        # Print scoreboard
+        print("\nScoreboard (mean scores per scorer):")
+        print("-" * 60)
+        for scorer_name, model_data in comparison["scoreboard"].items():
+            print(f"\n{scorer_name}:")
+            for model_name, stats in model_data.items():
+                mean = stats["mean"]
+                count = stats["count"]
+                print(f"  {model_name:30s}: {mean:.4f} (n={count})")
     
     print("\nExperiment completed!")
 
