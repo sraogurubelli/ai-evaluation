@@ -99,11 +99,13 @@ class ScorerAgent(BaseEvaluationAgent):
             scorer = KnowledgeGraphQualityScorer()
         
         elif scorer_type == "llm_judge":
-            model = kwargs.get("model", "claude-3-5-sonnet-20241022")
-            prompt_template = kwargs.get("prompt_template")
+            model = kwargs.get("model", "gpt-4o-mini")
+            rubric = kwargs.get("rubric") or kwargs.get("prompt_template")  # Support both for compatibility
+            api_key = kwargs.get("api_key")
             scorer = LLMJudgeScorer(
                 model=model,
-                prompt_template=prompt_template,
+                rubric=rubric,
+                api_key=api_key,
             )
         
         else:

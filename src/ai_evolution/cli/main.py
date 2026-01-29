@@ -123,6 +123,20 @@ def _create_scorers(config: dict[str, Any]) -> list:
             scorer = KnowledgeGraphQualityScorer()
             scorers.append(scorer)
         
+        elif scorer_type == "llm_judge":
+            from ai_evolution.scorers.llm_judge import LLMJudgeScorer
+            
+            model = scorer_config.get("model", "gpt-4o-mini")
+            rubric = scorer_config.get("rubric")
+            api_key = scorer_config.get("api_key")
+            
+            scorer = LLMJudgeScorer(
+                model=model,
+                rubric=rubric,
+                api_key=api_key,
+            )
+            scorers.append(scorer)
+        
         else:
             raise ValueError(f"Unknown scorer type: {scorer_type}")
     
