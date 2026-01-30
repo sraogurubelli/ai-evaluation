@@ -1,0 +1,38 @@
+pipeline:
+  name: s3_validation_pipeline
+  steps:
+    - name: read_s3
+      type: source
+      config:
+        bucket: my-bucket
+        prefix: input/
+        format: parquet
+    - name: validate_schema
+      type: transform
+      config:
+        required_fields:
+          - id
+          - name
+          - timestamp
+        validation_rules:
+          - field: id
+            type: string
+            required: true
+          - field: timestamp
+            type: datetime
+            required: true
+    - name: quality_checks
+      type: transform
+      config:
+        checks:
+          - type: null_check
+            fields: [id, name]
+          - type: duplicate_check
+            field: id
+    - name: write_s3
+      type: sink
+      config:
+        bucket: my-bucket
+        prefix: output/
+        format: parquet
+

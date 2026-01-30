@@ -1,0 +1,18 @@
+pipeline:
+  name: data_processing_pipeline
+  steps:
+    - name: read_csv
+      type: source
+      config:
+        file_path: input.csv
+        format: csv
+    - name: filter_active
+      type: transform
+      config:
+        filter_condition: status == "active"
+    - name: write_parquet
+      type: sink
+      config:
+        file_path: output.parquet
+        format: parquet
+

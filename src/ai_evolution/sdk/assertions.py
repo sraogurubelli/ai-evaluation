@@ -182,7 +182,7 @@ class FunctionAssertion(Assertion):
 
 
 class AssertionScorer:
-    """
+    r"""
     Scorer that combines multiple assertions.
     
     This allows you to create scorers from multiple assertions,

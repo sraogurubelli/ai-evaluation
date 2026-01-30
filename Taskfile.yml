@@ -6,7 +6,7 @@ vars:
   VENV_DIR: .venv
   SRC_DIR: src
   TEST_DIR: tests
-  PORT: 8000
+  PORT: 7890
   POSTGRES_CONTAINER: ai-evolution-postgres
   TEMPORAL_CONTAINER: ai-evolution-temporal
   PGADMIN_CONTAINER: ai-evolution-pgadmin
@@ -288,20 +288,38 @@ tasks:
     desc: Start the FastAPI development server
     cmds:
       - |
+        # Load .env file if it exists
+        if [ -f .env ]; then
+          set -a
+          source .env
+          set +a
+        fi
+        # Use PORT from .env if set, otherwise use Taskfile default
+        PORT=${PORT:-{{.PORT}}}
+        HOST=${HOST:-0.0.0.0}
         if [ -d {{.VENV_DIR}} ]; then
-          source {{.VENV_DIR}}/bin/activate && uvicorn ai_evolution.api.app:create_app --host 0.0.0.0 --port {{.PORT}} --reload
+          source {{.VENV_DIR}}/bin/activate && uvicorn ai_evolution.api.app:create_app --host ${HOST} --port ${PORT} --reload
         else
-          uvicorn ai_evolution.api.app:create_app --host 0.0.0.0 --port {{.PORT}} --reload
+          uvicorn ai_evolution.api.app:create_app --host ${HOST} --port ${PORT} --reload
         fi
 
   server-prod:
     desc: Start the FastAPI production server
     cmds:
       - |
+        # Load .env file if it exists
+        if [ -f .env ]; then
+          set -a
+          source .env
+          set +a
+        fi
+        # Use PORT from .env if set, otherwise use Taskfile default
+        PORT=${PORT:-{{.PORT}}}
+        HOST=${HOST:-0.0.0.0}
         if [ -d {{.VENV_DIR}} ]; then
-          source {{.VENV_DIR}}/bin/activate && uvicorn ai_evolution.api.app:create_app --host 0.0.0.0 --port {{.PORT}} --workers 4
+          source {{.VENV_DIR}}/bin/activate && uvicorn ai_evolution.api.app:create_app --host ${HOST} --port ${PORT} --workers 4
         else
-          uvicorn ai_evolution.api.app:create_app --host 0.0.0.0 --port {{.PORT}} --workers 4
+          uvicorn ai_evolution.api.app:create_app --host ${HOST} --port ${PORT} --workers 4
         fi
 
   # ============================================================================

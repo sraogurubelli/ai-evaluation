@@ -1,0 +1,5 @@
+Create a simple data pipeline that:
+- Reads data from a CSV file
+- Transforms the data by filtering rows where status is "active"
+- Writes the output to a Parquet file
+

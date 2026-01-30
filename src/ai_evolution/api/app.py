@@ -648,3 +648,7 @@ def create_app() -> FastAPI:
         )
     
     return app
+
+
+# Create app instance for uvicorn import string support
+app = create_app()

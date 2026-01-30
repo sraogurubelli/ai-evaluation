@@ -140,13 +140,13 @@ ai-evolution run --config examples/ml_infra/config.yaml  # Uses HTTPAdapter with
 ai-evolution-server
 
 # Or with uvicorn directly
-uvicorn ai_evolution.api.app:create_app --host 0.0.0.0 --port 8000
+uvicorn ai_evolution.api.app:create_app --host 0.0.0.0 --port 7890
 ```
 
 The API will be available at:
-- **API**: `http://localhost:8000`
-- **Swagger UI**: `http://localhost:8000/docs`
-- **ReDoc**: `http://localhost:8000/redoc`
+- **API**: `http://localhost:7890`
+- **Swagger UI**: `http://localhost:7890/docs`
+- **ReDoc**: `http://localhost:7890/redoc`
 
 ### Example API Request
 
