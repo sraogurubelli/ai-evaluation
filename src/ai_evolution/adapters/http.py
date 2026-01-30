@@ -155,11 +155,12 @@ class HTTPAdapter(Adapter):
         """Extract YAML from JSON response using configured path."""
         current = resp_json
         for key in self.yaml_extraction_path:
-            if isinstance(key, int):
-                if isinstance(current, list) and 0 <= abs(key) < len(current):
+            if isinstance(current, list):
+                # Handle negative indices: -1 is valid for any non-empty list
+                if (key >= 0 and key < len(current)) or (key < 0 and abs(key) <= len(current)):
                     current = current[key]
                 else:
-                    raise RuntimeError(f"Cannot access list index {key} in response")
+                    raise RuntimeError(f"Cannot access list index {key} in response (list length: {len(current)})")
             else:
                 if isinstance(current, dict) and key in current:
                     current = current[key]
@@ -227,7 +228,10 @@ class HTTPAdapter(Adapter):
                     raise RuntimeError(
                         f"API error {response.status}: {error_text}"
                     )
-                
+                logger.debug("=" * 80)
+                logger.debug(f"HTTP Response Status: {response.status}")
+                logger.debug(f"Content-Type: {response.headers.get('content-type')}")
+                logger.debug("=" * 80)
                 # Parse response based on format
                 # Check if this entity uses SSE (dashboard/KG typically do)
                 use_sse = (
@@ -235,6 +239,10 @@ class HTTPAdapter(Adapter):
                     entity_type.lower() in self.endpoint_mapping or
                     response.headers.get("content-type", "").startswith("text/event-stream")
                 )
+                logger.debug(f"SSE Detection: use_sse={use_sse}")
+                logger.debug(f"  - response_format: {self.response_format}")
+                logger.debug(f"  - entity_type in mapping: {entity_type.lower() in self.endpoint_mapping}")
+                logger.debug(f"  - content-type header: {response.headers.get('content-type')}")
                 
                 if use_sse:
                     # SSE format
@@ -263,7 +271,17 @@ class HTTPAdapter(Adapter):
                 else:
                     # JSON response
                     resp_json = await response.json()
-                    
+                    logger.debug("=" * 80)
+                    logger.debug("JSON RESPONSE RECEIVED")
+                    logger.debug("=" * 80)
+                    logger.debug(f"Response type: {type(resp_json)}")
+                    logger.debug(f"Response keys: {list(resp_json.keys()) if isinstance(resp_json, dict) else 'not a dict'}")
+                    logger.debug(f"Full response: {json.dumps(resp_json, indent=2)}")
+                    if isinstance(resp_json, dict) and "capabilities_to_run" in resp_json:
+                        caps = resp_json["capabilities_to_run"]
+                        logger.info(f"capabilities_to_run length: {len(caps) if isinstance(caps, list) else 'not a list'}")
+                        logger.info(f"capabilities_to_run: {caps}")
+                    logger.info("=" * 80)
                     # Extract YAML using configured path
                     try:
                         yaml_content = self._extract_yaml_from_json(resp_json)
@@ -272,6 +290,12 @@ class HTTPAdapter(Adapter):
                     except RuntimeError as e:
                         # Check for error in capabilities
                         capabilities = resp_json.get("capabilities_to_run", [])
+
+                        logger.error(f"YAML extraction failed: {e}")
+                        logger.error(f"capabilities_to_run: {capabilities}")
+                        logger.error(f"capabilities_to_run length: {len(capabilities)}")
+                        logger.info("=" * 80)
+
                         if capabilities:
                             last_capability = capabilities[-1]
                             if last_capability.get("type") == "display_error":

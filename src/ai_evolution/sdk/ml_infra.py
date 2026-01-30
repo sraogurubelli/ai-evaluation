@@ -160,9 +160,11 @@ async def run_ml_infra_eval(
         adapter = HTTPAdapter(
             base_url=base_url,
             auth_token=auth_token,
-            account_id=account_id,
-            org_id=org_id,
-            project_id=project_id,
+            context_data={
+                "account_id": account_id,
+                "org_id": org_id,
+                "project_id": project_id,
+            },
         )
     
     # Create sinks

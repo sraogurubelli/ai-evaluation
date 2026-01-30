@@ -182,7 +182,7 @@ def load_index_csv_dataset(
         )
         if not schema_context_file.exists():
             # Try alternative pattern: _schema_context.json in same directory
-            schema_context_file = expected_file.parent / expected_file.stem.replace("_expected", "_schema_context") + ".json"
+            schema_context_file = expected_file.parent / f"{expected_file.stem.replace('_expected', '_schema_context')}.json"
         
         if schema_context_file.exists():
             import json
