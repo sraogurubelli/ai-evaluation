@@ -236,6 +236,206 @@ python3 benchmark_evals.py \
 }
 ```
 
+## Enriched Output and Performance Metrics
+
+### EnrichedOutputScorer Wrapper
+
+The `EnrichedOutputScorer` is a wrapper that enables existing scorers to work with enriched adapter output from `SSEStreamingAdapter`. It automatically extracts the final YAML and enriches metadata with performance metrics.
+
+**Why Use It:**
+- Reuse existing scorers without modification
+- Automatically extract final output from enriched JSON
+- Enrich metadata with adapter metrics (latency, tokens, tools)
+- Maintain backward compatibility with raw YAML
+
+**Example:**
+
+```python
+from ai_evolution.scorers.enriched import EnrichedOutputScorer
+from ai_evolution.scorers.deep_diff import DeepDiffScorer
+
+# Wrap existing scorer
+wrapped_scorer = EnrichedOutputScorer(
+    DeepDiffScorer(name="structure", eval_id="structure.v3", version="v3")
+)
+
+# Use with SSEStreamingAdapter
+result = await run_evaluation(
+    dataset=dataset,
+    adapter=SSEStreamingAdapter(...),
+    scorers=[wrapped_scorer],  # Works with enriched output
+    model="gpt-4o"
+)
+```
+
+**How It Works:**
+
+1. Detects enriched JSON format vs raw YAML
+2. Extracts `final_yaml` from enriched output
+3. Enriches metadata with:
+   - `adapter_metrics`: Performance metrics (latency, tokens)
+   - `tools_called`: Tools used during generation
+   - `event_count`: Number of streaming events
+   - `latency_ms`: Response latency (direct access)
+   - `total_tokens`: Token usage (direct access)
+4. Delegates to wrapped scorer with extracted YAML
+5. Falls back to raw YAML for backward compatibility
+
+### Performance Metric Scorers
+
+These scorers analyze performance metrics from enriched adapter output:
+
+#### LatencyScorer
+
+Scores based on response latency:
+
+```python
+from ai_evolution.scorers.metrics import LatencyScorer
+
+scorer = LatencyScorer(
+    max_latency_ms=30000,  # 30 seconds threshold
+    name="latency",
+    eval_id="latency.v1",
+)
+
+# Returns:
+# - 1.0 if latency <= max_latency_ms
+# - Linear decay to 0.0 as latency increases
+```
+
+**Use Cases:**
+- Track API response times
+- Ensure latency SLAs are met
+- Compare performance across models
+- Identify slow operations
+
+#### ToolCallScorer
+
+Analyzes tool usage during generation:
+
+```python
+from ai_evolution.scorers.metrics import ToolCallScorer
+
+scorer = ToolCallScorer(
+    name="tool_calls",
+    eval_id="tool_calls.v1",
+    require_tools=False,  # Set True to require tools
+)
+
+# Returns:
+# - Boolean score (1.0 if tools used, 0.0 otherwise when require_tools=True)
+# - Metadata includes: tools_called, tool_count, tools_used
+```
+
+**Use Cases:**
+- Validate that agents use required tools
+- Debug tool selection behavior
+- Analyze which tools are called most frequently
+- Ensure agentic workflows execute correctly
+
+#### TokenUsageScorer
+
+Tracks token consumption:
+
+```python
+from ai_evolution.scorers.metrics import TokenUsageScorer
+
+scorer = TokenUsageScorer(
+    max_tokens=5000,  # Token budget
+    name="token_usage",
+    eval_id="token_usage.v1",
+)
+
+# Returns:
+# - 1.0 if tokens <= max_tokens
+# - Linear decay to 0.0 as usage increases
+# - Metadata includes: total_tokens, prompt_tokens, completion_tokens
+```
+
+**Use Cases:**
+- Manage API costs
+- Track token efficiency
+- Enforce token budgets
+- Compare model efficiency
+
+### Combining YAML Quality and Performance Metrics
+
+You can evaluate both output quality and performance in a single run:
+
+```python
+from ai_evolution.adapters.sse_streaming import SSEStreamingAdapter
+from ai_evolution.scorers.enriched import EnrichedOutputScorer
+from ai_evolution.scorers.deep_diff import DeepDiffScorer
+from ai_evolution.scorers.metrics import (
+    LatencyScorer,
+    ToolCallScorer,
+    TokenUsageScorer,
+)
+
+# Configure adapter and scorers
+adapter = SSEStreamingAdapter(base_url="http://localhost:8000")
+
+scorers = [
+    # YAML quality scorers (wrapped)
+    EnrichedOutputScorer(DeepDiffScorer(name="structure", eval_id="structure.v3")),
+    
+    # Performance metric scorers (direct)
+    LatencyScorer(max_latency_ms=30000),
+    ToolCallScorer(require_tools=False),
+    TokenUsageScorer(max_tokens=5000),
+]
+
+# Run evaluation
+result = await run_evaluation(
+    dataset=dataset,
+    adapter=adapter,
+    scorers=scorers,
+    model="gpt-4o"
+)
+
+# Analyze results
+for score in result.scores:
+    print(f"{score.name}: {score.value}")
+    if "latency_ms" in score.metadata:
+        print(f"  Latency: {score.metadata['latency_ms']}ms")
+    if "tools_called" in score.metadata:
+        print(f"  Tools: {[t['tool'] for t in score.metadata['tools_called']]}")
+```
+
+### Best Practices for Performance Metrics
+
+1. **Set Realistic Thresholds**: Configure max_latency_ms and max_tokens based on your requirements
+2. **Monitor Trends**: Track metrics over time to identify regressions
+3. **Combine with Quality**: Don't sacrifice quality for performance - use both types of scorers
+4. **Use Metadata**: Enriched metadata provides detailed insights beyond scores
+5. **Debug with Events**: Use `events` array from enriched output to understand generation flow
+
+### Enriched Output Structure
+
+When using `SSEStreamingAdapter`, the output is JSON with:
+
+```json
+{
+    "final_yaml": "pipeline:\n  name: test",
+    "events": [
+        {"event": "tool_call", "data": {...}, "timestamp": 0.123},
+        {"event": "complete", "data": {...}, "timestamp": 1.456}
+    ],
+    "tools_called": [
+        {"tool": "search", "parameters": {"query": "test"}, "timestamp": 0.5}
+    ],
+    "metrics": {
+        "latency_ms": 1234,
+        "total_events": 10,
+        "total_tokens": 500,
+        "prompt_tokens": 100,
+        "completion_tokens": 400
+    }
+}
+```
+
+`EnrichedOutputScorer` extracts `final_yaml` for YAML scorers and enriches metadata with `metrics`, `tools_called`, and `events`.
+
 ## Creating Custom Scorers
 
 To create a custom scorer, implement the `Scorer` base class:

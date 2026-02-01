@@ -6,6 +6,12 @@ from ai_evolution.scorers.schema_validation import SchemaValidationScorer
 from ai_evolution.scorers.dashboard import DashboardQualityScorer
 from ai_evolution.scorers.knowledge_graph import KnowledgeGraphQualityScorer
 from ai_evolution.scorers.llm_judge import LLMJudgeScorer
+from ai_evolution.scorers.enriched import EnrichedOutputScorer
+from ai_evolution.scorers.metrics import (
+    LatencyScorer,
+    ToolCallScorer,
+    TokenUsageScorer,
+)
 
 # Autoevals-style scorers (Braintrust)
 try:
@@ -29,6 +35,10 @@ __all__ = [
     "DashboardQualityScorer",
     "KnowledgeGraphQualityScorer",
     "LLMJudgeScorer",
+    "EnrichedOutputScorer",
+    "LatencyScorer",
+    "ToolCallScorer",
+    "TokenUsageScorer",
 ]
 
 if AUTOEVALS_AVAILABLE:

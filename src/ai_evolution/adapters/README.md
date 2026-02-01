@@ -2,9 +2,9 @@
 
 Adapters provide integration with different AI systems and APIs. **Teams should create their own custom adapters** rather than adding team-specific adapters to the core codebase.
 
-## HTTPAdapter (Recommended)
+## HTTPAdapter (Recommended for REST APIs)
 
-Generic HTTP/REST adapter that can be configured for any API. This is the recommended approach for most integrations.
+Generic HTTP/REST adapter that can be configured for any API. This is the recommended approach for most REST API integrations.
 
 **Usage**:
 ```python
@@ -37,6 +37,82 @@ adapter = HTTPAdapter(
     sse_completion_events=["complete", "done"],  # SSE events that indicate completion
 )
 ```
+
+## SSEStreamingAdapter (Recommended for SSE Streaming)
+
+SSE streaming adapter that captures all events, tool calls, and performance metrics. Returns enriched output for comprehensive analysis.
+
+**When to Use:**
+- Your API streams responses via Server-Sent Events (SSE)
+- You want to capture all intermediate events
+- You need to analyze tool calls during generation
+- You want to track performance metrics (latency, tokens)
+
+**Usage**:
+```python
+from ai_evolution.adapters.sse_streaming import SSEStreamingAdapter
+
+adapter = SSEStreamingAdapter(
+    base_url="http://localhost:8000",
+    auth_token="your-token",
+    context_data={
+        "account_id": "acc-123",
+        "org_id": "org-456",
+    },
+    endpoint="/chat/stream",  # SSE streaming endpoint
+    completion_events=["complete", "dashboard_complete", "kg_complete"],
+    tool_call_events=["tool_call", "function_call"],
+    usage_event="usage",
+)
+```
+
+**Enriched Output:**
+
+The adapter returns JSON with:
+```json
+{
+    "final_yaml": "...",
+    "events": [...],
+    "tools_called": [...],
+    "metrics": {
+        "latency_ms": 1234,
+        "total_tokens": 500,
+        ...
+    }
+}
+```
+
+**Using with Existing Scorers:**
+
+Wrap existing scorers with `EnrichedOutputScorer`:
+```python
+from ai_evolution.scorers.enriched import EnrichedOutputScorer
+from ai_evolution.scorers.deep_diff import DeepDiffScorer
+
+wrapped_scorer = EnrichedOutputScorer(
+    DeepDiffScorer(name="structure", eval_id="structure.v3")
+)
+```
+
+**Performance Metric Scorers:**
+
+Analyze metrics from enriched output:
+```python
+from ai_evolution.scorers.metrics import (
+    LatencyScorer,
+    ToolCallScorer,
+    TokenUsageScorer,
+)
+
+scorers = [
+    EnrichedOutputScorer(DeepDiffScorer(...)),  # YAML quality
+    LatencyScorer(max_latency_ms=30000),         # Response time
+    ToolCallScorer(require_tools=False),         # Tool usage
+    TokenUsageScorer(max_tokens=5000),           # Token efficiency
+]
+```
+
+See `examples/sse_streaming_example.py` for a complete example.
 
 ## Creating Custom Adapters
 
