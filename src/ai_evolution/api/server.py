@@ -2,15 +2,21 @@
 
 import os
 import uvicorn
-import logging
 from dotenv import load_dotenv
-from ai_evolution.api.app import create_app
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# Initialize logging before importing app
+from ai_evolution.logging_config import initialize_logging
+import structlog
 
 # Load environment variables from .env file
 load_dotenv()
+
+# Initialize structured logging
+initialize_logging()
+
+logger = structlog.get_logger(__name__)
+
+from ai_evolution.api.app import create_app
 
 
 def main():
@@ -18,6 +24,14 @@ def main():
     # Support debug mode via environment variable
     debug = os.getenv("DEBUG", "false").lower() == "true"
     reload = os.getenv("RELOAD", "false").lower() == "true" or debug
+    
+    logger.info(
+        "Starting FastAPI server",
+        host=os.getenv("HOST", "0.0.0.0"),
+        port=int(os.getenv("PORT", "7890")),
+        debug=debug,
+        reload=reload,
+    )
     
     # Use import string when reload is enabled (required by uvicorn)
     if reload:

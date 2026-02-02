@@ -1,11 +1,17 @@
 """Temporal worker for executing workflows and activities."""
 
 import asyncio
-import logging
 import os
 import signal
 from temporalio.client import Client
 from temporalio.worker import Worker
+
+# Initialize logging
+from ai_evolution.logging_config import initialize_logging
+import structlog
+
+initialize_logging()
+logger = structlog.get_logger(__name__)
 
 from ai_evolution.workflows.activities import (
     load_dataset_activity,
@@ -18,8 +24,6 @@ from ai_evolution.workflows.workflows import (
     MultiModelWorkflow,
 )
 
-logger = logging.getLogger(__name__)
-
 # Temporal configuration
 TEMPORAL_HOST = os.getenv("TEMPORAL_HOST", "localhost:7233")
 TEMPORAL_NAMESPACE = os.getenv("TEMPORAL_NAMESPACE", "default")
@@ -28,14 +32,21 @@ TEMPORAL_TASK_QUEUE = os.getenv("TEMPORAL_TASK_QUEUE", "ai-evolution")
 
 async def run_worker():
     """Run Temporal worker."""
-    logger.info(f"Connecting to Temporal at {TEMPORAL_HOST}")
+    logger.info(
+        "Connecting to Temporal",
+        host=TEMPORAL_HOST,
+        namespace=TEMPORAL_NAMESPACE,
+    )
     
     client = await Client.connect(
         target_host=TEMPORAL_HOST,
         namespace=TEMPORAL_NAMESPACE,
     )
     
-    logger.info(f"Starting worker on task queue: {TEMPORAL_TASK_QUEUE}")
+    logger.info(
+        "Starting worker",
+        task_queue=TEMPORAL_TASK_QUEUE,
+    )
     
     worker = Worker(
         client,
@@ -71,11 +82,6 @@ async def run_worker():
 
 def main():
     """Main entry point for worker."""
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    )
-    
     try:
         asyncio.run(run_worker())
     except KeyboardInterrupt:

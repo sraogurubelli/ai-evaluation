@@ -9,6 +9,13 @@ from typing import Any
 import typer
 import yaml
 
+# Initialize logging
+from ai_evolution.logging_config import initialize_logging
+import structlog
+
+initialize_logging()
+logger = structlog.get_logger(__name__)
+
 from ai_evolution.core.experiment import Experiment
 from ai_evolution.core.types import DatasetItem
 from ai_evolution.datasets import load_jsonl_dataset, load_index_csv_dataset, FunctionDataset

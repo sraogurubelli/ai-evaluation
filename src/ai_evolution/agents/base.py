@@ -2,12 +2,13 @@
 Base agent class that defines the interface for all evaluation agents.
 """
 
-import logging
 import time
 from abc import ABC, abstractmethod
 from typing import Any
 
-logger = logging.getLogger(__name__)
+import structlog
+
+logger = structlog.get_logger(__name__)
 
 # Optional Langfuse import
 try:
@@ -45,7 +46,7 @@ class BaseEvaluationAgent(ABC):
             logger_name: Custom logger name (defaults to class name)
         """
         self.config = config or {}
-        self.logger = logging.getLogger(logger_name or self.__class__.__name__)
+        self.logger = structlog.get_logger(logger_name or self.__class__.__name__)
         self.tools: dict[str, Any] = {}
         self.agent_name = self.__class__.__name__
     
@@ -113,10 +114,9 @@ class BaseEvaluationAgent(ABC):
         """
         duration = time.time() - start_time
         self.logger.info(
-            f"{self.agent_name}.{operation} completed",
-            extra={
-                "duration_seconds": duration,
-                "operation": operation,
-                **metadata,
-            },
+            "Agent operation completed",
+            agent=self.agent_name,
+            operation=operation,
+            duration_seconds=duration,
+            **metadata,
         )

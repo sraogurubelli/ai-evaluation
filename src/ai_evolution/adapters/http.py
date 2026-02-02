@@ -196,6 +196,7 @@ class HTTPAdapter(Adapter):
         Returns:
             Generated YAML/JSON string
         """
+        logger.info("HTTP adapter invoked")
         prompt = input_data.get("prompt", "")
         entity_type = input_data.get("entity_type", "pipeline")
         operation_type = input_data.get("operation_type", "create")
@@ -246,6 +247,7 @@ class HTTPAdapter(Adapter):
                 
                 if use_sse:
                     # SSE format
+                    logger.info("HTTP adapter: SSE events receiving")
                     result_data = None
                     current_event = None
                     
@@ -256,11 +258,13 @@ class HTTPAdapter(Adapter):
                         
                         if line.startswith("event:"):
                             current_event = line[6:].strip()
+                            logger.debug(f"HTTP adapter: SSE event received: {current_event}")
                         elif line.startswith("data:"):
                             data_str = line[5:].strip()
                             if current_event in self.sse_completion_events:
                                 try:
                                     result_data = json.loads(data_str)
+                                    logger.info(f"HTTP adapter: SSE completion event received: {current_event}")
                                 except json.JSONDecodeError as e:
                                     logger.warning(f"Failed to parse SSE data: {e}")
                     

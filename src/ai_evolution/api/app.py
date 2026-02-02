@@ -1,12 +1,12 @@
 """FastAPI application for AI Evolution Platform."""
 
 import asyncio
-import logging
 import os
 from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Any
 
+import structlog
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -60,7 +60,7 @@ from ai_evolution.agents import (
 )
 from ai_evolution.core.types import DatasetItem
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 # Global task manager and worker
 task_manager: TaskManager | None = None
@@ -83,7 +83,7 @@ async def lifespan(app: FastAPI):
     global dataset_agent, scorer_agent, adapter_agent, experiment_agent, task_agent, evaluation_agent
     
     # Startup
-    logger.info("Starting AI Evolution Platform API...")
+    logger.info("Starting AI Evolution Platform API")
     
     # Initialize database (optional - only if DATABASE_URL is set)
     database_url = os.getenv("DATABASE_URL")
@@ -93,7 +93,11 @@ async def lifespan(app: FastAPI):
             await init_db()
             logger.info("Database initialized")
         except Exception as e:
-            logger.warning(f"Database initialization failed (continuing without DB): {e}")
+            logger.warning(
+                "Database initialization failed (continuing without DB)",
+                error=str(e),
+                exc_info=True,
+            )
     
     task_manager = TaskManager()
     task_worker = TaskWorker(task_manager, max_concurrent=3)
@@ -112,7 +116,7 @@ async def lifespan(app: FastAPI):
     yield
     
     # Shutdown
-    logger.info("Shutting down AI Evolution Platform API...")
+    logger.info("Shutting down AI Evolution Platform API")
     if task_worker:
         await task_worker.stop()
     if worker_task:
@@ -128,7 +132,11 @@ async def lifespan(app: FastAPI):
             from ai_evolution.db.session import close_db
             await close_db()
         except Exception as e:
-            logger.warning(f"Database shutdown error: {e}")
+            logger.warning(
+                "Database shutdown error",
+                error=str(e),
+                exc_info=True,
+            )
 
 
 def create_app() -> FastAPI:
@@ -191,13 +199,22 @@ def create_app() -> FastAPI:
         # Execute task
         if request.run_async:
             # Queue for background execution (worker will pick it up)
-            logger.info(f"Task {task.id} queued for async execution")
+            logger.info(
+                "Task queued for async execution",
+                task_id=task.id,
+                experiment_name=request.experiment_name,
+            )
         else:
             # Execute synchronously
             try:
                 await task_manager.execute_task(task.id)
             except Exception as e:
-                logger.error(f"Task {task.id} failed: {e}", exc_info=True)
+                logger.error(
+                    "Task execution failed",
+                    task_id=task.id,
+                    error=str(e),
+                    exc_info=True,
+                )
                 raise HTTPException(status_code=500, detail=str(e))
         
         return TaskResponse(**task.to_dict())
@@ -304,12 +321,23 @@ def create_app() -> FastAPI:
                 offline=request.offline,
                 actual_suffix=request.actual_suffix,
             )
+            logger.info(
+                "Dataset loaded",
+                dataset_type=request.dataset_type,
+                item_count=len(dataset),
+            )
             return DatasetLoadResponse(
                 item_count=len(dataset),
                 items=[item.to_dict() for item in dataset],
             )
         except Exception as e:
-            logger.error(f"Error loading dataset: {e}", exc_info=True)
+            logger.error(
+                "Error loading dataset",
+                dataset_type=request.dataset_type,
+                path=request.path,
+                error=str(e),
+                exc_info=True,
+            )
             raise HTTPException(status_code=500, detail=str(e))
     
     @app.post("/evaluate/dataset/validate", response_model=DatasetValidateResponse, status_code=200)
@@ -323,9 +351,21 @@ def create_app() -> FastAPI:
                 dataset_type=request.dataset_type,
                 path=request.path,
             )
+            logger.info(
+                "Dataset validated",
+                dataset_type=request.dataset_type,
+                path=request.path,
+                valid=result.get("valid", False),
+            )
             return DatasetValidateResponse(**result)
         except Exception as e:
-            logger.error(f"Error validating dataset: {e}", exc_info=True)
+            logger.error(
+                "Error validating dataset",
+                dataset_type=request.dataset_type,
+                path=request.path,
+                error=str(e),
+                exc_info=True,
+            )
             raise HTTPException(status_code=500, detail=str(e))
     
     @app.get("/evaluate/dataset/list", response_model=DatasetListResponse, status_code=200)
@@ -336,9 +376,19 @@ def create_app() -> FastAPI:
         
         try:
             datasets = await dataset_agent.list_datasets(base_dir=base_dir)
+            logger.info(
+                "Datasets listed",
+                base_dir=base_dir,
+                count=len(datasets),
+            )
             return DatasetListResponse(datasets=datasets)
         except Exception as e:
-            logger.error(f"Error listing datasets: {e}", exc_info=True)
+            logger.error(
+                "Error listing datasets",
+                base_dir=base_dir,
+                error=str(e),
+                exc_info=True,
+            )
             raise HTTPException(status_code=500, detail=str(e))
     
     # ============================================================================
@@ -357,13 +407,24 @@ def create_app() -> FastAPI:
                 name=request.name,
                 **request.config,
             )
+            logger.info(
+                "Scorer created",
+                scorer_id=scorer.name,
+                scorer_type=request.scorer_type,
+            )
             return ScorerCreateResponse(
                 scorer_id=scorer.name,
                 name=scorer.name,
                 type=type(scorer).__name__,
             )
         except Exception as e:
-            logger.error(f"Error creating scorer: {e}", exc_info=True)
+            logger.error(
+                "Error creating scorer",
+                scorer_type=request.scorer_type,
+                name=request.name,
+                error=str(e),
+                exc_info=True,
+            )
             raise HTTPException(status_code=500, detail=str(e))
     
     @app.post("/evaluate/scorer/score", response_model=ScorerScoreResponse, status_code=200)
@@ -381,7 +442,12 @@ def create_app() -> FastAPI:
             )
             return ScorerScoreResponse(score=score.to_dict())
         except Exception as e:
-            logger.error(f"Error scoring item: {e}", exc_info=True)
+            logger.error(
+                "Error scoring item",
+                scorer_id=request.scorer_id,
+                error=str(e),
+                exc_info=True,
+            )
             raise HTTPException(status_code=500, detail=str(e))
     
     @app.get("/evaluate/scorer/list", response_model=ScorerListResponse, status_code=200)
@@ -394,7 +460,11 @@ def create_app() -> FastAPI:
             result = await scorer_agent.list_scorers()
             return ScorerListResponse(**result)
         except Exception as e:
-            logger.error(f"Error listing scorers: {e}", exc_info=True)
+            logger.error(
+                "Error listing scorers",
+                error=str(e),
+                exc_info=True,
+            )
             raise HTTPException(status_code=500, detail=str(e))
     
     # ============================================================================
@@ -414,12 +484,23 @@ def create_app() -> FastAPI:
                 **request.config,
             )
             adapter_id = request.name or f"{request.adapter_type}_{id(adapter)}"
+            logger.info(
+                "Adapter created",
+                adapter_id=adapter_id,
+                adapter_type=request.adapter_type,
+            )
             return AdapterCreateResponse(
                 adapter_id=adapter_id,
                 type=type(adapter).__name__,
             )
         except Exception as e:
-            logger.error(f"Error creating adapter: {e}", exc_info=True)
+            logger.error(
+                "Error creating adapter",
+                adapter_type=request.adapter_type,
+                name=request.name,
+                error=str(e),
+                exc_info=True,
+            )
             raise HTTPException(status_code=500, detail=str(e))
     
     @app.post("/evaluate/adapter/generate", response_model=AdapterGenerateResponse, status_code=200)
@@ -437,7 +518,13 @@ def create_app() -> FastAPI:
             )
             return AdapterGenerateResponse(output=output)
         except Exception as e:
-            logger.error(f"Error generating output: {e}", exc_info=True)
+            logger.error(
+                "Error generating output",
+                adapter_id=request.adapter_id,
+                model=request.model,
+                error=str(e),
+                exc_info=True,
+            )
             raise HTTPException(status_code=500, detail=str(e))
     
     @app.get("/evaluate/adapter/list", response_model=AdapterListResponse, status_code=200)
@@ -450,7 +537,11 @@ def create_app() -> FastAPI:
             result = await adapter_agent.list_adapters()
             return AdapterListResponse(**result)
         except Exception as e:
-            logger.error(f"Error listing adapters: {e}", exc_info=True)
+            logger.error(
+                "Error listing adapters",
+                error=str(e),
+                exc_info=True,
+            )
             raise HTTPException(status_code=500, detail=str(e))
     
     # ============================================================================
@@ -470,6 +561,13 @@ def create_app() -> FastAPI:
                 scorers_config=request.scorers_config,
                 experiment_id=request.experiment_id,
             )
+            logger.info(
+                "Experiment created",
+                experiment_id=experiment.experiment_id,
+                name=experiment.name,
+                dataset_size=len(experiment.dataset),
+                scorer_count=len(experiment.scorers),
+            )
             return ExperimentCreateResponse(
                 experiment_id=experiment.experiment_id,
                 name=experiment.name,
@@ -477,7 +575,13 @@ def create_app() -> FastAPI:
                 scorer_count=len(experiment.scorers),
             )
         except Exception as e:
-            logger.error(f"Error creating experiment: {e}", exc_info=True)
+            logger.error(
+                "Error creating experiment",
+                name=request.name,
+                experiment_id=request.experiment_id,
+                error=str(e),
+                exc_info=True,
+            )
             raise HTTPException(status_code=500, detail=str(e))
     
     @app.post("/evaluate/experiment/run", response_model=ExperimentRunResponseNew, status_code=200)
@@ -493,9 +597,21 @@ def create_app() -> FastAPI:
                 model=request.model,
                 concurrency_limit=request.concurrency_limit,
             )
+            logger.info(
+                "Experiment run completed",
+                experiment_id=request.experiment_id,
+                run_id=run.run_id,
+                model=request.model,
+            )
             return ExperimentRunResponseNew(**run.to_dict())
         except Exception as e:
-            logger.error(f"Error running experiment: {e}", exc_info=True)
+            logger.error(
+                "Error running experiment",
+                experiment_id=request.experiment_id,
+                model=request.model,
+                error=str(e),
+                exc_info=True,
+            )
             raise HTTPException(status_code=500, detail=str(e))
     
     @app.post("/evaluate/experiment/compare", response_model=ExperimentCompareResponse, status_code=200)
@@ -509,9 +625,20 @@ def create_app() -> FastAPI:
                 run1=request.run1_id,
                 run2=request.run2_id,
             )
+            logger.info(
+                "Runs compared",
+                run1_id=request.run1_id,
+                run2_id=request.run2_id,
+            )
             return ExperimentCompareResponse(comparison=result)
         except Exception as e:
-            logger.error(f"Error comparing runs: {e}", exc_info=True)
+            logger.error(
+                "Error comparing runs",
+                run1_id=request.run1_id,
+                run2_id=request.run2_id,
+                error=str(e),
+                exc_info=True,
+            )
             raise HTTPException(status_code=500, detail=str(e))
     
     # ============================================================================
@@ -532,9 +659,19 @@ def create_app() -> FastAPI:
                 experiment_name=experiment_name,
                 config=config,
             )
+            logger.info(
+                "Task created",
+                task_id=task.id,
+                experiment_name=experiment_name,
+            )
             return TaskResponse(**task.to_dict())
         except Exception as e:
-            logger.error(f"Error creating task: {e}", exc_info=True)
+            logger.error(
+                "Error creating task",
+                experiment_name=experiment_name,
+                error=str(e),
+                exc_info=True,
+            )
             raise HTTPException(status_code=500, detail=str(e))
     
     @app.get("/evaluate/task/{task_id}", response_model=TaskResponse)
@@ -549,7 +686,12 @@ def create_app() -> FastAPI:
         except ValueError as e:
             raise HTTPException(status_code=404, detail=str(e))
         except Exception as e:
-            logger.error(f"Error getting task: {e}", exc_info=True)
+            logger.error(
+                "Error getting task",
+                task_id=task_id,
+                error=str(e),
+                exc_info=True,
+            )
             raise HTTPException(status_code=500, detail=str(e))
     
     @app.delete("/evaluate/task/{task_id}", status_code=200)
@@ -564,7 +706,12 @@ def create_app() -> FastAPI:
         except ValueError as e:
             raise HTTPException(status_code=404, detail=str(e))
         except Exception as e:
-            logger.error(f"Error cancelling task: {e}", exc_info=True)
+            logger.error(
+                "Error cancelling task",
+                task_id=task_id,
+                error=str(e),
+                exc_info=True,
+            )
             raise HTTPException(status_code=500, detail=str(e))
     
     # ============================================================================
@@ -625,6 +772,8 @@ def create_app() -> FastAPI:
                 else:
                     # Single model - backward compatibility
                     run = result
+                    # Get metadata from run, handling both 'metadata' and 'meta' attributes
+                    run_metadata = getattr(run, 'metadata', None) or getattr(run, 'meta', None) or {}
                     return EvaluationResponse(
                         task_id=None,
                         run_id=run.run_id,
@@ -632,16 +781,29 @@ def create_app() -> FastAPI:
                         experiment_id=run.experiment_id,
                         scores=[score.to_dict() for score in run.scores],
                         comparison=None,
-                        metadata=run.meta,
+                        metadata=run_metadata,
                     )
         except Exception as e:
-            logger.error(f"Error in unified evaluation: {e}", exc_info=True)
+            logger.error(
+                "Error in unified evaluation",
+                experiment_name=request.experiment_name,
+                model=request.model,
+                models=request.models,
+                error=str(e),
+                exc_info=True,
+            )
             raise HTTPException(status_code=500, detail=str(e))
     
     @app.exception_handler(Exception)
     async def global_exception_handler(request, exc):
         """Global exception handler."""
-        logger.error(f"Unhandled exception: {exc}", exc_info=True)
+        logger.error(
+            "Unhandled exception",
+            path=request.url.path if hasattr(request, 'url') else None,
+            method=request.method if hasattr(request, 'method') else None,
+            error=str(exc),
+            exc_info=True,
+        )
         return JSONResponse(
             status_code=500,
             content={"error": "Internal server error", "detail": str(exc)},

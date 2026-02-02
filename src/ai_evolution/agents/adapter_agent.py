@@ -7,6 +7,7 @@ from ai_evolution.agents.base import BaseEvaluationAgent
 from ai_evolution.adapters.base import Adapter
 from ai_evolution.adapters.http import HTTPAdapter
 from ai_evolution.adapters.langfuse import LangfuseAdapter
+from ai_evolution.adapters.sse_streaming import SSEStreamingAdapter
 
 
 class AdapterAgent(BaseEvaluationAgent):
@@ -104,23 +105,67 @@ class AdapterAgent(BaseEvaluationAgent):
             org_id = kwargs.get("org_id") or os.getenv("ORG_ID", "default")
             project_id = kwargs.get("project_id") or os.getenv("PROJECT_ID", "default")
             
-            # Use HTTPAdapter with ml-infra configuration
-            adapter = HTTPAdapter(
+            # Check if SSE streaming with enriched output is requested
+            use_sse_streaming = kwargs.get("use_sse_streaming", False)
+            
+            if use_sse_streaming:
+                # Use SSEStreamingAdapter for enriched output (events, tools, metrics)
+                adapter = SSEStreamingAdapter(
+                    base_url=base_url,
+                    headers={"Authorization": f"Bearer {auth_token}"} if auth_token else {},
+                    context_data={
+                        "account_id": account_id,
+                        "org_id": org_id,
+                        "project_id": project_id,
+                    },
+                    endpoint="/chat/stream",  # Default SSE endpoint
+                    completion_events=[
+                        "complete",
+                        "dashboard_complete",
+                        "kg_complete",
+                    ],
+                    tool_call_events=[
+                        "tool_call",
+                        "function_call",
+                    ],
+                    include_uuids=True,  # HTTPAdapter compatibility
+                )
+            else:
+                # Use HTTPAdapter with ml-infra configuration (backward compatible)
+                adapter = HTTPAdapter(
+                    base_url=base_url,
+                    auth_token=auth_token,
+                    context_field_name="harness_context",
+                    context_data={
+                        "account_id": account_id,
+                        "org_id": org_id,
+                        "project_id": project_id,
+                    },
+                    endpoint_mapping={
+                        "dashboard": "/chat/dashboard",
+                        "knowledge_graph": "/chat/knowledge-graph",
+                    },
+                    default_endpoint="/chat/platform",
+                    yaml_extraction_path=["capabilities_to_run", -1, "input", "yaml"],
+                    sse_completion_events=["dashboard_complete", "kg_complete"],
+                )
+        
+        elif adapter_type == "sse_streaming":
+            # SSE Streaming adapter with enriched output
+            base_url = kwargs.get("base_url") or os.getenv("CHAT_BASE_URL", "http://localhost:8000")
+            auth_token = kwargs.get("auth_token") or os.getenv("CHAT_PLATFORM_AUTH_TOKEN", "")
+            
+            adapter = SSEStreamingAdapter(
                 base_url=base_url,
-                auth_token=auth_token,
-                context_field_name="harness_context",
-                context_data={
-                    "account_id": account_id,
-                    "org_id": org_id,
-                    "project_id": project_id,
-                },
-                endpoint_mapping={
-                    "dashboard": "/chat/dashboard",
-                    "knowledge_graph": "/chat/knowledge-graph",
-                },
-                default_endpoint="/chat/platform",
-                yaml_extraction_path=["capabilities_to_run", -1, "input", "yaml"],
-                sse_completion_events=["dashboard_complete", "kg_complete"],
+                headers=kwargs.get("headers", {"Authorization": f"Bearer {auth_token}"} if auth_token else {}),
+                context_data=kwargs.get("context_data", {}),
+                endpoint=kwargs.get("endpoint", "/chat/stream"),
+                completion_events=kwargs.get("completion_events", ["complete", "dashboard_complete", "kg_complete"]),
+                tool_call_events=kwargs.get("tool_call_events", ["tool_call", "function_call"]),
+                usage_event=kwargs.get("usage_event", "usage"),
+                payload_builder=kwargs.get("payload_builder"),
+                payload_template=kwargs.get("payload_template"),
+                include_uuids=kwargs.get("include_uuids", False),
             )
         
         elif adapter_type == "langfuse":

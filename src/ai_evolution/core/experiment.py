@@ -65,11 +65,15 @@ class Experiment:
             async with semaphore:
                 # Generate output
                 try:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.info(f"Processing item {item.id} with {type(adapter).__name__}")
                     output = await adapter.generate(
                         item.input,
                         model=model,
                         **kwargs,
                     )
+                    logger.info(f"Output generated for item {item.id}")
                     item.output = output
                 except Exception as e:
                     # Create error score

@@ -264,4 +264,4 @@ class EvaluationResponse(BaseModel):
     experiment_id: str
     scores: list[dict[str, Any]] | None = Field(None, description="Scores from single run (if run_async=False and single model)")
     comparison: dict[str, Any] | None = Field(None, description="Model comparison metrics (if multiple models)")
-    metadata: dict[str, Any]
+    metadata: dict[str, Any] = Field(default_factory=dict)
