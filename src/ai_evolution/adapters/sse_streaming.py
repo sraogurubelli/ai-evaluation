@@ -205,6 +205,7 @@ class SSEStreamingAdapter(Adapter):
         logger.info("SSE streaming adapter (ml-infra adapter) invoked")
         # Generate payload
         payload = self._generate_payload(input_data, model)
+        logger.debug(f"Generated payload: {json.dumps(payload, indent=2)}")
         
         # Track metrics
         start_time = time.time()
@@ -216,6 +217,8 @@ class SSEStreamingAdapter(Adapter):
         # Make API call
         endpoint_url = f"{self.base_url}{self.endpoint}"
         timeout = aiohttp.ClientTimeout(total=300)
+        logger.info(f"Connecting to SSE endpoint: {endpoint_url}")
+        logger.debug(f"Headers: {self.headers}")
         
         try:
             async with aiohttp.ClientSession(timeout=timeout) as session:
@@ -234,8 +237,13 @@ class SSEStreamingAdapter(Adapter):
                     # Parse SSE stream
                     current_event = None
                     event_count = 0
+                    line_count = 0 
                     async for line in response.content:
+                        line_count += 1
                         line = line.decode("utf-8").strip()
+
+                        if line_count <= 5:
+                            logger.debug(f"Raw line {line_count}: {repr(line)}")
                         if not line:
                             continue
                         
@@ -293,7 +301,15 @@ class SSEStreamingAdapter(Adapter):
                             if current_event == self.usage_event or "usage" in event_data:
                                 usage = event_data.get("usage", event_data)
                                 if isinstance(usage, dict):
-                                    token_usage.update(usage)
+                                    # Check if this is a nested structure with model names
+                                    for key, value in usage.items():
+                                        if isinstance(value, dict) and ("prompt_tokens" in value or "completion_tokens" in value):
+                                            # Found nested model usage data
+                                            token_usage.update(value)
+                                            break
+                                    else:
+                                        # Flat structure
+                                        token_usage.update(usage)
             
             # Calculate final metrics
             end_time = time.time()
@@ -306,14 +322,18 @@ class SSEStreamingAdapter(Adapter):
             
             # Add token usage if available
             if token_usage:
+                prompt_tokens = token_usage.get("prompt_tokens", 0)
+                completion_tokens = token_usage.get("completion_tokens", 0)
+                total_tokens = prompt_tokens + completion_tokens
                 metrics.update({
-                    "total_tokens": token_usage.get("total_tokens", 0),
-                    "prompt_tokens": token_usage.get("prompt_tokens", 0),
-                    "completion_tokens": token_usage.get("completion_tokens", 0),
+                    "total_tokens": total_tokens,
+                    "prompt_tokens": prompt_tokens,
+                    "completion_tokens": completion_tokens,
                 })
             
             logger.info(f"SSE streaming completed - received {len(all_events)} events, latency: {latency_ms}ms")
-            
+            logger.debug(f"Final YAML length: {len(final_yaml) if final_yaml else 0}")
+            logger.debug(f"First 200 chars of final_yaml: {final_yaml[:200] if final_yaml else ''}")
             # Build enriched output
             enriched_output = {
                 "final_yaml": final_yaml or "",
@@ -321,7 +341,7 @@ class SSEStreamingAdapter(Adapter):
                 "tools_called": tools_called,
                 "metrics": metrics,
             }
-            
+            logger.debug(f"Enriched output: {json.dumps(enriched_output, indent=2)}")
             return json.dumps(enriched_output)
         
         except aiohttp.ClientError as e:
