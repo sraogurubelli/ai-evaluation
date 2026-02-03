@@ -4,9 +4,9 @@ import json
 import tempfile
 from pathlib import Path
 import pytest
-from ai_evolution.datasets.jsonl import load_jsonl_dataset
-from ai_evolution.datasets.index_csv import load_index_csv_dataset
-from ai_evolution.datasets.function import load_function_dataset
+from aieval.datasets.jsonl import load_jsonl_dataset
+from aieval.datasets.index_csv import load_index_csv_dataset
+from aieval.datasets.function import load_function_dataset
 
 
 class TestJSONLDataset:

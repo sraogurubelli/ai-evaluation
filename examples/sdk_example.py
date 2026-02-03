@@ -5,7 +5,7 @@ the AI Evolution SDK to run evaluations.
 """
 
 import asyncio
-from ai_evolution import (
+from aieval import (
     # Core types
     DatasetItem,
     Experiment,
@@ -150,7 +150,7 @@ async def example_convenience_function():
     """Using the convenience function."""
     print("\n=== Example 4: Convenience Function ===")
     
-    from ai_evolution import run_evaluation
+    from aieval import run_evaluation
     
     # Load dataset
     dataset = load_jsonl_dataset("examples/datasets/sample.jsonl")
@@ -186,8 +186,8 @@ async def example_custom_scorer():
     """Creating and using a custom scorer."""
     print("\n=== Example 5: Custom Scorer ===")
     
-from ai_evolution import Scorer
-from ai_evolution.core.types import Score, DatasetItem
+from aieval import Scorer
+from aieval.core.types import Score, DatasetItem
 from typing import Any
     
     class CustomScorer(Scorer):

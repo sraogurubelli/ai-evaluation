@@ -1,11 +1,11 @@
 """Simple evaluation example using JSONL dataset."""
 
 import asyncio
-from ai_evolution.core.experiment import Experiment
-from ai_evolution.core.types import DatasetItem
-from ai_evolution.datasets import load_jsonl_dataset
-from ai_evolution.scorers.deep_diff import DeepDiffScorer
-from ai_evolution.sinks.stdout import StdoutSink
+from aieval.core.experiment import Experiment
+from aieval.core.types import DatasetItem
+from aieval.datasets import load_jsonl_dataset
+from aieval.scorers.deep_diff import DeepDiffScorer
+from aieval.sinks.stdout import StdoutSink
 
 
 # Simple adapter that just returns the input (for testing)

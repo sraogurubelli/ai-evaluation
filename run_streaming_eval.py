@@ -32,18 +32,18 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Add ai-evolution src to path
-ai_evolution_path = Path(__file__).parent / "src"
-sys.path.insert(0, str(ai_evolution_path))
+aieval_path = Path(__file__).parent / "src"
+sys.path.insert(0, str(aieval_path))
 
-from ai_evolution.adapters.sse_streaming import SSEStreamingAdapter
-from ai_evolution.scorers.enriched import EnrichedOutputScorer
-from ai_evolution.scorers.deep_diff import DeepDiffScorer
-from ai_evolution.scorers.metrics import LatencyScorer, TokenUsageScorer
-from ai_evolution.datasets.index_csv import load_index_csv_dataset
-from ai_evolution.core.experiment import Experiment
-from ai_evolution.core.types import ExperimentRun, Score
-from ai_evolution.sinks.csv import CSVSink
-from ai_evolution.sinks.stdout import StdoutSink
+from aieval.adapters.sse_streaming import SSEStreamingAdapter
+from aieval.scorers.enriched import EnrichedOutputScorer
+from aieval.scorers.deep_diff import DeepDiffScorer
+from aieval.scorers.metrics import LatencyScorer, TokenUsageScorer
+from aieval.datasets.index_csv import load_index_csv_dataset
+from aieval.core.experiment import Experiment
+from aieval.core.types import ExperimentRun, Score
+from aieval.sinks.csv import CSVSink
+from aieval.sinks.stdout import StdoutSink
 
 
 def parse_args():

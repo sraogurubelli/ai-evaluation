@@ -1,8 +1,8 @@
 """Tests for experiment comparison."""
 
 import pytest
-from ai_evolution.sdk.comparison import compare_runs, get_regressions, RunComparison
-from ai_evolution.core.types import ExperimentRun, Score, DatasetItem
+from aieval.sdk.comparison import compare_runs, get_regressions, RunComparison
+from aieval.core.types import ExperimentRun, Score, DatasetItem
 
 
 class TestCompareRuns:

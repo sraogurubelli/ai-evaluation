@@ -263,9 +263,9 @@ tasks:
     cmds:
       - |
         if [ -d {{.VENV_DIR}} ]; then
-          source {{.VENV_DIR}}/bin/activate && pytest {{.TEST_DIR}} --cov={{.SRC_DIR}}/ai_evolution --cov-report=html --cov-report=term
+          source {{.VENV_DIR}}/bin/activate && pytest {{.TEST_DIR}} --cov={{.SRC_DIR}}/aieval --cov-report=html --cov-report=term
         else
-          pytest {{.TEST_DIR}} --cov={{.SRC_DIR}}/ai_evolution --cov-report=html --cov-report=term
+          pytest {{.TEST_DIR}} --cov={{.SRC_DIR}}/aieval --cov-report=html --cov-report=term
         fi
     generates:
       - htmlcov/index.html
@@ -298,9 +298,9 @@ tasks:
         PORT=${PORT:-{{.PORT}}}
         HOST=${HOST:-0.0.0.0}
         if [ -d {{.VENV_DIR}} ]; then
-          source {{.VENV_DIR}}/bin/activate && uvicorn ai_evolution.api.app:create_app --host ${HOST} --port ${PORT} --reload
+          source {{.VENV_DIR}}/bin/activate && uvicorn aieval.api.app:create_app --host ${HOST} --port ${PORT} --reload
         else
-          uvicorn ai_evolution.api.app:create_app --host ${HOST} --port ${PORT} --reload
+          uvicorn aieval.api.app:create_app --host ${HOST} --port ${PORT} --reload
         fi
 
   server-prod:
@@ -317,9 +317,9 @@ tasks:
         PORT=${PORT:-{{.PORT}}}
         HOST=${HOST:-0.0.0.0}
         if [ -d {{.VENV_DIR}} ]; then
-          source {{.VENV_DIR}}/bin/activate && uvicorn ai_evolution.api.app:create_app --host ${HOST} --port ${PORT} --workers 4
+          source {{.VENV_DIR}}/bin/activate && uvicorn aieval.api.app:create_app --host ${HOST} --port ${PORT} --workers 4
         else
-          uvicorn ai_evolution.api.app:create_app --host ${HOST} --port ${PORT} --workers 4
+          uvicorn aieval.api.app:create_app --host ${HOST} --port ${PORT} --workers 4
         fi
 
   # ============================================================================
@@ -486,14 +486,14 @@ tasks:
           docker run -d \
             --name {{.POSTGRES_CONTAINER}} \
             --network {{.NETWORK_NAME}} \
-            -e POSTGRES_USER=${POSTGRES_USER:-ai_evolution} \
-            -e POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-ai_evolution_dev} \
-            -e POSTGRES_DB=${POSTGRES_DB:-ai_evolution} \
+            -e POSTGRES_USER=${POSTGRES_USER:-aieval} \
+            -e POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-aieval_dev} \
+            -e POSTGRES_DB=${POSTGRES_DB:-aieval} \
             -e PGDATA=/var/lib/postgresql/data/pgdata \
             -p ${POSTGRES_PORT:-5432}:5432 \
             -v {{.POSTGRES_VOLUME}}:/var/lib/postgresql/data \
             --restart unless-stopped \
-            --health-cmd "pg_isready -U ${POSTGRES_USER:-ai_evolution}" \
+            --health-cmd "pg_isready -U ${POSTGRES_USER:-aieval}" \
             --health-interval 5s \
             --health-timeout 5s \
             --health-retries 5 \
@@ -531,7 +531,7 @@ tasks:
   db-shell:
     desc: Open PostgreSQL shell (psql)
     cmds:
-      - docker exec -it {{.POSTGRES_CONTAINER}} psql -U ${POSTGRES_USER:-ai_evolution} -d ${POSTGRES_DB:-ai_evolution}
+      - docker exec -it {{.POSTGRES_CONTAINER}} psql -U ${POSTGRES_USER:-aieval} -d ${POSTGRES_DB:-aieval}
 
   db-reset:
     desc: Reset database (drop and recreate)
@@ -598,9 +598,9 @@ tasks:
     cmds:
       - |
         if [ -d {{.VENV_DIR}} ]; then
-          source {{.VENV_DIR}}/bin/activate && python -c "import asyncio; from ai_evolution.db.session import init_db; asyncio.run(init_db())"
+          source {{.VENV_DIR}}/bin/activate && python -c "import asyncio; from aieval.db.session import init_db; asyncio.run(init_db())"
         else
-          python -c "import asyncio; from ai_evolution.db.session import init_db; asyncio.run(init_db())"
+          python -c "import asyncio; from aieval.db.session import init_db; asyncio.run(init_db())"
         fi
 
   pgadmin:
@@ -660,8 +660,8 @@ tasks:
             --network {{.NETWORK_NAME}} \
             -e DB=postgresql \
             -e DB_PORT=5432 \
-            -e POSTGRES_USER=${POSTGRES_USER:-ai_evolution} \
-            -e POSTGRES_PWD=${POSTGRES_PASSWORD:-ai_evolution_dev} \
+            -e POSTGRES_USER=${POSTGRES_USER:-aieval} \
+            -e POSTGRES_PWD=${POSTGRES_PASSWORD:-aieval_dev} \
             -e POSTGRES_SEEDS={{.POSTGRES_CONTAINER}} \
             -e SKIP_DB_CREATE=true \
             -e SKIP_DEFAULT_NAMESPACE_CREATE=true \
@@ -689,7 +689,7 @@ tasks:
     cmds:
       - |
         if [ -d {{.VENV_DIR}} ]; then
-          source {{.VENV_DIR}}/bin/activate && python -m ai_evolution.workflows.worker
+          source {{.VENV_DIR}}/bin/activate && python -m aieval.workflows.worker
         else
           echo "⚠️  Virtual environment not found. Run: task setup"
           exit 1
@@ -735,7 +735,7 @@ tasks:
         {{.PYTHON}} --version
         echo ""
         echo "Package version:"
-        {{.PYTHON}} -c "import sys; sys.path.insert(0, '{{.SRC_DIR}}'); from ai_evolution import __version__; print(__version__)" 2>/dev/null || echo "Not installed"
+        {{.PYTHON}} -c "import sys; sys.path.insert(0, '{{.SRC_DIR}}'); from aieval import __version__; print(__version__)" 2>/dev/null || echo "Not installed"
         echo ""
         echo "Installed packages:"
         if [ -d {{.VENV_DIR}} ]; then

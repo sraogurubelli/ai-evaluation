@@ -11,9 +11,10 @@ from pathlib import Path
 from typing import Any
 
 try:
-    from ai_evolution.sdk.ml_infra import compare_csv_results
+    from samples_sdk.consumers.devops import compare_csv_results
 except ImportError:
-    print("Error: ai_evolution package not found. Install with: pip install -e .")
+    print("Error: Run from repo root with PYTHONPATH=. so samples_sdk is importable.")
+    print("Example: PYTHONPATH=. python migrations/ml_infra_evals/validate_migration.py ...")
     sys.exit(1)
 
 

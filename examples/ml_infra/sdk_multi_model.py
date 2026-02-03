@@ -1,19 +1,25 @@
 """Example: ML Infra Multi-Model Comparison using SDK.
 
 This demonstrates how to compare multiple models similar to ml-infra/evals.
+Run from repo root with PYTHONPATH=.
 """
 
 import asyncio
-from ai_evolution import (
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
+from aieval import (
     Experiment,
-    MLInfraAdapter,
+    HTTPAdapter,
     DeepDiffScorer,
     load_index_csv_dataset,
     CSVSink,
     StdoutSink,
     compare_runs,
 )
-from ai_evolution.sdk.ml_infra import create_ml_infra_experiment, create_ml_infra_sinks
+from samples_sdk.consumers.devops import create_devops_experiment, create_devops_sinks, run_devops_eval
 
 
 async def example_multi_model_comparison():
@@ -39,13 +45,21 @@ async def example_multi_model_comparison():
         "gpt-4o",
     ]
     
-    # Create adapter
-    adapter = MLInfraAdapter(
+    # Create adapter (HTTPAdapter with ml-infra context)
+    adapter = HTTPAdapter(
         base_url="http://localhost:8000",
         auth_token="your-token",
-        account_id="account-123",
-        org_id="org-456",
-        project_id="project-789",
+        context_field_name="harness_context",
+        context_data={
+            "account_id": "account-123",
+            "org_id": "org-456",
+            "project_id": "project-789",
+        },
+        endpoint_mapping={
+            "dashboard": "/chat/dashboard",
+            "knowledge_graph": "/chat/knowledge-graph",
+        },
+        default_endpoint="/chat/platform",
     )
     
     runs = []
@@ -89,12 +103,12 @@ async def example_multi_model_using_helper():
     """Using helper function for multi-model comparison."""
     print("\n=== Using Helper Function ===")
     
-    from ai_evolution.sdk.ml_infra import run_ml_infra_eval
+    # run_devops_eval imported at top from samples_sdk.consumers.devops
     
     models = ["claude-3-7-sonnet-20250219", "gpt-4o"]
     
     for model in models:
-        result = await run_ml_infra_eval(
+        result = await run_devops_eval(
             index_file="benchmarks/datasets/index.csv",
             base_dir="benchmarks/datasets",
             entity_type="pipeline",

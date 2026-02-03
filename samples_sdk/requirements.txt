@@ -1,0 +1,5 @@
+# Sample consumer SDKs depend on ai-evolution.
+# From repo root: pip install -e .  (or pip install ai-evolution)
+# Then run examples with PYTHONPATH=. so samples_sdk is importable.
+
+-e .

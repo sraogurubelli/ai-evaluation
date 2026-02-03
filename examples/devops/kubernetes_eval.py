@@ -7,9 +7,9 @@ import asyncio
 import yaml
 from typing import Any
 
-from ai_evolution import Experiment, HTTPAdapter, DatasetItem
-from ai_evolution.scorers.base import Scorer
-from ai_evolution.core.types import Score
+from aieval import Experiment, HTTPAdapter, DatasetItem
+from aieval.scorers.base import Scorer
+from aieval.core.types import Score
 
 
 class KubernetesValidScorer(Scorer):

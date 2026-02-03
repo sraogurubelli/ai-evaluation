@@ -5,7 +5,7 @@ This example shows how to use score thresholds for pass/fail criteria in CI/CD.
 
 import asyncio
 import sys
-from ai_evolution import Experiment, DeepDiffScorer, HTTPAdapter, load_index_csv_dataset
+from aieval import Experiment, DeepDiffScorer, HTTPAdapter, load_index_csv_dataset
 
 
 async def test_with_threshold(test_id: str, threshold: float = 0.9):

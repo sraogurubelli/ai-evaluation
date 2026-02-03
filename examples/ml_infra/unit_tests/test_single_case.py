@@ -4,7 +4,7 @@ This example shows how to test a single test case using ai-evolution SDK.
 """
 
 import asyncio
-from ai_evolution import DatasetItem, Experiment, DeepDiffScorer, HTTPAdapter
+from aieval import DatasetItem, Experiment, DeepDiffScorer, HTTPAdapter
 
 
 async def test_single_case_example():

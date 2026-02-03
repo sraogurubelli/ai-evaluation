@@ -1,7 +1,7 @@
 """Tests for assertion system."""
 
 import pytest
-from ai_evolution.sdk.assertions import (
+from aieval.sdk.assertions import (
     ContainsAssertion,
     RegexAssertion,
     ExactMatchAssertion,

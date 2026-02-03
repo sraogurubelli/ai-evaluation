@@ -4,7 +4,7 @@ This example shows how to use ai-evolution with pytest for CI/CD integration.
 """
 
 import pytest
-from ai_evolution import Experiment, DeepDiffScorer, HTTPAdapter, load_index_csv_dataset
+from aieval import Experiment, DeepDiffScorer, HTTPAdapter, load_index_csv_dataset
 
 
 @pytest.mark.asyncio

@@ -4,7 +4,7 @@ This demonstrates entity-specific evaluation patterns for different ML Infra ent
 """
 
 import asyncio
-from ai_evolution import (
+from aieval import (
     Experiment,
     HTTPAdapter,
     DeepDiffScorer,

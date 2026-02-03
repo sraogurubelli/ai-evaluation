@@ -1,0 +1,198 @@
+version: '3.8'
+
+services:
+  # Application Service
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BUILD_DATE: ${BUILD_DATE:-$(date -u +'%Y-%m-%dT%H:%M:%SZ')}
+        VCS_REF: ${VCS_REF:-$(git rev-parse --short HEAD 2>/dev/null || echo 'unknown')}
+        VERSION: ${VERSION:-0.1.0}
+    image: ai-evolution:${VERSION:-latest}
+    container_name: ai-evolution-app
+    environment:
+      # Database
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-aieval}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-aieval}
+      POSTGRES_USER: ${POSTGRES_USER:-aieval}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-aieval}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      
+      # Server
+      HOST: 0.0.0.0
+      PORT: 7890
+      DEBUG: ${DEBUG:-false}
+      RELOAD: ${RELOAD:-false}
+      
+      # Logging
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_FORMAT: ${LOG_FORMAT:-json}
+      EXPORT_LOGS: ${EXPORT_LOGS:-true}
+      LOG_DIR: /app/logs
+      
+      # Temporal
+      TEMPORAL_HOST: ${TEMPORAL_HOST:-temporal:7233}
+      TEMPORAL_NAMESPACE: ${TEMPORAL_NAMESPACE:-default}
+      TEMPORAL_TASK_QUEUE: ${TEMPORAL_TASK_QUEUE:-ai-evolution}
+      
+      # Optional: Langfuse
+      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-}
+      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-}
+      LANGFUSE_HOST: ${LANGFUSE_HOST:-}
+      
+      # Optional: LLM APIs
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      
+      # Context (for ml-infra adapter)
+      CHAT_BASE_URL: ${CHAT_BASE_URL:-}
+      CHAT_PLATFORM_AUTH_TOKEN: ${CHAT_PLATFORM_AUTH_TOKEN:-}
+      ACCOUNT_ID: ${ACCOUNT_ID:-default}
+      ORG_ID: ${ORG_ID:-default}
+      PROJECT_ID: ${PROJECT_ID:-default}
+    ports:
+      - "${APP_PORT:-7890}:7890"
+    volumes:
+      - app_logs:/app/logs
+      - app_data:/app/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      temporal:
+        condition: service_started
+    networks:
+      - ai-evolution-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7890/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: ai-evolution-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-aieval}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-aieval}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-aieval}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ai-evolution-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+  # Temporal Server
+  temporal:
+    image: temporalio/auto-setup:latest
+    container_name: ai-evolution-temporal
+    ports:
+      - "${TEMPORAL_PORT:-7233}:7233"  # gRPC
+      - "${TEMPORAL_UI_PORT:-8088}:8088"  # Web UI
+    environment:
+      - DB=postgresql
+      - DB_PORT=5432
+      - POSTGRES_USER=${POSTGRES_USER:-aieval}
+      - POSTGRES_PWD=${POSTGRES_PASSWORD}
+      - POSTGRES_SEEDS=postgres
+      - SKIP_DB_CREATE=true
+      - SKIP_DEFAULT_NAMESPACE_CREATE=true
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - ai-evolution-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+  # Optional: Prometheus for metrics
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: ai-evolution-prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    networks:
+      - ai-evolution-network
+    restart: unless-stopped
+    profiles:
+      - monitoring
+
+  # Optional: Grafana for visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: ai-evolution-grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./config/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./config/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    depends_on:
+      - prometheus
+    networks:
+      - ai-evolution-network
+    restart: unless-stopped
+    profiles:
+      - monitoring
+
+volumes:
+  postgres_data:
+    driver: local
+  app_logs:
+    driver: local
+  app_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+networks:
+  ai-evolution-network:
+    driver: bridge

@@ -1,84 +1,32 @@
 # Architecture
 
-## Overview
+Unified evaluation system: datasets, scorers, adapters, sinks.
 
-AI Evolution is a unified evaluation and experimentation system designed for testing and improving AI systems. It's open source, self-hostable, and production-ready.
-
-## Core Components
-
-### 1. Experiment System
-
-The `Experiment` class is the central orchestrator:
-
-- **Dataset**: Collection of test cases (inputs + optional expected outputs)
-- **Scorers**: List of evaluation functions to apply
-- **Runs**: Track multiple executions over time
-- **Comparison**: Compare runs to identify improvements/regressions
-
-### 2. Dataset System
-
-Supports multiple formats:
-
-- **JSONL**: Simple line-delimited JSON (from ai-evals)
-- **Index CSV**: File-based structure (from ml-infra/evals)
-- **Function-based**: Dynamic generation (Braintrust pattern)
-
-### 3. Scorer System
-
-Unified abstraction for evaluation:
-
-- **Code-based**: DeepDiff, schema validation, string matching
-- **LLM-as-judge**: Rubric-based evaluation
-- **Entity-specific**: Dashboard quality, KG quality
-
-### 4. Adapter System
-
-Interface for different AI systems:
-
-- **HTTPAdapter**: Generic HTTP/REST adapter (recommended, configurable for any API)
-- **HTTPAdapter**: Generic HTTP adapter that can be configured for any REST API
-- **Extensible**: Easy to add new adapters by implementing the Adapter interface
-
-### 5. Sink System
-
-Output handlers:
-
-- **CSV**: For ml-infra compatibility
-- **JSON**: Structured output
-- **Langfuse**: Optional observability integration
-- **Stdout**: Console output
-
-## Data Flow
+## Core flow
 
 ```
-Dataset → Experiment → Adapter → Generated Output
-                              ↓
-                         Scorers → Scores
-                              ↓
-                            Sinks → Results
+Dataset → Experiment → Adapter → Generated output
+                                    ↓
+                               Scorers → Scores
+                                    ↓
+                                 Sinks → Results
 ```
 
-## Design Principles
+## Components
 
-1. **Gradual Migration**: Support both old and new formats
-2. **Langfuse Optional**: Can use built-in or existing Langfuse instance
-3. **Self-Hosted First**: Designed for self-hosting
-4. **Extensible**: Easy to add scorers, adapters, sinks
+- **Experiment:** Orchestrates dataset + scorers + runs. Compare runs for regressions.
+- **Dataset:** JSONL, index CSV, or function-based. Load via `load_jsonl_dataset` or DevOps consumer.
+- **Scorers:** DeepDiff, schema validation, LLM-as-judge, entity-specific. Implement `Scorer` for custom.
+- **Adapters:** `HTTPAdapter` for any REST API. Implement `Adapter` for custom. See [custom-adapters](custom-adapters.md).
+- **Sinks:** CSV, JSON, stdout, Langfuse. Implement `Sink` for custom.
 
-## Component Relationships
+## Extension points
 
-```
-Experiment
-  ├── Dataset (list[DatasetItem])
-  ├── Scorers (list[Scorer])
-  └── Runs (list[ExperimentRun])
-        └── Scores (list[Score])
-              └── Sinks (emit results)
-```
+- **Custom scorers:** Implement `Scorer` interface.
+- **Custom adapters:** Implement `Adapter` or extend `HTTPAdapter`.
+- **Custom sinks:** Implement `Sink` interface.
+- **Custom datasets:** Use `FunctionDataset` or add loader.
 
-## Extension Points
+## Principles
 
-- **Custom Scorers**: Implement `Scorer` interface
-- **Custom Adapters**: Implement `Adapter` interface
-- **Custom Sinks**: Implement `Sink` interface
-- **Custom Datasets**: Use `FunctionDataset` or implement loader
+Gradual migration (old + new formats), Langfuse optional, self-hosted first, extensible. Core is domain-agnostic; domain-specific logic lives in scorers, adapters, datasets, and sinks.

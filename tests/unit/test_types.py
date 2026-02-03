@@ -1,7 +1,7 @@
 """Tests for core types."""
 
 import pytest
-from ai_evolution.core.types import Score, ExperimentRun, DatasetItem
+from aieval.core.types import Score, ExperimentRun, DatasetItem
 from datetime import datetime
 
 

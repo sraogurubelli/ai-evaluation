@@ -4,10 +4,10 @@ import tempfile
 from pathlib import Path
 import json
 import pytest
-from ai_evolution.sinks.csv import CSVSink
-from ai_evolution.sinks.json import JSONSink
-from ai_evolution.sinks.stdout import StdoutSink
-from ai_evolution.core.types import ExperimentRun, Score, DatasetItem
+from aieval.sinks.csv import CSVSink
+from aieval.sinks.json import JSONSink
+from aieval.sinks.stdout import StdoutSink
+from aieval.core.types import ExperimentRun, Score, DatasetItem
 
 
 class TestCSVSink:
@@ -20,6 +20,8 @@ class TestCSVSink:
         
         run = ExperimentRun(
             experiment_id="exp-001",
+            run_id="run-001",
+            dataset_id="dataset-001",
             scores=[
                 Score(name="deep_diff_v1", value=0.9, eval_id="deep_diff_v1.v1"),
                 Score(name="deep_diff_v2", value=0.85, eval_id="deep_diff_v2.v1"),
@@ -35,13 +37,15 @@ class TestCSVSink:
         assert "deep_diff_v1" in content
         assert "deep_diff_v2" in content
     
-    def test_ml_infra_compatibility(self, tmp_path):
-        """Test CSV output matches ml-infra format."""
+    def test_devops_sinks_compatibility(self, tmp_path):
+        """Test CSV output matches devops consumer / index-CSV format."""
         csv_path = tmp_path / "results.csv"
         sink = CSVSink(csv_path)
         
         run = ExperimentRun(
             experiment_id="exp-001",
+            run_id="run-001",
+            dataset_id="dataset-001",
             scores=[
                 Score(
                     name="deep_diff_v3",
@@ -56,10 +60,11 @@ class TestCSVSink:
         sink.emit_run(run)
         sink.flush()
         
-        # Check column structure matches ml-infra format
+        # Check column structure matches devops consumer / index-CSV format
         content = csv_path.read_text()
         lines = content.split("\n")
-        assert "test_id" in lines[0] or "deep_diff_v3" in lines[0]
+        assert len(lines) >= 2  # header + at least one data row
+        assert "deep_diff_v3" in content  # scorer name in header or data row
 
 
 class TestJSONSink:
@@ -72,6 +77,8 @@ class TestJSONSink:
         
         run = ExperimentRun(
             experiment_id="exp-001",
+            run_id="run-001",
+            dataset_id="dataset-001",
             scores=[
                 Score(name="deep_diff_v1", value=0.9, eval_id="deep_diff_v1.v1"),
             ],
@@ -82,8 +89,10 @@ class TestJSONSink:
         
         assert json_path.exists()
         data = json.loads(json_path.read_text())
-        assert data["experiment_id"] == "exp-001"
-        assert len(data["scores"]) == 1
+        assert isinstance(data, list) and len(data) == 1
+        run_data = data[0]
+        assert run_data["experiment_id"] == "exp-001"
+        assert len(run_data["scores"]) == 1
 
 
 class TestStdoutSink:
@@ -95,6 +104,8 @@ class TestStdoutSink:
         
         run = ExperimentRun(
             experiment_id="exp-001",
+            run_id="run-001",
+            dataset_id="dataset-001",
             scores=[
                 Score(name="deep_diff_v1", value=0.9, eval_id="deep_diff_v1.v1"),
             ],

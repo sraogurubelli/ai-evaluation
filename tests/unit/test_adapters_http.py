@@ -3,7 +3,7 @@
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 import aiohttp
-from ai_evolution.adapters.http import HTTPAdapter
+from aieval.adapters.http import HTTPAdapter
 
 
 class TestHTTPAdapter:

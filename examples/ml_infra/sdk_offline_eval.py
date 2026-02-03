@@ -1,19 +1,23 @@
 """Example: ML Infra Offline Evaluation using SDK.
 
 This demonstrates how to run offline evaluations (benchmarking pre-generated outputs)
-similar to ml-infra/evals offline mode.
+similar to ml-infra/evals offline mode. Run from repo root with PYTHONPATH=.
 """
 
 import asyncio
-from ai_evolution import (
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
+from aieval import (
     Experiment,
-    MLInfraAdapter,
     DeepDiffScorer,
     load_index_csv_dataset,
     CSVSink,
     StdoutSink,
 )
-from ai_evolution.sdk.ml_infra import create_ml_infra_experiment, create_ml_infra_sinks
+from samples_sdk.consumers.devops import create_devops_experiment, create_devops_sinks
 
 
 async def example_offline_evaluation():
@@ -57,7 +61,7 @@ async def example_offline_evaluation():
     ]
     
     # Score the outputs (since they're already in dataset.items[].output)
-    from ai_evolution.core.types import ExperimentRun
+    from aieval.core.types import ExperimentRun
     import uuid
     from datetime import datetime
     
@@ -98,7 +102,7 @@ async def example_offline_using_helper():
     print("\n=== Using ML Infra Helper Function ===")
     
     # Create experiment using helper
-    experiment = create_ml_infra_experiment(
+    experiment = create_devops_experiment(
         index_file="benchmarks/datasets/index.csv",
         base_dir="benchmarks/datasets",
         entity_type="pipeline",

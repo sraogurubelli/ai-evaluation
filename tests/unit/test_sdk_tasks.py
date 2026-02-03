@@ -2,7 +2,7 @@
 
 import pytest
 from unittest.mock import AsyncMock
-from ai_evolution.sdk.task import FunctionTask, AdapterTask
+from aieval.sdk.task import FunctionTask, AdapterTask
 from tests.fixtures.mock_adapter import MockAdapter
 
 

@@ -2,9 +2,9 @@
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from ai_evolution.sdk.runner import EvaluationRunner
-from ai_evolution.core.types import DatasetItem, Score
-from ai_evolution.sinks.stdout import StdoutSink
+from aieval.sdk.runner import EvaluationRunner
+from aieval.core.types import DatasetItem, Score
+from aieval.sinks.stdout import StdoutSink
 from tests.fixtures.mock_adapter import MockAdapter
 
 
@@ -26,7 +26,7 @@ class TestEvaluationRunner:
         
         adapter = MockAdapter()
         
-        from ai_evolution.scorers.deep_diff import DeepDiffScorer
+        from aieval.scorers.deep_diff import DeepDiffScorer
         scorers = [DeepDiffScorer(version="v1")]
         
         result = await runner.run(
@@ -55,7 +55,7 @@ class TestEvaluationRunner:
         
         adapter = MockAdapter()
         
-        from ai_evolution.scorers.deep_diff import DeepDiffScorer
+        from aieval.scorers.deep_diff import DeepDiffScorer
         scorers = [DeepDiffScorer(version="v1")]
         
         sinks = [StdoutSink()]

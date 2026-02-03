@@ -1,0 +1,34 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ai-evolution-ingress
+  namespace: ai-evolution
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+spec:
+  tls:
+  - hosts:
+    - ai-evolution.example.com
+    secretName: ai-evolution-tls
+  rules:
+  - host: ai-evolution.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: ai-evolution-service
+            port:
+              number: 80
+
+---
+# Note: Update the host and TLS configuration for your environment
+# For production, use:
+# - Proper domain name
+# - TLS certificates (Let's Encrypt or your CA)
+# - Rate limiting
+# - WAF rules if needed

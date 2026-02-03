@@ -2,8 +2,8 @@
 
 import pytest
 import yaml
-from ai_evolution.scorers.deep_diff import DeepDiffScorer
-from ai_evolution.core.types import Score
+from aieval.scorers.deep_diff import DeepDiffScorer
+from aieval.core.types import Score
 
 
 class TestDeepDiffScorerV1:

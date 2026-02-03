@@ -4,7 +4,7 @@ This example shows how to run a small test suite filtered by entity type and ope
 """
 
 import asyncio
-from ai_evolution import Experiment, DeepDiffScorer, HTTPAdapter, load_index_csv_dataset
+from aieval import Experiment, DeepDiffScorer, HTTPAdapter, load_index_csv_dataset
 
 
 async def test_pipeline_create_suite():

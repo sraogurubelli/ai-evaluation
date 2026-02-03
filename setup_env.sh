@@ -18,9 +18,9 @@ ORG_ID=default
 PROJECT_ID=default
 
 # Database Configuration
-POSTGRES_USER=ai_evolution
-POSTGRES_PASSWORD=ai_evolution_dev
-POSTGRES_DB=ai_evolution
+POSTGRES_USER=aieval
+POSTGRES_PASSWORD=aieval_dev
+POSTGRES_DB=aieval
 POSTGRES_HOST=localhost
 POSTGRES_PORT=5432
 DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}

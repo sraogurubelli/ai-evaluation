@@ -7,7 +7,7 @@ This demonstrates how to use:
 """
 
 import asyncio
-from ai_evolution import (
+from aieval import (
     # Core
     Experiment,
     DatasetItem,

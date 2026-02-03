@@ -40,14 +40,19 @@ results_df.to_csv("results/pipeline_create.csv", index=False)
 # ============================================================================
 
 import asyncio
-from ai_evolution import (
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
+from aieval import (
     Experiment,
     HTTPAdapter,
     DeepDiffScorer,
     load_index_csv_dataset,
     CSVSink,
 )
-from ai_evolution.sdk.ml_infra import run_ml_infra_eval, create_ml_infra_experiment
+from samples_sdk.consumers.devops import run_devops_eval, create_devops_experiment
 
 
 async def migration_example_simple():
@@ -55,7 +60,7 @@ async def migration_example_simple():
     print("=== Simple Migration (Helper Function) ===")
     
     # One-line equivalent to ml-infra/evals workflow
-    result = await run_ml_infra_eval(
+    result = await run_devops_eval(
         index_file="benchmarks/datasets/index.csv",
         base_dir="benchmarks/datasets",
         entity_type="pipeline",
@@ -147,7 +152,7 @@ async def migration_example_offline():
         actual_suffix="generated",  # Use *_generated.yaml files
     )
     
-    experiment = create_ml_infra_experiment(
+    experiment = create_devops_experiment(
         index_file="benchmarks/datasets/index.csv",
         base_dir="benchmarks/datasets",
         entity_type="pipeline",
@@ -157,7 +162,7 @@ async def migration_example_offline():
     )
     
     # Score pre-generated outputs (no adapter needed)
-    from ai_evolution.core.types import ExperimentRun
+    from aieval.core.types import ExperimentRun
     import uuid
     
     all_scores = []
@@ -196,7 +201,7 @@ async def migration_example_multi_model():
     runs = []
     
     for model in models:
-        result = await run_ml_infra_eval(
+        result = await run_devops_eval(
             index_file="benchmarks/datasets/index.csv",
             base_dir="benchmarks/datasets",
             entity_type="pipeline",
@@ -208,7 +213,7 @@ async def migration_example_multi_model():
     
     # Compare runs
     if len(runs) >= 2:
-        from ai_evolution import compare_runs
+        from aieval import compare_runs
         comparison = compare_runs(runs[0], runs[1])
         print(f"Model comparison: {comparison.improvements} improvements, {comparison.regressions} regressions")
 

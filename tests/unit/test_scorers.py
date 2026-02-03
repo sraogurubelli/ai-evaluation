@@ -1,8 +1,8 @@
 """Tests for scorers."""
 
 import pytest
-from ai_evolution.scorers.deep_diff import DeepDiffScorer
-from ai_evolution.scorers.schema_validation import SchemaValidationScorer
+from aieval.scorers.deep_diff import DeepDiffScorer
+from aieval.scorers.schema_validation import SchemaValidationScorer
 
 
 def test_deepdiff_scorer_v1():
