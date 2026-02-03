@@ -290,12 +290,17 @@ class SSEStreamingAdapter(Adapter):
                             # Extract final YAML from completion events
                             if current_event in self.completion_events:
                                 # Try multiple possible fields for the output
-                                final_yaml = (
+                                # Extract from expected YAML fields (not JSON fallback)
+                                yaml_from_field = (
                                     event_data.get("yaml") or
                                     event_data.get("output") or
-                                    event_data.get("result") or
-                                    json.dumps(event_data)
+                                    event_data.get("result")
                                 )
+                                
+                                # Only update if we found YAML in the expected fields
+                                # This prevents JSON fallback from overwriting valid YAML
+                                if yaml_from_field and yaml_from_field.strip():
+                                    final_yaml = yaml_from_field
                             
                             # Extract token usage
                             if current_event == self.usage_event or "usage" in event_data:
