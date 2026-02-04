@@ -115,6 +115,7 @@ class MLInfraSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="CHAT_", case_sensitive=False)
     
     base_url: str | None = Field(default=None, description="ML Infra base URL")
+    endpoint: str = Field(default="/chat/unified", description="SSE streaming endpoint path")
     platform_url: str | None = Field(default=None, description="ML Infra platform URL")
     dashboard_url: str | None = Field(default=None, description="ML Infra dashboard URL")
     kg_url: str | None = Field(default=None, description="ML Infra knowledge graph URL")

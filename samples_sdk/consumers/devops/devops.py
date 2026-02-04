@@ -165,7 +165,7 @@ async def run_devops_eval(
                     "org_id": org_id,
                     "project_id": project_id,
                 },
-                endpoint="/chat/stream",
+                endpoint="/chat/unified",
                 completion_events=[
                     "complete",
                     "dashboard_complete",

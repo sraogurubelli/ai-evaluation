@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """Run DevOps evals from the command line.
 
-Run from ai-evaluation repo root with PYTHONPATH=. so samples_sdk is importable:
+Run from ai-evaluation repo root:
 
-    PYTHONPATH=. python samples_sdk/consumers/devops/run_evals.py --agent-id devops-pipeline-agent --entity-type pipeline
+    python samples_sdk/consumers/devops/run_evals.py --agent-id devops-pipeline-agent --entity-type pipeline
 
 With streaming and metrics:
 
-    PYTHONPATH=. python samples_sdk/consumers/devops/run_evals.py \\
+    python samples_sdk/consumers/devops/run_evals.py \\
       --agent-id devops-pipeline-agent --entity-type pipeline \\
       --agent-name DevopsAgent --agent-version 0.1 \\
       --streaming --include-metrics --concurrency 1
@@ -22,7 +22,9 @@ import sys
 from pathlib import Path
 
 # Ensure repo root (or ai-evaluation) is on path so samples_sdk is importable
-_repo_root = Path(__file__).resolve().parents[2]
+# File is at: samples_sdk/consumers/devops/run_evals.py
+# So we need to go up 3 levels to reach repo root
+_repo_root = Path(__file__).resolve().parents[3]
 if str(_repo_root) not in sys.path:
     sys.path.insert(0, str(_repo_root))
 

@@ -46,7 +46,7 @@ class SSEStreamingAdapter(Adapter):
         base_url: str = "http://localhost:8000",
         headers: dict[str, str] | None = None,
         context_data: dict[str, Any] | None = None,
-        endpoint: str = "/chat/stream",
+        endpoint: str = "/chat/unified",
         completion_events: list[str] | None = None,
         tool_call_events: list[str] | None = None,
         usage_event: str = "usage",
