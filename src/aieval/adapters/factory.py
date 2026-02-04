@@ -8,6 +8,7 @@ from aieval.adapters.base import Adapter
 from aieval.adapters.http import HTTPAdapter
 from aieval.adapters.sse_streaming import SSEStreamingAdapter
 from aieval.adapters.langfuse import LangfuseAdapter
+from aieval.config.settings import get_settings
 
 
 def create_http_adapter(**config: Any) -> HTTPAdapter:
@@ -51,10 +52,10 @@ def create_sse_streaming_adapter(**config: Any) -> SSEStreamingAdapter:
     
     Args:
         **config: Configuration for SSEStreamingAdapter:
-            - base_url: Base URL for the API server
+            - base_url: Base URL for the API server (defaults to CHAT_BASE_URL env var or config)
             - headers: Custom headers dictionary
             - context_data: Context data dictionary
-            - endpoint: SSE streaming endpoint path
+            - endpoint: SSE streaming endpoint path (defaults to CHAT_ENDPOINT env var or config)
             - completion_events: Event names that indicate completion
             - tool_call_events: Event names that indicate tool calls
             - usage_event: Event name that contains token usage
@@ -65,18 +66,25 @@ def create_sse_streaming_adapter(**config: Any) -> SSEStreamingAdapter:
     Returns:
         SSEStreamingAdapter instance
     """
-    base_url = config.get("base_url") or os.getenv("CHAT_BASE_URL", "http://localhost:8000")
-    auth_token = config.get("auth_token") or os.getenv("CHAT_PLATFORM_AUTH_TOKEN", "")
+    settings = get_settings()
+    
+    # Get base_url from config, env var, or settings (in that order)
+    # Pass None to adapter so it can read from env/config if not explicitly provided
+    base_url = config.get("base_url") if "base_url" in config else None
+    auth_token = config.get("auth_token") or os.getenv("CHAT_PLATFORM_AUTH_TOKEN") or settings.ml_infra.platform_auth_token
     
     headers = config.get("headers", {})
     if auth_token and "Authorization" not in headers:
         headers["Authorization"] = f"Bearer {auth_token}"
     
+    # Get endpoint from config (pass None to adapter so it can read from env/config if not explicitly provided)
+    endpoint = config.get("endpoint") if "endpoint" in config else None
+    
     return SSEStreamingAdapter(
         base_url=base_url,
         headers=headers,
         context_data=config.get("context_data", {}),
-        endpoint=config.get("endpoint", "/chat/stream"),
+        endpoint=endpoint,
         completion_events=config.get("completion_events", [
             "complete",
             "dashboard_complete",
@@ -143,6 +151,7 @@ def create_ml_infra_adapter(**config: Any) -> Adapter:
     use_sse_streaming = config.get("use_sse_streaming", False)
     
     if use_sse_streaming:
+        settings = get_settings()
         return create_sse_streaming_adapter(
             base_url=base_url,
             headers={"Authorization": f"Bearer {auth_token}"} if auth_token else {},
@@ -151,7 +160,7 @@ def create_ml_infra_adapter(**config: Any) -> Adapter:
                 "org_id": org_id,
                 "project_id": project_id,
             },
-            endpoint="/chat/stream",
+            endpoint=config.get("endpoint") or settings.ml_infra.endpoint,
             completion_events=["complete", "dashboard_complete", "kg_complete"],
             tool_call_events=["tool_call", "function_call"],
             include_uuids=True,

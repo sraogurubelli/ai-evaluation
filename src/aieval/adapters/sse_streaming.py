@@ -6,6 +6,7 @@ output containing the final YAML plus collected metrics, tool calls, and events.
 
 import json
 import logging
+import os
 import time
 import uuid as uuid_module
 from typing import Any, Callable
@@ -13,6 +14,7 @@ from typing import Any, Callable
 import aiohttp
 
 from aieval.adapters.base import Adapter
+from aieval.config.settings import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -43,10 +45,10 @@ class SSEStreamingAdapter(Adapter):
     
     def __init__(
         self,
-        base_url: str = "http://localhost:8000",
+        base_url: str | None = None,
         headers: dict[str, str] | None = None,
         context_data: dict[str, Any] | None = None,
-        endpoint: str = "/chat/stream",
+        endpoint: str | None = None,
         completion_events: list[str] | None = None,
         tool_call_events: list[str] | None = None,
         usage_event: str = "usage",
@@ -58,10 +60,10 @@ class SSEStreamingAdapter(Adapter):
         Initialize SSE streaming adapter.
         
         Args:
-            base_url: Base URL for the API server
+            base_url: Base URL for the API server (defaults to CHAT_BASE_URL env var or config)
             headers: Custom headers dict (Authorization, X-API-Key, etc.)
             context_data: Context data (account_id, org_id, etc.)
-            endpoint: SSE streaming endpoint path
+            endpoint: SSE streaming endpoint path (defaults to CHAT_ENDPOINT env var or config)
             completion_events: Event names that indicate completion with final output
             tool_call_events: Event names that indicate tool calls
             usage_event: Event name that contains token usage information
@@ -71,6 +73,17 @@ class SSEStreamingAdapter(Adapter):
                 Special values: "__uuid__", "__timestamp__", "__input__.<field>", "__model__"
             include_uuids: If True, adds conversation_id and interaction_id (HTTPAdapter style)
         """
+        # Get settings from config
+        settings = get_settings()
+        
+        # Use provided values or fall back to env vars, then config, then defaults
+        # Priority: explicit parameter > env var > config > default
+        if base_url is None:
+            base_url = os.getenv("CHAT_BASE_URL") or settings.ml_infra.base_url or "http://localhost:8000"
+        
+        if endpoint is None:
+            endpoint = os.getenv("CHAT_ENDPOINT") or settings.ml_infra.endpoint
+        
         self.base_url = base_url.rstrip("/")
         self.context_data = context_data or {}
         self.endpoint = endpoint
