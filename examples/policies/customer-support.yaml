@@ -1,0 +1,61 @@
+name: customer-support-guardrails
+version: v1
+description: Guardrails for customer support chatbot
+
+rules:
+  # Block toxic content
+  - id: block-toxicity
+    type: toxicity
+    enabled: true
+    threshold: 0.7
+    action: block
+    config:
+      violation_types: [profanity, hate_speech, harassment]
+      model: "gpt-4o-mini"
+  
+  # Detect and warn about PII
+  - id: detect-pii
+    type: pii
+    enabled: true
+    threshold: 0.8
+    action: warn
+    config:
+      entities: [EMAIL, PHONE_NUMBER, CREDIT_CARD, SSN]
+      use_presidio: false  # Set to true if presidio-analyzer is installed
+  
+  # Prevent prompt injection
+  - id: prevent-injection
+    type: prompt_injection
+    enabled: true
+    threshold: 0.6
+    action: block
+  
+  # Check for hallucinations (requires context)
+  - id: check-hallucination
+    type: hallucination
+    enabled: true
+    threshold: 0.5
+    action: warn
+    config:
+      model: "gpt-4o-mini"
+  
+  # Block internal URLs
+  - id: block-internal-urls
+    type: regex
+    enabled: true
+    threshold: 0.5
+    action: block
+    config:
+      patterns:
+        - "internal-.*\\.com"
+        - "secret-.*\\.com"
+  
+  # Block competitor mentions
+  - id: block-competitors
+    type: keyword
+    enabled: true
+    threshold: 0.5
+    action: block
+    config:
+      keywords: [competitor-a, competitor-b]
+      case_sensitive: false

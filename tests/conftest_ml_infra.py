@@ -9,13 +9,13 @@ import pytest
 from pathlib import Path
 from typing import Generator
 
-from ai_evolution import (
+from aieval import (
     Experiment,
     DeepDiffScorer,
     HTTPAdapter,
     load_index_csv_dataset,
 )
-from ai_evolution.core.types import DatasetItem
+from aieval.core.types import DatasetItem
 
 
 @pytest.fixture
@@ -161,7 +161,7 @@ def load_test_case_by_id():
     """
     def _load_test_case(test_id: str, index_file: str | None = None, base_dir: str | None = None) -> DatasetItem:
         """Load a single test case by test_id."""
-        from ai_evolution.sdk.ml_infra import load_single_test_case
+        from samples_sdk.consumers.devops import load_single_test_case
         
         if index_file is None:
             index_file = os.getenv("INDEX_FILE", "benchmarks/datasets/index.csv")

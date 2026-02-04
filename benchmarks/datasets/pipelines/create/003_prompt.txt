@@ -1,0 +1,6 @@
+Build a data pipeline that:
+- Reads from an S3 bucket (s3://my-bucket/input/)
+- Performs data validation to ensure all required fields are present
+- Applies data quality checks
+- Writes validated data to another S3 location (s3://my-bucket/output/)
+

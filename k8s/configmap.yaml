@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ai-evolution-config
+  namespace: ai-evolution
+data:
+  # Database Configuration
+  postgres-user: "aieval"
+  postgres-db: "aieval"
+  postgres-host: "postgres-service"
+  postgres-port: "5432"
+  
+  # Server Configuration
+  host: "0.0.0.0"
+  port: "7890"
+  debug: "false"
+  reload: "false"
+  
+  # Logging Configuration
+  log-level: "INFO"
+  log-format: "json"
+  export-logs: "true"
+  log-dir: "/app/logs"
+  
+  # Temporal Configuration
+  temporal-host: "temporal-service:7233"
+  temporal-namespace: "default"
+  temporal-task-queue: "ai-evolution"
+  
+  # Application Configuration
+  account-id: "default"
+  org-id: "default"
+  project-id: "default"

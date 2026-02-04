@@ -1,7 +1,7 @@
 """Mock adapter fixtures for testing."""
 
 from unittest.mock import AsyncMock
-from ai_evolution.adapters.base import Adapter
+from aieval.adapters.base import Adapter
 
 
 class MockAdapter(Adapter):

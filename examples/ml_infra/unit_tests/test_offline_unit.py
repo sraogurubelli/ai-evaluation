@@ -4,8 +4,8 @@ This example shows how to test pre-generated outputs without making API calls.
 """
 
 import asyncio
-from ai_evolution import Experiment, DeepDiffScorer, load_index_csv_dataset
-from ai_evolution.core.types import Score
+from aieval import Experiment, DeepDiffScorer, load_index_csv_dataset
+from aieval.core.types import Score
 
 
 async def test_offline_single_case():

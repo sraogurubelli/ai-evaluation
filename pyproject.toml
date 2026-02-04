@@ -21,6 +21,7 @@ classifiers = [
 requires-python = ">=3.11"
 dependencies = [
     "pydantic>=2.10",
+    "pydantic-settings>=2.1.0",
     "typer>=0.15",
     "pyyaml>=6.0",
     "pandas>=2.0",
@@ -35,6 +36,21 @@ dependencies = [
     "asyncpg>=0.29",
     "psycopg2-binary>=2.9",
     "alembic>=1.13",
+    "python-dotenv>=1.0.0",
+    "structlog>=24.1.0",
+    # Monitoring
+    "prometheus-client>=0.19.0",
+    "opentelemetry-api>=1.21.0",
+    "opentelemetry-sdk>=1.21.0",
+    "opentelemetry-instrumentation-fastapi>=0.42b0",
+    "opentelemetry-instrumentation-sqlalchemy>=0.42b0",
+    "opentelemetry-exporter-otlp-proto-grpc>=1.21.0",
+    # Security
+    "python-jose[cryptography]>=3.3.0",
+    "passlib[bcrypt]>=1.7.4",
+    "python-multipart>=0.0.6",
+    # Resilience
+    "tenacity>=8.2.3",
 ]
 
 [project.optional-dependencies]
@@ -52,15 +68,15 @@ llm = [
 ]
 
 [project.scripts]
-ai-evolution = "ai_evolution.cli.main:app"
-ai-evolution-server = "ai_evolution.api.server:main"
+aieval = "aieval.cli.main:app"
+aieval-server = "aieval.api.server:main"
 
 [build-system]
 requires = ["hatchling>=1.0", "setuptools>=65.0", "wheel"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/ai_evolution"]
+packages = ["src/aieval"]
 
 [tool.ruff]
 line-length = 100
@@ -70,3 +86,6 @@ target-version = "py311"
 python_version = "3.11"
 warn_return_any = true
 warn_unused_configs = true
+
+[tool.pytest.ini_options]
+pythonpath = ["."]

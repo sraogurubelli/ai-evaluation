@@ -1,0 +1,151 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-evolution
+  namespace: ai-evolution
+  labels:
+    app: ai-evolution
+    version: v1
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ai-evolution
+  template:
+    metadata:
+      labels:
+        app: ai-evolution
+        version: v1
+    spec:
+      serviceAccountName: ai-evolution
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+      - name: app
+        image: ai-evolution:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 7890
+          name: http
+          protocol: TCP
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: ai-evolution-secrets
+              key: database-url
+        - name: POSTGRES_USER
+          valueFrom:
+            configMapKeyRef:
+              name: ai-evolution-config
+              key: postgres-user
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: ai-evolution-secrets
+              key: postgres-password
+        - name: POSTGRES_DB
+          valueFrom:
+            configMapKeyRef:
+              name: ai-evolution-config
+              key: postgres-db
+        - name: POSTGRES_HOST
+          value: postgres-service
+        - name: POSTGRES_PORT
+          value: "5432"
+        - name: HOST
+          value: "0.0.0.0"
+        - name: PORT
+          value: "7890"
+        - name: LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: ai-evolution-config
+              key: log-level
+        - name: LOG_FORMAT
+          valueFrom:
+            configMapKeyRef:
+              name: ai-evolution-config
+              key: log-format
+        - name: TEMPORAL_HOST
+          value: temporal-service:7233
+        - name: TEMPORAL_NAMESPACE
+          valueFrom:
+            configMapKeyRef:
+              name: ai-evolution-config
+              key: temporal-namespace
+        - name: TEMPORAL_TASK_QUEUE
+          valueFrom:
+            configMapKeyRef:
+              name: ai-evolution-config
+              key: temporal-task-queue
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ai-evolution-secrets
+              key: openai-api-key
+              optional: true
+        - name: ANTHROPIC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ai-evolution-secrets
+              key: anthropic-api-key
+              optional: true
+        - name: LANGFUSE_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ai-evolution-secrets
+              key: langfuse-secret-key
+              optional: true
+        - name: LANGFUSE_PUBLIC_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ai-evolution-secrets
+              key: langfuse-public-key
+              optional: true
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "2000m"
+        livenessProbe:
+          httpGet:
+            path: /health/live
+            port: 7890
+          initialDelaySeconds: 40
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health/ready
+            port: 7890
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        startupProbe:
+          httpGet:
+            path: /health/startup
+            port: 7890
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 30
+        volumeMounts:
+        - name: logs
+          mountPath: /app/logs
+        - name: data
+          mountPath: /app/data
+      volumes:
+      - name: logs
+        emptyDir: {}
+      - name: data
+        persistentVolumeClaim:
+          claimName: ai-evolution-data
+      securityContext:
+        fsGroup: 1000

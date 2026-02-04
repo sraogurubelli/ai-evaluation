@@ -1,0 +1,19 @@
+pipeline:
+  name: user_export_pipeline
+  steps:
+    - name: read_postgres
+      type: source
+      config:
+        connection_string: postgresql://localhost:5432/mydb
+        query: SELECT * FROM users
+    - name: add_full_name
+      type: transform
+      config:
+        expression: first_name + " " + last_name
+        output_column: full_name
+    - name: write_json
+      type: sink
+      config:
+        file_path: users_export.json
+        format: json
+

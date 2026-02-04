@@ -4,7 +4,7 @@ This is a template that teams can use to create their own adapters.
 Copy this file and modify it for your team's specific API requirements.
 """
 
-from ai_evolution.adapters.base import Adapter
+from aieval.adapters.base import Adapter
 from typing import Any
 import aiohttp
 import logging

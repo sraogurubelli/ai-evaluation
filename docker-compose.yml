@@ -5,16 +5,16 @@ services:
     image: postgres:16-alpine
     container_name: ai-evolution-postgres
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-ai_evolution}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ai_evolution_dev}
-      POSTGRES_DB: ${POSTGRES_DB:-ai_evolution}
+      POSTGRES_USER: ${POSTGRES_USER:-aieval}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aieval_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-aieval}
       PGDATA: /var/lib/postgresql/data/pgdata
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ai_evolution}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-aieval}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -32,8 +32,8 @@ services:
     environment:
       - DB=postgresql
       - DB_PORT=5432
-      - POSTGRES_USER=${POSTGRES_USER:-ai_evolution}
-      - POSTGRES_PWD=${POSTGRES_PASSWORD:-ai_evolution_dev}
+      - POSTGRES_USER=${POSTGRES_USER:-aieval}
+      - POSTGRES_PWD=${POSTGRES_PASSWORD:-aieval_dev}
       - POSTGRES_SEEDS=postgres
       - SKIP_DB_CREATE=true
       - SKIP_DEFAULT_NAMESPACE_CREATE=true

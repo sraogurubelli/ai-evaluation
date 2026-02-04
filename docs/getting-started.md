@@ -1,89 +1,38 @@
 # Getting Started
 
-## Installation
+## Install
 
 ```bash
-# Clone repository
 git clone <repo-url>
-cd ai-evolution
-
-# Install
+cd ai-evaluation
 pip install -e .
-
-# Install optional dependencies for LLM judge
-pip install -e ".[llm]"
+# Optional: pip install -e ".[llm]"
 ```
 
-## Configuration
+## Config
 
-1. Copy `.env.example` to `.env`
-2. Set environment variables:
-   - `CHAT_BASE_URL`: ml-infra server URL
-   - `CHAT_PLATFORM_AUTH_TOKEN`: Authentication token
-   - `LANGFUSE_*`: Optional Langfuse configuration
+Copy `.env.example` to `.env`. Set `CHAT_BASE_URL`, `CHAT_PLATFORM_AUTH_TOKEN`. Optional: `LANGFUSE_*`.
 
-## Quick Start
+## Run first experiment
 
-### 1. Create Config File
-
-Create `config.yaml`:
-
-```yaml
-experiment:
-  name: "my_experiment"
-
-dataset:
-  type: "index_csv"
-  index_file: "benchmarks/datasets/index.csv"
-  base_dir: "benchmarks/datasets"
-  filters:
-    entity_type: "pipeline"
-    operation_type: "create"
-
-adapter:
-  type: "ml_infra"
-  base_url: "${CHAT_BASE_URL}"
-  auth_token: "${CHAT_PLATFORM_AUTH_TOKEN}"
-
-models:
-  - "claude-3-7-sonnet-20250219"
-
-scorers:
-  - type: "deep_diff"
-    version: "v3"
-
-execution:
-  concurrency_limit: 5
-
-output:
-  sinks:
-    - type: "csv"
-      path: "results/results.csv"
-    - type: "stdout"
-```
-
-### 2. Run Experiment
+**CLI:** Create `config.yaml` (see [README](../README.md) or `examples/ml_infra/config.yaml`). Then:
 
 ```bash
-ai-evolution run --config config.yaml
+aieval run --config config.yaml
 ```
 
-### 3. View Results
+**SDK:** See [SDK](sdk.md) for `Experiment`, `HTTPAdapter`, `DeepDiffScorer`, `load_jsonl_dataset`. For index-CSV + CSV: `samples_sdk/consumers/devops` (run with `PYTHONPATH=.` from repo root).
 
-Results are written to:
-- CSV file: `results/results.csv`
-- Console: Summary printed to stdout
-- Langfuse: If configured, scores linked to traces
+Results: CSV path in config, stdout summary; Langfuse if configured.
 
-## Examples
+## Run without Docker
 
-See `examples/` directory for:
-- `ml_infra/config.yaml`: Pipeline evaluation example
-- `ml_infra/config_dashboard.yaml`: Dashboard evaluation example
-- `general/simple_eval.py`: Simple Python example
+- **CLI / SDK** work without Docker. For basic runs you only need a venv and `pip install -e ".[dev]"`.
+- **PostgreSQL** is needed for task storage and experiment tracking. Options: install Docker and run `task db-up`; or use an existing PostgreSQL and set `DATABASE_URL` in `.env`.
+- **Minimal (no DB):** `python3 -m venv .venv` → `source .venv/bin/activate` → `pip install -e ".[dev]"` → `aieval run --config config.yaml` (CLI may have limited features without DB).
+- **Temporal** (workflows) is optional; skip if you only run CLI/SDK evals.
 
-## Next Steps
+## Next steps
 
-- Read [Architecture](architecture.md) for system design
-- Read [Migration Guide](migration-guide.md) to migrate from ml-infra/evals
-- Explore example configs in `examples/`
+- [Architecture](architecture.md) · [Migration](migration.md) · [SDK unit testing](sdk-unit-testing.md)
+- Examples: `examples/ml_infra/`, `examples/general/`, `samples_sdk/consumers/devops`

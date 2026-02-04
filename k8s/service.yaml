@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-evolution-service
+  namespace: ai-evolution
+  labels:
+    app: ai-evolution
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 7890
+    protocol: TCP
+    name: http
+  selector:
+    app: ai-evolution
+  sessionAffinity: None

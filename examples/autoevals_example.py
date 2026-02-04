@@ -4,7 +4,7 @@ This demonstrates how to use pre-built scorers similar to Braintrust's autoevals
 """
 
 import asyncio
-from ai_evolution import (
+from aieval import (
     Experiment,
     DatasetItem,
     HTTPAdapter,

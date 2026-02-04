@@ -1,0 +1,6 @@
+Create a pipeline that:
+- Connects to a PostgreSQL database
+- Executes a SQL query to select all users
+- Applies a transformation to add a computed column "full_name" that concatenates first_name and last_name
+- Saves results to a JSON file
+

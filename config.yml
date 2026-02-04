@@ -1,0 +1,98 @@
+# AI Evolution Platform - ML Infra Service Configuration
+# This configuration file is used to run evaluations against the ml-infra service
+
+experiment:
+  name: "ml_infra_evaluation"
+  description: "Evaluation against ml-infra service"
+
+# Dataset Configuration
+dataset:
+  type: "index_csv"  # Options: jsonl, index_csv, function
+  index_file: "benchmarks/datasets/index.csv"
+  base_dir: "benchmarks/datasets"
+  filters:
+    # Optional filters to narrow down test cases
+    # entity_type: "pipeline"  # e.g., pipeline, dashboard, knowledge_graph
+    # operation_type: "create"  # e.g., create, update, delete
+    # test_id: "pipeline_create_001"  # Specific test ID
+  offline: false  # Set to true for offline evaluation (uses pre-generated outputs)
+  actual_suffix: "actual"  # Suffix for actual output files
+
+# Adapter Configuration - ML Infra Service
+adapter:
+  type: "http"  # Use "http" for generic REST API or "ml_infra" for ml-infra specific (deprecated)
+  base_url: "${CHAT_BASE_URL}"  # Will be replaced with CHAT_BASE_URL from .env
+  auth_token: "${CHAT_PLATFORM_AUTH_TOKEN}"  # Will be replaced with token from .env
+  
+  # ML Infra specific context fields
+  context_field_name: "harness_context"
+  context_data:
+    account_id: "${ACCOUNT_ID}"
+    org_id: "${ORG_ID}"
+    project_id: "${PROJECT_ID}"
+  
+  # Endpoint mapping for different entity types
+  endpoint_mapping:
+    dashboard: "/chat/dashboard"
+    knowledge_graph: "/chat/knowledge-graph"
+  
+  # Default endpoint for general chat
+  default_endpoint: "/chat/platform"
+  
+  # Response format
+  response_format: "json"  # Options: json, yaml
+  
+  # YAML extraction path (for ml-infra responses)
+  yaml_extraction_path: ["capabilities_to_run", -1, "input", "yaml"]
+  
+  # SSE completion events (for streaming responses)
+  sse_completion_events: ["dashboard_complete", "kg_complete"]
+
+# Models to evaluate
+models:
+  - "claude-3-7-sonnet-20250219"
+  # - "gpt-4o"  # Uncomment to add more models
+  # - "claude-3-5-sonnet-20241022"
+
+# Scorers Configuration
+scorers:
+  - type: "deep_diff"
+    version: "v3"  # Options: v1, v2, v3
+    # entity_type: "pipeline"  # Optional: filter by entity type
+    # validation_func: null  # Optional: custom validation function path
+  
+  - type: "deep_diff"
+    version: "v2"  # Run multiple versions for comparison
+  
+  - type: "schema_validation"
+    # validation_func: null  # Optional: custom validation function path
+  
+  # Uncomment to use LLM judge scorer
+  # - type: "llm_judge"
+  #   model: "gpt-4o-mini"
+  #   rubric: "Evaluate the quality of the generated output"
+  #   api_key: "${OPENAI_API_KEY}"
+
+# Execution Configuration
+execution:
+  concurrency_limit: 5  # Maximum concurrent API calls
+  sample_size: null  # Optional: limit number of test cases (null = all)
+
+# Output Configuration
+output:
+  sinks:
+    # CSV output
+    - type: "csv"
+      path: "results/{experiment_name}_{timestamp}.csv"
+    
+    # Console output
+    - type: "stdout"
+    
+    # JSON output
+    - type: "json"
+      path: "results/{experiment_name}_{timestamp}.json"
+    
+    # Langfuse integration (optional - requires LANGFUSE_* env vars)
+    # - type: "langfuse"
+    #   project: "ml-infra-evals"
+

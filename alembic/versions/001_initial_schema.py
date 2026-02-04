@@ -19,15 +19,19 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # Create task_status enum (use IF NOT EXISTS)
+    # Create task_status enum only if it doesn't exist (idempotent for re-runs)
     conn = op.get_bind()
-    try:
-        conn.execute(sa.text("CREATE TYPE task_status AS ENUM ('PENDING', 'RUNNING', 'COMPLETED', 'FAILED', 'CANCELLED')"))
-    except Exception:
-        # Type already exists, continue
-        pass
-    
-    task_status_enum = sa.Enum('PENDING', 'RUNNING', 'COMPLETED', 'FAILED', 'CANCELLED', name='task_status')
+    conn.execute(sa.text("""
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'task_status') THEN
+                CREATE TYPE task_status AS ENUM ('PENDING', 'RUNNING', 'COMPLETED', 'FAILED', 'CANCELLED');
+            END IF;
+        END
+        $$;
+    """))
+    # Use postgresql.ENUM with create_type=False so create_table does not emit CREATE TYPE
+    task_status_enum = postgresql.ENUM('PENDING', 'RUNNING', 'COMPLETED', 'FAILED', 'CANCELLED', name='task_status', create_type=False)
     
     # Create tasks table
     op.create_table(

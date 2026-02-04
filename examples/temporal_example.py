@@ -1,7 +1,7 @@
 """Example: Using Temporal workflows for experiment execution."""
 
 import asyncio
-from ai_evolution.workflows.client import (
+from aieval.workflows.client import (
     start_experiment_workflow,
     get_workflow_status,
     get_workflow_result,

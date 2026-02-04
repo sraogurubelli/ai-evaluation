@@ -1,6 +1,6 @@
 """Sample dataset fixtures for testing."""
 
-from ai_evolution.core.types import DatasetItem
+from aieval.core.types import DatasetItem
 
 
 def sample_dataset_items():

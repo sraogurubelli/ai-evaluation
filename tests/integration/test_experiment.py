@@ -2,9 +2,9 @@
 
 import pytest
 import asyncio
-from ai_evolution.core.experiment import Experiment
-from ai_evolution.core.types import DatasetItem
-from ai_evolution.scorers.deep_diff import DeepDiffScorer
+from aieval.core.experiment import Experiment
+from aieval.core.types import DatasetItem
+from aieval.scorers.deep_diff import DeepDiffScorer
 
 
 class MockAdapter:
@@ -49,7 +49,7 @@ async def test_experiment_run():
 
 def test_experiment_compare():
     """Test comparing two experiment runs."""
-    from ai_evolution.core.types import Score
+    from aieval.core.types import Score
     
     # Create experiment
     experiment = Experiment(

@@ -1,7 +1,7 @@
 """Tests for LLM judge scorer."""
 
 import pytest
-from ai_evolution.scorers.llm_judge import LLMJudgeScorer
+from aieval.scorers.llm_judge import LLMJudgeScorer
 
 
 class TestLLMJudgeScorer:
