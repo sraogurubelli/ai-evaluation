@@ -42,6 +42,8 @@ from aieval.sdk import (
     CSVSink,
     JSONSink,
     LangfuseSink,
+    JUnitSink,
+    HTMLReportSink,
     Sink,
     # Runner
     EvaluationRunner,
@@ -87,6 +89,8 @@ __all__ = [
     "CSVSink",
     "JSONSink",
     "LangfuseSink",
+    "JUnitSink",
+    "HTMLReportSink",
     "Sink",
     # Runner
     "EvaluationRunner",

@@ -7,6 +7,8 @@ import pytest
 from aieval.sinks.csv import CSVSink
 from aieval.sinks.json import JSONSink
 from aieval.sinks.stdout import StdoutSink
+from aieval.sinks.junit import JUnitSink
+from aieval.sinks.html_report import HTMLReportSink, render_run_to_html
 from aieval.core.types import ExperimentRun, Score, DatasetItem
 
 
@@ -116,3 +118,71 @@ class TestStdoutSink:
         
         captured = capsys.readouterr()
         assert "exp-001" in captured.out or "deep_diff_v1" in captured.out
+
+
+class TestJUnitSink:
+    """Tests for JUnit XML sink (reports)."""
+
+    def test_emit_run_writes_junit_xml(self, tmp_path):
+        """Test emitting run produces valid JUnit-style XML."""
+        junit_path = tmp_path / "junit.xml"
+        sink = JUnitSink(junit_path)
+        run = ExperimentRun(
+            experiment_id="exp-001",
+            run_id="run-001",
+            dataset_id="dataset-001",
+            scores=[
+                Score(name="deep_diff_v3", value=0.95, eval_id="d.v1", metadata={"test_id": "test_1"}),
+                Score(name="deep_diff_v3", value=0.0, eval_id="d.v1", metadata={"test_id": "test_2"}),
+            ],
+            metadata={"agent_id": "devops-agent"},
+        )
+        sink.emit_run(run)
+        sink.flush()
+        assert junit_path.exists()
+        content = junit_path.read_text()
+        assert "testsuite" in content and "testcase" in content
+        assert "test_1" in content and "test_2" in content
+        assert "failures=" in content
+
+
+class TestHTMLReportSink:
+    """Tests for HTML report sink (reports)."""
+
+    def test_emit_run_writes_html_report(self, tmp_path):
+        """Test emitting run produces HTML with summary and table."""
+        html_path = tmp_path / "report.html"
+        sink = HTMLReportSink(html_path)
+        run = ExperimentRun(
+            experiment_id="exp-001",
+            run_id="run-001",
+            dataset_id="dataset-001",
+            scores=[
+                Score(name="deep_diff_v3", value=0.95, eval_id="d.v1", metadata={"test_id": "test_1"}),
+                Score(name="deep_diff_v3", value=0.0, eval_id="d.v1", metadata={"test_id": "test_2"}),
+            ],
+            metadata={"agent_id": "devops-agent", "name": "my_exp"},
+        )
+        sink.emit_run(run)
+        sink.flush()
+        assert html_path.exists()
+        content = html_path.read_text()
+        assert "Evaluation Report" in content or "report" in content.lower()
+        assert "Total" in content and "Passed" in content and "Failed" in content
+        assert "test_1" in content and "test_2" in content
+        assert "devops-agent" in content
+
+    def test_render_run_to_html_from_dict(self):
+        """Test render_run_to_html accepts run dict (for API)."""
+        run_dict = {
+            "run_id": "r1",
+            "experiment_id": "e1",
+            "dataset_id": "d1",
+            "scores": [
+                {"name": "s1", "value": 1.0, "metadata": {"test_id": "t1"}},
+            ],
+            "metadata": {"agent_id": "a1"},
+        }
+        html = render_run_to_html(run_dict, title="Test Report")
+        assert "r1" in html and "a1" in html and "Test Report" in html
+        assert "Total" in html and "t1" in html

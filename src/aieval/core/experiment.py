@@ -124,19 +124,23 @@ class Experiment:
         for item_scores in results:
             all_scores.extend(item_scores)
         
-        # Create experiment run
+        # Create experiment run (agent_id is the unique key for grouping; optional agent_name/agent_version for display)
+        run_metadata: dict[str, Any] = {
+            "name": self.name,
+            "model": model,
+            "concurrency_limit": concurrency_limit,
+            "dataset_size": len(self.dataset),
+            "scorers": [s.name for s in self.scorers],
+        }
+        for key in ("agent_id", "agent_name", "agent_version"):
+            if key in kwargs:
+                run_metadata[key] = kwargs.pop(key)
         run = ExperimentRun(
             experiment_id=self.experiment_id,
             run_id=run_id,
             dataset_id=str(uuid.uuid4()),  # Could be dataset hash
             scores=all_scores,
-            metadata={
-                "name": self.name,
-                "model": model,
-                "concurrency_limit": concurrency_limit,
-                "dataset_size": len(self.dataset),
-                "scorers": [s.name for s in self.scorers],
-            },
+            metadata=run_metadata,
         )
         
         self.runs.append(run)

@@ -60,6 +60,8 @@ from aieval.sinks.stdout import StdoutSink
 from aieval.sinks.csv import CSVSink
 from aieval.sinks.json import JSONSink
 from aieval.sinks.langfuse import LangfuseSink
+from aieval.sinks.junit import JUnitSink
+from aieval.sinks.html_report import HTMLReportSink
 from aieval.sinks.base import Sink
 
 # Runner
@@ -150,6 +152,8 @@ __all__ = [
     "CSVSink",
     "JSONSink",
     "LangfuseSink",
+    "JUnitSink",
+    "HTMLReportSink",
     "Sink",
     # Runner
     "EvaluationRunner",

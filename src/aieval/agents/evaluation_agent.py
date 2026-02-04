@@ -54,6 +54,9 @@ class EvaluationAgent(BaseEvaluationAgent):
         models: list[str] | None = None,
         concurrency_limit: int = 5,
         run_async: bool = False,
+        agent_id: str | None = None,
+        agent_name: str | None = None,
+        agent_version: str | None = None,
         **kwargs: Any,
     ) -> Task | ExperimentRun | list[ExperimentRun]:
         """
@@ -90,7 +93,7 @@ class EvaluationAgent(BaseEvaluationAgent):
         
         if run_async:
             # Create task for async execution
-            config = {
+            config: dict[str, Any] = {
                 "dataset": dataset_config,
                 "scorers": scorers_config,
                 "adapter": adapter_config,
@@ -99,6 +102,12 @@ class EvaluationAgent(BaseEvaluationAgent):
                 },
                 "models": model_list,
             }
+            if agent_id is not None:
+                config["agent_id"] = agent_id
+            if agent_name is not None:
+                config["agent_name"] = agent_name
+            if agent_version is not None:
+                config["agent_version"] = agent_version
             
             task = await self.task_agent.create_task(
                 experiment_name=experiment_name,
@@ -118,6 +127,13 @@ class EvaluationAgent(BaseEvaluationAgent):
             )
             
             # Run experiment for each model
+            run_kwargs = dict(kwargs)
+            if agent_id is not None:
+                run_kwargs["agent_id"] = agent_id
+            if agent_name is not None:
+                run_kwargs["agent_name"] = agent_name
+            if agent_version is not None:
+                run_kwargs["agent_version"] = agent_version
             runs = []
             for model_name in model_list:
                 self.logger.info(f"Running experiment with model: {model_name or 'default'}")
@@ -126,7 +142,7 @@ class EvaluationAgent(BaseEvaluationAgent):
                     adapter_config=adapter_config,
                     model=model_name,
                     concurrency_limit=concurrency_limit,
-                    **kwargs,
+                    **run_kwargs,
                 )
                 runs.append(run)
                 self.logger.info(f"Completed run {run.run_id} for model: {model_name or 'default'}")

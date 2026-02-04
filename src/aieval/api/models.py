@@ -15,6 +15,9 @@ class ExperimentConfigRequest(BaseModel):
     experiment_name: str = Field(..., description="Name of the experiment")
     config: dict[str, Any] = Field(..., description="Experiment configuration (YAML-like structure)")
     run_async: bool = Field(default=False, description="Run asynchronously (returns immediately)")
+    agent_id: str | None = Field(None, description="Unique identifier for the agent (for grouping runs)")
+    agent_name: str | None = Field(None, description="Display name for the agent")
+    agent_version: str | None = Field(None, description="Display version for the agent")
 
 
 class TaskResponse(BaseModel):
@@ -249,6 +252,39 @@ class ExperimentCompareResponse(BaseModel):
     comparison: dict[str, Any]
 
 
+# Agents and runs (consolidation per agent)
+class AgentSummaryResponse(BaseModel):
+    """Summary of an agent that has at least one run."""
+    
+    agent_id: str
+    agent_name: str | None = None
+    last_run_at: str | None = None
+    run_count: int = 0
+
+
+class AgentRunSummaryResponse(BaseModel):
+    """Summary of a single run for an agent."""
+    
+    run_id: str
+    task_id: str | None = None
+    created_at: str
+    model: str | None = None
+    total: int = 0
+    passed: int = 0
+    failed: int = 0
+    report_url: str | None = None
+
+
+class PushRunRequest(BaseModel):
+    """Request to push a run from consumer (e.g. CI) so it appears under an agent."""
+    
+    run_id: str = Field(..., description="Run ID")
+    experiment_id: str = Field(..., description="Experiment ID")
+    dataset_id: str = Field(..., description="Dataset ID")
+    scores: list[dict[str, Any]] = Field(..., description="Scores")
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Run metadata (should include agent_id)")
+
+
 # Evaluation Agent Models (Unified)
 class EvaluationRequest(BaseModel):
     """Request for unified evaluation."""
@@ -261,6 +297,9 @@ class EvaluationRequest(BaseModel):
     model: str | None = Field(None, description="[Deprecated] Single model name (use 'models' instead)")
     concurrency_limit: int = Field(default=5, description="Concurrency limit")
     run_async: bool = Field(default=False, description="Run asynchronously")
+    agent_id: str | None = Field(None, description="Unique identifier for the agent (for grouping runs)")
+    agent_name: str | None = Field(None, description="Display name for the agent")
+    agent_version: str | None = Field(None, description="Display version for the agent")
     
     def get_models_list(self) -> list[str | None]:
         """Normalize models input - prioritize models over model for backward compatibility."""

@@ -128,6 +128,15 @@ class TaskManager:
             # Run experiment for first model (can extend to multiple later)
             model = models[0] if models else None
             
+            # Agent identity for grouping runs (optional)
+            run_kwargs: dict[str, Any] = {}
+            if task.config.get("agent_id") is not None:
+                run_kwargs["agent_id"] = task.config["agent_id"]
+            if task.config.get("agent_name") is not None:
+                run_kwargs["agent_name"] = task.config["agent_name"]
+            if task.config.get("agent_version") is not None:
+                run_kwargs["agent_version"] = task.config["agent_version"]
+            
             import time
             start_time = time.time()
             
@@ -135,6 +144,7 @@ class TaskManager:
                 adapter=adapter,
                 model=model,
                 concurrency_limit=concurrency_limit,
+                **run_kwargs,
             )
             
             execution_time = time.time() - start_time

@@ -9,13 +9,16 @@ from typing import Any
 import structlog
 from fastapi import FastAPI, HTTPException, BackgroundTasks, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, HTMLResponse
 
 from aieval.api.models import (
     ExperimentConfigRequest,
     TaskResponse,
     TaskResultResponse,
     ExperimentRunResponse,
+    AgentSummaryResponse,
+    AgentRunSummaryResponse,
+    PushRunRequest,
     ErrorResponse,
     HealthResponse,
     # Dataset Agent models
@@ -84,6 +87,9 @@ adapter_agent: AdapterAgent | None = None
 experiment_agent: ExperimentAgent | None = None
 task_agent: TaskAgent | None = None
 evaluation_agent: EvaluationAgent | None = None
+
+# In-memory store for runs pushed from consumers (POST /agents/{agent_id}/runs)
+_pushed_runs: list[dict[str, Any]] = []
 
 
 @asynccontextmanager
@@ -235,10 +241,19 @@ def create_app() -> FastAPI:
         if not task_manager:
             raise HTTPException(status_code=503, detail="Task manager not initialized")
         
+        # Merge agent identity into config so execute_task can pass to experiment.run()
+        config = dict(request.config)
+        if request.agent_id is not None:
+            config["agent_id"] = request.agent_id
+        if request.agent_name is not None:
+            config["agent_name"] = request.agent_name
+        if request.agent_version is not None:
+            config["agent_version"] = request.agent_version
+        
         # Create task
         task = await task_manager.create_task(
             experiment_name=request.experiment_name,
-            config=request.config,
+            config=config,
         )
         
         # Execute task
@@ -345,6 +360,169 @@ def create_app() -> FastAPI:
         task.completed_at = datetime.now()
         
         return None
+    
+    # ============================================================================
+    # Agents and runs (consolidation per agent)
+    # ============================================================================
+    
+    def _run_summary_from_task(task: Any, run: Any) -> dict[str, Any]:
+        """Build run summary from task result run."""
+        meta = getattr(run, "metadata", None) or {}
+        scores = getattr(run, "scores", [])
+        by_test: dict[str, list[Any]] = {}
+        for s in scores:
+            tid = (s.metadata or {}).get("test_id") or "unknown"
+            by_test.setdefault(tid, []).append(s)
+        total = len(by_test) or 1
+        passed = sum(
+            1 for tidscores in by_test.values()
+            if all(
+                getattr(s, "value", None) is True
+                or (isinstance(getattr(s, "value", None), (int, float)) and float(s.value) >= 0.99)
+                for s in tidscores
+            )
+        )
+        failed = total - passed
+        return {
+            "run_id": run.run_id,
+            "task_id": task.id,
+            "created_at": (dt.isoformat() if (dt := (getattr(task, "completed_at", None) or getattr(task, "created_at", None))) else ""),
+            "model": meta.get("model"),
+            "total": total,
+            "passed": passed,
+            "failed": failed,
+            "report_url": meta.get("report_url"),
+        }
+    
+    @app.get("/agents", response_model=list[AgentSummaryResponse])
+    async def list_agents():
+        """List distinct agents that have at least one run (from tasks or pushed runs)."""
+        global _pushed_runs
+        agent_info: dict[str, dict[str, Any]] = {}  # agent_id -> {agent_name, last_run_at, run_count}
+        if task_manager:
+            tasks = await task_manager.list_tasks(limit=500)
+            for task in tasks:
+                if not task.result:
+                    continue
+                run = task.result.experiment_run
+                meta = getattr(run, "metadata", None) or {}
+                aid = meta.get("agent_id")
+                if not aid:
+                    continue
+                if aid not in agent_info:
+                    agent_info[aid] = {"agent_name": meta.get("agent_name"), "last_run_at": None, "run_count": 0}
+                agent_info[aid]["run_count"] += 1
+                t = (task.completed_at or task.created_at).isoformat() if getattr(task, "completed_at", None) else task.created_at.isoformat()
+                if agent_info[aid]["last_run_at"] is None or t > (agent_info[aid]["last_run_at"] or ""):
+                    agent_info[aid]["last_run_at"] = t
+        for entry in _pushed_runs:
+            aid = entry.get("agent_id")
+            if not aid:
+                continue
+            if aid not in agent_info:
+                agent_info[aid] = {"agent_name": None, "last_run_at": None, "run_count": 0}
+            agent_info[aid]["run_count"] += 1
+            run_dict = entry.get("run", {})
+            meta = run_dict.get("metadata", {})
+            if not agent_info[aid]["agent_name"] and meta.get("agent_name"):
+                agent_info[aid]["agent_name"] = meta.get("agent_name")
+            t = entry.get("created_at", "")
+            if t and (agent_info[aid]["last_run_at"] is None or t > (agent_info[aid]["last_run_at"] or "")):
+                agent_info[aid]["last_run_at"] = t
+        return [
+            AgentSummaryResponse(agent_id=aid, agent_name=info.get("agent_name"), last_run_at=info.get("last_run_at"), run_count=info["run_count"])
+            for aid, info in sorted(agent_info.items())
+        ]
+    
+    @app.get("/agents/{agent_id}/runs", response_model=list[AgentRunSummaryResponse])
+    async def list_agent_runs(agent_id: str, limit: int = 50, offset: int = 0):
+        """List run summaries for an agent (from tasks and pushed runs)."""
+        global _pushed_runs
+        runs_list: list[dict[str, Any]] = []
+        if task_manager:
+            tasks = await task_manager.list_tasks(limit=500)
+            for task in tasks:
+                if not task.result:
+                    continue
+                run = task.result.experiment_run
+                meta = getattr(run, "metadata", None) or {}
+                if meta.get("agent_id") != agent_id:
+                    continue
+                runs_list.append(_run_summary_from_task(task, run))
+        for entry in _pushed_runs:
+            if entry.get("agent_id") != agent_id:
+                continue
+            run_dict = entry.get("run", {})
+            scores = run_dict.get("scores", [])
+            total = len({s.get("metadata", {}).get("test_id") for s in scores}) or 1
+            passed = sum(1 for s in scores if s.get("value") is True or (isinstance(s.get("value"), (int, float)) and float(s["value"]) >= 0.99))
+            runs_list.append({
+                "run_id": run_dict.get("run_id", ""),
+                "task_id": None,
+                "created_at": entry.get("created_at", ""),
+                "model": run_dict.get("metadata", {}).get("model"),
+                "total": total,
+                "passed": passed,
+                "failed": total - passed,
+                "report_url": run_dict.get("metadata", {}).get("report_url"),
+            })
+        runs_list.sort(key=lambda x: x.get("created_at") or "", reverse=True)
+        page = runs_list[offset : offset + limit]
+        return [AgentRunSummaryResponse(**r) for r in page]
+    
+    @app.get("/runs/{run_id}", response_model=ExperimentRunResponse)
+    async def get_run(run_id: str):
+        """Get run detail by run_id (from task result or pushed run)."""
+        global _pushed_runs
+        if task_manager:
+            tasks = await task_manager.list_tasks(limit=500)
+            for task in tasks:
+                if not task.result or task.result.experiment_run.run_id != run_id:
+                    continue
+                return ExperimentRunResponse(**task.result.experiment_run.to_dict())
+        for entry in _pushed_runs:
+            if entry.get("run", {}).get("run_id") == run_id:
+                return ExperimentRunResponse(**entry["run"])
+        raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
+    
+    @app.post("/agents/{agent_id}/runs", response_model=dict[str, Any], status_code=201)
+    async def push_agent_run(agent_id: str, request: PushRunRequest):
+        """Push a run from consumer (e.g. CI) so it appears under this agent."""
+        global _pushed_runs
+        created_at = datetime.now().isoformat()
+        run_dict = {
+            "run_id": request.run_id,
+            "experiment_id": request.experiment_id,
+            "dataset_id": request.dataset_id,
+            "scores": request.scores,
+            "metadata": {**request.metadata, "agent_id": agent_id},
+            "created_at": created_at,
+        }
+        _pushed_runs.append({"agent_id": agent_id, "run": run_dict, "created_at": created_at})
+        return {"run_id": request.run_id, "agent_id": agent_id}
+    
+    @app.get("/runs/{run_id}/report", response_class=HTMLResponse)
+    async def get_run_report(run_id: str):
+        """Get HTML report for a run (rendered from run data)."""
+        global _pushed_runs
+        run_dict: dict[str, Any] | None = None
+        if task_manager:
+            tasks = await task_manager.list_tasks(limit=500)
+            for task in tasks:
+                if not task.result or task.result.experiment_run.run_id != run_id:
+                    continue
+                run_dict = task.result.experiment_run.to_dict()
+                break
+        if run_dict is None:
+            for entry in _pushed_runs:
+                if entry.get("run", {}).get("run_id") == run_id:
+                    run_dict = entry["run"]
+                    break
+        if run_dict is None:
+            raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
+        from aieval.sinks.html_report import render_run_to_html
+        html_content = render_run_to_html(run_dict, title=f"Run {run_id}")
+        return HTMLResponse(content=html_content)
     
     # ============================================================================
     # Dataset Agent Endpoints
@@ -817,6 +995,9 @@ def create_app() -> FastAPI:
                 models=request.models,  # New multi-model support
                 concurrency_limit=request.concurrency_limit,
                 run_async=request.run_async,
+                agent_id=request.agent_id,
+                agent_name=request.agent_name,
+                agent_version=request.agent_version,
             )
             
             if request.run_async:
@@ -829,7 +1010,7 @@ def create_app() -> FastAPI:
                     experiment_id=task.experiment_name,
                     scores=None,
                     comparison=None,
-                    metadata=task.meta,
+                    metadata=task.metadata,
                 )
             else:
                 # Handle single or multiple runs
