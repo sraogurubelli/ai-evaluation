@@ -1,7 +1,6 @@
 """Tests for scorer agent endpoints."""
 
 import pytest
-from tests.api.conftest import client
 
 
 class TestScorerAgent:

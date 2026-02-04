@@ -11,7 +11,6 @@ import uuid
 
 import pytest
 import aieval.api.app as app_module
-from tests.api.conftest import client
 
 
 @pytest.fixture(autouse=True)

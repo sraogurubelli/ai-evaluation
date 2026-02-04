@@ -1,8 +1,5 @@
 """Tests for experiment agent endpoints."""
 
-import pytest
-from tests.api.conftest import client
-
 
 class TestExperimentAgent:
     """Tests for experiment agent endpoints."""

@@ -1,7 +1,5 @@
 """Tests for dataset agent endpoints."""
 
-import pytest
-from tests.api.conftest import client
 
 
 class TestDatasetAgent:

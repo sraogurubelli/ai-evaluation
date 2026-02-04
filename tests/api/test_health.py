@@ -1,8 +1,5 @@
 """Tests for health check endpoint."""
 
-import pytest
-from tests.api.conftest import client
-
 
 def test_health_check(client):
     """Test health check endpoint (GET /health)."""
