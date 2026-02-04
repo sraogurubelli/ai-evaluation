@@ -15,6 +15,8 @@ from aieval import (
     load_index_csv_dataset,
     CSVSink,
     StdoutSink,
+    JUnitSink,
+    HTMLReportSink,
 )
 from aieval.adapters.sse_streaming import SSEStreamingAdapter
 from aieval.scorers.enriched import EnrichedOutputScorer
@@ -129,9 +131,15 @@ async def run_devops_eval(
     deep_diff_versions: list[str] | None = None,
     use_sse_streaming: bool = False,
     include_metric_scorers: bool = False,
+    agent_id: str = "devops-pipeline-agent",
+    agent_name: str = "unknown",
+    agent_version: str = "unknown",
+    output_junit: str | Path | None = None,
+    output_html: str | Path | None = None,
 ) -> ExperimentRun:
     """
     Run DevOps evaluation (convenience function matching Harness/DevOps evals workflow).
+    agent_id is the unique identifier for grouping runs in the platform (e.g. GET /agents/{agent_id}/runs).
     """
     experiment = create_devops_experiment(
         index_file=index_file,
@@ -189,14 +197,21 @@ async def run_devops_eval(
                 sse_completion_events=["dashboard_complete", "kg_complete"],
             )
 
-    sinks = [StdoutSink()]
+    sinks: list[Any] = [StdoutSink()]
     if output_csv:
         sinks.append(CSVSink(output_csv))
+    if output_junit:
+        sinks.append(JUnitSink(Path(output_junit)))
+    if output_html:
+        sinks.append(HTMLReportSink(Path(output_html)))
 
     result = await experiment.run(
         adapter=adapter,
         model=model,
         concurrency_limit=concurrency_limit,
+        agent_id=agent_id,
+        agent_name=agent_name,
+        agent_version=agent_version,
     )
 
     for sink in sinks:

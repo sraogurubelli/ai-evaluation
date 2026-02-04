@@ -37,8 +37,9 @@ def initialize_agents():
 
 @pytest.fixture
 def client():
-    """Create test client for FastAPI app."""
-    return TestClient(app)
+    """Create test client for FastAPI app. Uses context manager so lifespan runs."""
+    with TestClient(app) as c:
+        yield c
 
 
 @pytest.fixture

@@ -4,6 +4,7 @@ This module provides a web-based UI for running experiments, viewing results,
 and managing experiments.
 """
 
+import os
 import gradio as gr
 import requests
 import json
@@ -108,6 +109,63 @@ def list_experiments() -> str:
             return f"Error: {response.status_code}"
     except Exception as e:
         return f"Error: {str(e)}"
+
+
+def fetch_agents() -> tuple[list[dict[str, Any]], str]:
+    """Call GET /agents and return (list of agent dicts, message)."""
+    try:
+        response = requests.get(f"{API_BASE_URL}/agents", timeout=10)
+        if response.status_code != 200:
+            return [], f"Error: {response.status_code} - {response.text}"
+        agents = response.json()
+        return agents, f"Found {len(agents)} agent(s)."
+    except Exception as e:
+        return [], f"Error: {str(e)}"
+
+
+def fetch_agent_runs(agent_id: str, limit: int = 50, offset: int = 0) -> tuple[list[dict[str, Any]], str]:
+    """Call GET /agents/{agent_id}/runs and return (list of run summaries, message)."""
+    if not agent_id:
+        return [], "Select an agent first."
+    try:
+        response = requests.get(
+            f"{API_BASE_URL}/agents/{agent_id}/runs",
+            params={"limit": limit, "offset": offset},
+            timeout=10,
+        )
+        if response.status_code != 200:
+            return [], f"Error: {response.status_code} - {response.text}"
+        runs = response.json()
+        return runs, f"Found {len(runs)} run(s)."
+    except Exception as e:
+        return [], f"Error: {str(e)}"
+
+
+def fetch_run_detail(run_id: str) -> tuple[str, str | None]:
+    """Call GET /runs/{run_id} and return (summary text, report_url)."""
+    if not run_id:
+        return "Enter a run ID.", None
+    try:
+        response = requests.get(f"{API_BASE_URL}/runs/{run_id}", timeout=10)
+        if response.status_code != 200:
+            return f"Error: {response.status_code} - {response.text}", None
+        run = response.json()
+        meta = run.get("metadata", {})
+        scores = run.get("scores", [])
+        total = len(scores)
+        passed = sum(1 for s in scores if s.get("value") is True or (isinstance(s.get("value"), (int, float)) and float(s.get("value", 0)) >= 0.99))
+        failed = total - passed
+        report_url = f"{API_BASE_URL}/runs/{run_id}/report"
+        summary = (
+            f"Run ID: {run.get('run_id')}\n"
+            f"Experiment: {run.get('experiment_id')}\n"
+            f"Agent: {meta.get('agent_id', '-')}\n"
+            f"Total: {total} | Passed: {passed} | Failed: {failed}\n\n"
+            f"View report: {report_url}"
+        )
+        return summary, report_url
+    except Exception as e:
+        return f"Error: {str(e)}", None
 
 
 def create_ui():
@@ -226,6 +284,66 @@ def create_ui():
                     fn=list_experiments,
                     inputs=[],
                     outputs=[list_output],
+                )
+            
+            with gr.TabItem("By Agent"):
+                gr.Markdown("## Runs by Agent")
+                gr.Markdown("List agents that have runs, then view runs and report for each agent.")
+                
+                load_agents_btn = gr.Button("Load Agents", variant="primary")
+                agents_msg = gr.Textbox(label="Agents", lines=2, interactive=False)
+                agents_dropdown = gr.Dropdown(
+                    choices=[],
+                    label="Select Agent",
+                    value=None,
+                )
+                
+                def on_load_agents():
+                    agents, msg = fetch_agents()
+                    if not agents:
+                        return msg, gr.Dropdown(choices=[], value=None)
+                    choices = [f"{a.get('agent_id', '')} ({a.get('agent_name') or '—'}) — {a.get('run_count', 0)} runs" for a in agents]
+                    values = [a.get("agent_id", "") for a in agents]
+                    options = list(zip(choices, values))
+                    first_val = values[0] if values else None
+                    return msg, gr.Dropdown(choices=options, value=first_val)
+                
+                load_agents_btn.click(
+                    fn=on_load_agents,
+                    inputs=[],
+                    outputs=[agents_msg, agents_dropdown],
+                )
+                
+                load_runs_btn = gr.Button("Load Runs for Agent")
+                runs_json = gr.JSON(label="Runs (run_id, created_at, model, total, passed, failed)")
+                runs_msg = gr.Textbox(label="Runs", lines=2, interactive=False)
+                
+                def on_load_runs(agent_id: str):
+                    if not agent_id:
+                        return [], "Select an agent first."
+                    runs, msg = fetch_agent_runs(agent_id)
+                    return runs, msg
+                
+                load_runs_btn.click(
+                    fn=on_load_runs,
+                    inputs=[agents_dropdown],
+                    outputs=[runs_json, runs_msg],
+                )
+                
+                gr.Markdown("### View Run Detail")
+                run_id_input = gr.Textbox(label="Run ID", placeholder="Paste run_id from table above")
+                view_run_btn = gr.Button("View Run")
+                run_summary_output = gr.Textbox(label="Run Summary", lines=8, interactive=False)
+                report_url_output = gr.Textbox(label="Report URL", lines=1, interactive=False)
+                
+                def on_view_run(run_id: str):
+                    summary, report_url = fetch_run_detail(run_id)
+                    return summary, report_url or ""
+                
+                view_run_btn.click(
+                    fn=on_view_run,
+                    inputs=[run_id_input],
+                    outputs=[run_summary_output, report_url_output],
                 )
         
         gr.Markdown("---")

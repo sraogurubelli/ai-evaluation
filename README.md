@@ -13,11 +13,45 @@ Unified AI evaluation and experimentation platform. Open source, self-hostable.
 
 ## Install
 
+Requires **Python 3.11+**. Pip will refuse to install on older Python (see `requires-python` in `pyproject.toml`).
+
+Choose one of the following.
+
+### Option 1: pip install (create a virtual environment first)
+
+Create a venv so this project’s dependencies don’t affect other work, then install:
+
 ```bash
+# 1. Create a virtual environment with Python 3.11+
+python3.11 -m venv .venv
+
+# 2. Activate the venv
+source .venv/bin/activate   # macOS/Linux
+# .venv\Scripts\activate    # Windows
+
+# 3. Upgrade pip and install the package
+pip install --upgrade pip
 pip install -e .
-# Optional: pip install -e ".[llm]"   # LLM judge
-# Dev: task fresh   # full env + DB (see DEVELOPMENT.md)
+
+# Optional: LLM judge support
+# pip install -e ".[llm]"
 ```
+
+**With [uv](https://github.com/astral-sh/uv)** (creates venv and installs in one go):
+
+```bash
+uv venv && source .venv/bin/activate && uv pip install -e .
+```
+
+### Option 2: task fresh (full dev environment + DB)
+
+If you use [Task](https://taskfile.dev/) and Docker, this cleans everything, creates a venv, installs the package and dev deps, starts PostgreSQL, and runs migrations:
+
+```bash
+task fresh
+```
+
+Then start the server with `task server` and run tests with `task test`. See [DEVELOPMENT.md](DEVELOPMENT.md) for all tasks (`task --list`).
 
 ## Run
 

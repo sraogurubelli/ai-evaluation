@@ -103,7 +103,15 @@ jobs:
         DATABASE_URL: postgresql://postgres:postgres@localhost:5432/aieval_test
       run: |
         pytest tests/integration -v
-    
+
+    # Agents/runs integration tests; full tests/api includes other endpoints
+    # that may require lifespan/task_manager (see tests/api/conftest.py).
+    - name: Run API tests
+      env:
+        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/aieval_test
+      run: |
+        pytest tests/api -v
+
     - name: Upload coverage
       uses: codecov/codecov-action@v4
       with:
