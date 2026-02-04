@@ -12,6 +12,7 @@ cat > .env << 'ENVEOF'
 
 # ML Infra Service Configuration
 CHAT_BASE_URL=http://localhost:8000
+CHAT_ENDPOINT=/chat/unified
 CHAT_PLATFORM_AUTH_TOKEN=your-auth-token-here
 ACCOUNT_ID=default
 ORG_ID=default
@@ -42,4 +43,4 @@ ANTHROPIC_API_KEY=
 ENVEOF
 
 echo ".env file created successfully!"
-echo "Please update CHAT_BASE_URL and CHAT_PLATFORM_AUTH_TOKEN with your actual values."
+echo "Please update CHAT_BASE_URL, CHAT_ENDPOINT, and CHAT_PLATFORM_AUTH_TOKEN with your actual values."

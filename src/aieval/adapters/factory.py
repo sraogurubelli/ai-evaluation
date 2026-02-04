@@ -69,14 +69,15 @@ def create_sse_streaming_adapter(**config: Any) -> SSEStreamingAdapter:
     settings = get_settings()
     
     # Get base_url from config, env var, or settings (in that order)
-    base_url = config.get("base_url") or os.getenv("CHAT_BASE_URL") or settings.ml_infra.base_url
+    # Pass None to adapter so it can read from env/config if not explicitly provided
+    base_url = config.get("base_url") if "base_url" in config else None
     auth_token = config.get("auth_token") or os.getenv("CHAT_PLATFORM_AUTH_TOKEN") or settings.ml_infra.platform_auth_token
     
     headers = config.get("headers", {})
     if auth_token and "Authorization" not in headers:
         headers["Authorization"] = f"Bearer {auth_token}"
     
-    # Get endpoint from config or settings (SSEStreamingAdapter will use settings if None)
+    # Get endpoint from config (pass None to adapter so it can read from env/config if not explicitly provided)
     endpoint = config.get("endpoint") if "endpoint" in config else None
     
     return SSEStreamingAdapter(
