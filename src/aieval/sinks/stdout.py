@@ -31,8 +31,22 @@ class StdoutSink(Sink):
         
         # Print summary
         for name, values in score_groups.items():
-            avg = sum(values) / len(values) if values else 0.0
-            print(f"  {name}: avg={avg:.3f} (n={len(values)})")
+            # Filter out NaN, inf, -inf values
+            valid_scores = [
+                s for s in values 
+                if not (isinstance(s, float) and (s != s or s == float('inf') or s == float('-inf')))
+            ]
+            
+            if valid_scores:
+                avg = sum(valid_scores) / len(valid_scores)
+            else:
+                avg = float('nan')
+            
+            nan_count = len(values) - len(valid_scores)
+            if nan_count > 0:
+                print(f"  {name}: avg={avg:.3f} (n={len(valid_scores)}, failed={nan_count})")
+            else:
+                print(f"  {name}: avg={avg:.3f} (n={len(values)})")
     
     def flush(self) -> None:
         """No-op for stdout."""
