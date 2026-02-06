@@ -142,9 +142,28 @@ class ToolCallScorer(Scorer):
                 data = json.loads(generated)
                 if isinstance(data, dict):
                     # Extract from enriched format
+                    # Return all events where event == 'assistant_tool_request'
+                    events = data.get("events", [])
+                    if isinstance(events, list):
+                        result = []
+                        for event in events:
+                            if isinstance(event, dict) and event.get("event") == "assistant_tool_request":
+                                result.append(event)
+                        return result
+                    # Fallback to tools_called for backward compatibility
                     return data.get("tools_called", [])
             elif isinstance(generated, dict):
                 # Direct dict access
+                # Return all events where event == 'assistant_tool_request'
+                # Note: List preserves all elements even if they have the same "event" value
+                events = generated.get("events", [])
+                if isinstance(events, list):
+                    result = []
+                    for event in events:
+                        if isinstance(event, dict) and event.get("event") == "assistant_tool_request":
+                            result.append(event)
+                    return result
+                # Fallback to tools_called for backward compatibility
                 return generated.get("tools_called", [])
         except (json.JSONDecodeError, KeyError, TypeError):
             pass

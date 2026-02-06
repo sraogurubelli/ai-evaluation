@@ -1,5 +1,4 @@
-Create a simple data pipeline that:
-- Reads data from a CSV file
-- Transforms the data by filtering rows where status is "active"
-- Writes the output to a Parquet file
+Create a simple pipeline:
+- Has Wait Step
+- The timeout of the wait step is 10minutes
 
