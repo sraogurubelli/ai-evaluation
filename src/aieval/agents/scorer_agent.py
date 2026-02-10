@@ -11,6 +11,9 @@ from aieval.scorers import (
     DashboardQualityScorer,
     KnowledgeGraphQualityScorer,
     LLMJudgeScorer,
+    ExactMatchScorer,
+    ContainsScorer,
+    RegexMatchScorer,
 )
 
 
@@ -106,6 +109,32 @@ class ScorerAgent(BaseEvaluationAgent):
                 model=model,
                 rubric=rubric,
                 api_key=api_key,
+            )
+        
+        elif scorer_type == "exact_match":
+            expected_field = kwargs.get("expected_field", "exact")
+            scorer = ExactMatchScorer(
+                name=name or "exact_match",
+                eval_id=f"{scorer_type}.v1",
+                expected_field=expected_field,
+            )
+        
+        elif scorer_type == "contains":
+            case_sensitive = kwargs.get("case_sensitive", False)
+            require_all = kwargs.get("require_all", True)
+            scorer = ContainsScorer(
+                name=name or "contains",
+                eval_id=f"{scorer_type}.v1",
+                case_sensitive=case_sensitive,
+                require_all=require_all,
+            )
+        
+        elif scorer_type == "regex":
+            require_all = kwargs.get("require_all", True)
+            scorer = RegexMatchScorer(
+                name=name or "regex",
+                eval_id=f"{scorer_type}.v1",
+                require_all=require_all,
             )
         
         else:
@@ -213,6 +242,18 @@ class ScorerAgent(BaseEvaluationAgent):
             {
                 "type": "llm_judge",
                 "description": "LLM-based judge scorer",
+            },
+            {
+                "type": "exact_match",
+                "description": "Exact string equality scorer",
+            },
+            {
+                "type": "contains",
+                "description": "Substring matching scorer",
+            },
+            {
+                "type": "regex",
+                "description": "Regex pattern matching scorer",
             },
         ]
         

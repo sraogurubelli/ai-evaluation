@@ -1,0 +1,8 @@
+{"id": "001", "input": {"query": "What is 2+2?"}, "expected": {"exact": "4", "contains": ["two", "plus"], "regex": "\\d+"}}
+{"id": "002", "input": {"query": "Explain continuous integration"}, "expected": {"contains": ["continuous", "integration", "automated"], "regex": "\\b(CI|CD)\\b"}}
+{"id": "003", "input": {"query": "Generate a pipeline identifier"}, "expected": {"exact": "my_pipeline_v1", "regex": "^[a-z_]+_v\\d+$"}}
+{"id": "004", "input": {"query": "List deployment stages"}, "expected": {"contains": ["dev", "staging", "production"], "regex": "(dev|staging|prod)"}}
+{"id": "005", "input": {"query": "Show semantic version"}, "expected": {"regex": "v\\d+\\.\\d+\\.\\d+(-[a-z]+)?"}}
+{"id": "006", "input": {"query": "Format email address"}, "expected": {"regex": "\\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Z|a-z]{2,}\\b"}}
+{"id": "007", "input": {"query": "Create JSON response"}, "expected": {"contains": ["{", "}", "\"status\""], "regex": "\\{.*\\}"}}
+{"id": "008", "input": {"query": "Generate UUID"}, "expected": {"regex": "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"}}
