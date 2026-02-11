@@ -8,6 +8,11 @@ from aieval.scorers.knowledge_graph import KnowledgeGraphQualityScorer
 from aieval.scorers.llm_judge import LLMJudgeScorer
 from aieval.scorers.enriched import EnrichedOutputScorer
 from aieval.scorers.metrics import LatencyScorer, ToolCallScorer, TokenUsageScorer
+from aieval.scorers.deterministic import (
+    ExactMatchScorer,
+    ContainsScorer,
+    RegexMatchScorer,
+)
 
 # Autoevals-style scorers (Braintrust)
 try:
@@ -51,6 +56,9 @@ __all__ = [
     "LatencyScorer",
     "ToolCallScorer",
     "TokenUsageScorer",
+    "ExactMatchScorer",
+    "ContainsScorer",
+    "RegexMatchScorer",
 ]
 
 if AUTOEVALS_AVAILABLE:

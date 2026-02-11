@@ -24,6 +24,11 @@ from aieval.scorers.deep_diff import DeepDiffScorer
 from aieval.scorers.schema_validation import SchemaValidationScorer
 from aieval.scorers.dashboard import DashboardQualityScorer
 from aieval.scorers.knowledge_graph import KnowledgeGraphQualityScorer
+from aieval.scorers.deterministic import (
+    ExactMatchScorer,
+    ContainsScorer,
+    RegexMatchScorer,
+)
 from aieval.sinks.stdout import StdoutSink
 from aieval.sinks.csv import CSVSink
 from aieval.sinks.json import JSONSink
@@ -141,6 +146,35 @@ def _create_scorers(config: dict[str, Any]) -> list:
                 model=model,
                 rubric=rubric,
                 api_key=api_key,
+            )
+            scorers.append(scorer)
+        
+        elif scorer_type == "exact_match":
+            expected_field = scorer_config.get("expected_field", "exact")
+            scorer = ExactMatchScorer(
+                name=scorer_config.get("name", "exact_match"),
+                eval_id=scorer_config.get("eval_id", "exact_match.v1"),
+                expected_field=expected_field,
+            )
+            scorers.append(scorer)
+        
+        elif scorer_type == "contains":
+            case_sensitive = scorer_config.get("case_sensitive", False)
+            require_all = scorer_config.get("require_all", True)
+            scorer = ContainsScorer(
+                name=scorer_config.get("name", "contains"),
+                eval_id=scorer_config.get("eval_id", "contains.v1"),
+                case_sensitive=case_sensitive,
+                require_all=require_all,
+            )
+            scorers.append(scorer)
+        
+        elif scorer_type == "regex":
+            require_all = scorer_config.get("require_all", True)
+            scorer = RegexMatchScorer(
+                name=scorer_config.get("name", "regex"),
+                eval_id=scorer_config.get("eval_id", "regex.v1"),
+                require_all=require_all,
             )
             scorers.append(scorer)
         

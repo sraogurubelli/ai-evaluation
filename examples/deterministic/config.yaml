@@ -1,0 +1,45 @@
+experiment:
+  name: "deterministic_scorers_example"
+  description: "Example using deterministic scorers (exact match, contains, regex)"
+
+dataset:
+  type: "jsonl"
+  path: "examples/deterministic/dataset.jsonl"
+
+adapter:
+  type: "http"
+  base_url: "http://localhost:8000"
+  default_endpoint: "/chat"
+  response_format: "json"
+
+models:
+  - "gpt-4o-mini"
+
+scorers:
+  # Exact match - checks for precise equality
+  - type: "exact_match"
+    name: "exact_match"
+    expected_field: "exact"
+  
+  # Contains - checks for substring presence
+  - type: "contains"
+    name: "contains_keywords"
+    case_sensitive: false
+    require_all: true  # All substrings must be present
+  
+  # Regex - checks for pattern matches
+  - type: "regex"
+    name: "regex_format"
+    require_all: true  # All patterns must match
+
+execution:
+  concurrency_limit: 5
+  sample_size: null
+
+output:
+  sinks:
+    - type: "stdout"
+    - type: "csv"
+      path: "results/deterministic_{timestamp}.csv"
+    - type: "json"
+      path: "results/deterministic_{timestamp}.json"

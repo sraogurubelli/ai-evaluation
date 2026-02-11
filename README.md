@@ -7,7 +7,7 @@ Unified AI evaluation and experimentation platform. Open source, self-hostable.
 
 ## What it does
 
-- **Evaluation**: Multiple dataset formats (JSONL, index CSV), scorers (DeepDiff, LLM-as-judge), experiment tracking
+- **Evaluation**: Multiple dataset formats (JSONL, index CSV), scorers (exact match, contains, regex, DeepDiff, LLM-as-judge), experiment tracking
 - **Adapters**: HTTP/SSE; sample DevOps consumer in `samples_sdk/consumers/devops`
 - **API & UI**: FastAPI server, Gradio UI; PostgreSQL for persistence
 
@@ -58,11 +58,15 @@ Then start the server with `task server` and run tests with `task test`. See [DE
 **SDK**
 
 ```python
-from aieval import Experiment, HTTPAdapter, DeepDiffScorer, load_jsonl_dataset
+from aieval import Experiment, HTTPAdapter, ExactMatchScorer, ContainsScorer, load_jsonl_dataset
 
 dataset = load_jsonl_dataset("dataset.jsonl")
 adapter = HTTPAdapter(base_url="http://your-api.com", auth_token="your-token")
-experiment = Experiment(name="my_eval", dataset=dataset, scorers=[DeepDiffScorer(name="deep_diff", eval_id="deep_diff.v1", version="v3")])
+scorers = [
+    ExactMatchScorer(name="exact", eval_id="exact.v1"),
+    ContainsScorer(name="keywords", eval_id="keywords.v1", require_all=True)
+]
+experiment = Experiment(name="my_eval", dataset=dataset, scorers=scorers)
 result = await experiment.run(adapter=adapter, model="gpt-4o")
 ```
 
@@ -85,7 +89,33 @@ aieval-server
 
 - [Getting Started](docs/getting-started.md)
 - [SDK](docs/sdk.md) · [API](docs/api.md) · [Architecture](docs/architecture.md)
+- [Metrics and Scorers](docs/metrics-and-scorers.md)
 - [Migration](docs/migration.md) · [Deployment](docs/deployment/docker.md)
+
+## Available Scorers
+
+### Deterministic Scorers (Fast, No External Calls)
+- **ExactMatchScorer** - Exact string equality check
+- **ContainsScorer** - Substring presence check (single or multiple)
+- **RegexMatchScorer** - Regex pattern matching (single or multiple)
+
+### Structural Comparison
+- **DeepDiffScorer** (v1, v2, v3) - YAML/JSON structural comparison with versioned strictness
+
+### Semantic Evaluation
+- **LLMJudgeScorer** - LLM-based rubric evaluation (requires `.[llm]` install)
+- **SchemaValidationScorer** - Schema validation against expected structure
+
+### Domain-Specific
+- **DashboardQualityScorer** - Dashboard entity quality metrics
+- **KnowledgeGraphQualityScorer** - Knowledge graph quality metrics
+
+### Performance Metrics
+- **LatencyScorer** - Execution time measurement
+- **TokenUsageScorer** - Token consumption tracking
+- **ToolCallScorer** - Tool invocation metrics
+
+See [docs/metrics-and-scorers.md](docs/metrics-and-scorers.md) for detailed usage and configuration.
 
 ## Config
 
