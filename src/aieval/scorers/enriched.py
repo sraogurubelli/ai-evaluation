@@ -70,7 +70,37 @@ class EnrichedOutputScorer(Scorer):
             # Try to parse as JSON (enriched format)
             data = json.loads(generated)
             
-            # Check if it's enriched format
+            # Try to extract YAML from nested path: data.events.final_yaml_created.data.yaml
+            if isinstance(data, dict):
+                events = data.get("events", [])
+                if isinstance(events, list):
+                    # Find the final_yaml_created event
+                    for event in events:
+                        if isinstance(event, dict) and event.get("event") == "final_yaml_created":
+                            event_data = event.get("data", {})
+                            if isinstance(event_data, dict) and "yaml" in event_data:
+                                final_yaml = event_data["yaml"]
+                                return final_yaml, {
+                                    "metrics": data.get("metrics", {}),
+                                    "tools_called": data.get("tools_called", []),
+                                    "events": events,
+                                    "event_count": len(events),
+                                }
+                elif isinstance(events, dict):
+                    # Handle case where events is a dict with final_yaml_created key
+                    final_yaml_event = events.get("final_yaml_created", {})
+                    if isinstance(final_yaml_event, dict):
+                        event_data = final_yaml_event.get("data", {})
+                        if isinstance(event_data, dict) and "yaml" in event_data:
+                            final_yaml = event_data["yaml"]
+                            return final_yaml, {
+                                "metrics": data.get("metrics", {}),
+                                "tools_called": data.get("tools_called", []),
+                                "events": events,
+                                "event_count": len(events) if isinstance(events, dict) else 0,
+                            }
+            
+            # Check if it's enriched format with direct final_yaml key (fallback)
             if isinstance(data, dict) and "final_yaml" in data:
                 return data["final_yaml"], {
                     "metrics": data.get("metrics", {}),
