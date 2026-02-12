@@ -2,7 +2,7 @@
 
 import pytest
 from aieval.sdk.comparison import compare_runs, get_regressions, RunComparison
-from aieval.core.types import ExperimentRun, Score, DatasetItem
+from aieval.core.types import Run, Score, DatasetItem
 
 
 class TestCompareRuns:
@@ -11,7 +11,7 @@ class TestCompareRuns:
     def test_compare_runs_basic(self):
         """Test basic run comparison."""
         run1 = ExperimentRun(
-            experiment_id="exp-001",
+            eval_id="exp-001",
             scores=[
                 Score(name="deep_diff_v1", value=0.9, eval_id="deep_diff_v1.v1", metadata={"dataset_item_id": "test-001"}),
                 Score(name="deep_diff_v1", value=0.8, eval_id="deep_diff_v1.v1", metadata={"dataset_item_id": "test-002"}),
@@ -19,7 +19,7 @@ class TestCompareRuns:
         )
         
         run2 = ExperimentRun(
-            experiment_id="exp-002",
+            eval_id="exp-002",
             scores=[
                 Score(name="deep_diff_v1", value=0.95, eval_id="deep_diff_v1.v1", metadata={"dataset_item_id": "test-001"}),
                 Score(name="deep_diff_v1", value=0.75, eval_id="deep_diff_v1.v1", metadata={"dataset_item_id": "test-002"}),
@@ -35,14 +35,14 @@ class TestCompareRuns:
     def test_compare_runs_with_threshold(self):
         """Test comparison with threshold."""
         run1 = ExperimentRun(
-            experiment_id="exp-001",
+            eval_id="exp-001",
             scores=[
                 Score(name="score1", value=0.9, eval_id="score1.v1", metadata={"dataset_item_id": "test-001"}),
             ],
         )
         
         run2 = ExperimentRun(
-            experiment_id="exp-002",
+            eval_id="exp-002",
             scores=[
                 Score(name="score1", value=0.905, eval_id="score1.v1", metadata={"dataset_item_id": "test-001"}),
             ],
@@ -57,14 +57,14 @@ class TestCompareRuns:
     def test_compare_runs_missing_scores(self):
         """Test comparison when scores are missing."""
         run1 = ExperimentRun(
-            experiment_id="exp-001",
+            eval_id="exp-001",
             scores=[
                 Score(name="score1", value=0.9, eval_id="score1.v1", metadata={"dataset_item_id": "test-001"}),
             ],
         )
         
         run2 = ExperimentRun(
-            experiment_id="exp-002",
+            eval_id="exp-002",
             scores=[
                 Score(name="score1", value=0.95, eval_id="score1.v1", metadata={"dataset_item_id": "test-001"}),
                 Score(name="score2", value=0.8, eval_id="score2.v1", metadata={"dataset_item_id": "test-001"}),

@@ -16,7 +16,7 @@ import structlog
 initialize_logging()
 logger = structlog.get_logger(__name__)
 
-from aieval.core.experiment import Experiment
+from aieval.core.eval import Eval
 from aieval.core.types import DatasetItem
 from aieval.datasets import load_jsonl_dataset, load_index_csv_dataset, FunctionDataset
 from aieval.adapters.http import HTTPAdapter
@@ -29,7 +29,7 @@ from aieval.sinks.csv import CSVSink
 from aieval.sinks.json import JSONSink
 from aieval.sinks.langfuse import LangfuseSink
 
-app = typer.Typer(help="AI Evolution Platform - Unified Evaluation and Experimentation")
+app = typer.Typer(help="Unified agent evaluation (Eval, Run, Data Set, Scores).")
 
 
 def _expand_env_vars(value: str) -> str:
@@ -84,10 +84,10 @@ def _load_dataset(config: dict[str, Any]) -> list[DatasetItem]:
             actual_suffix=dataset_config.get("actual_suffix", "actual"),
         )
     elif dataset_type == "function":
-        # Function-based dataset
-        func_path = dataset_config["path"]
-        # TODO: Import and call function
-        raise NotImplementedError("Function-based datasets not yet implemented")
+        # Function-based dataset — not yet implemented (see docs/cleanup-audit.md)
+        raise NotImplementedError(
+            "Function-based datasets not yet implemented. Use jsonl or index_csv. See docs/cleanup-audit.md."
+        )
     else:
         raise ValueError(f"Unknown dataset type: {dataset_type}")
 
@@ -181,7 +181,7 @@ def _create_adapter(config: dict[str, Any]):
         return HTTPAdapter(
             base_url=adapter_config.get("base_url", os.getenv("CHAT_BASE_URL", "http://localhost:8000")),
             auth_token=adapter_config.get("auth_token", os.getenv("CHAT_PLATFORM_AUTH_TOKEN", "")),
-            context_field_name="harness_context",
+            context_field_name="context",
             context_data={
                 "account_id": adapter_config.get("account_id", os.getenv("ACCOUNT_ID", "default")),
                 "org_id": adapter_config.get("org_id", os.getenv("ORG_ID", "default")),
@@ -214,13 +214,15 @@ def _create_sinks(config: dict[str, Any]) -> list:
         elif sink_type == "csv":
             path = sink_config.get("path", "results/results.csv")
             # Expand placeholders
-            path = path.replace("{experiment_name}", config.get("experiment", {}).get("name", "experiment"))
+            name = config.get("eval", config.get("experiment", {})).get("name", "eval")
+            path = path.replace("{eval_name}", name).replace("{experiment_name}", name)
             path = path.replace("{timestamp}", str(int(time.time())))
             sinks.append(CSVSink(path))
-        
+
         elif sink_type == "json":
             path = sink_config.get("path", "results/results.json")
-            path = path.replace("{experiment_name}", config.get("experiment", {}).get("name", "experiment"))
+            name = config.get("eval", config.get("experiment", {})).get("name", "eval")
+            path = path.replace("{eval_name}", name).replace("{experiment_name}", name)
             path = path.replace("{timestamp}", str(int(time.time())))
             sinks.append(JSONSink(path))
         
@@ -241,7 +243,7 @@ def run(
     model: str | None = typer.Option(None, "--model", "-m", help="[Deprecated] Override model from config (use --models instead)"),
     models: str | None = typer.Option(None, "--models", help="Comma-separated list of models to evaluate (e.g., 'claude-3-7-sonnet,gpt-4o')"),
 ):
-    """Run an experiment from config file."""
+    """Run an eval from config file (config key: experiment)."""
     # Load config
     config_dict = _load_config(config)
     
@@ -262,11 +264,11 @@ def run(
     # Create sinks
     sinks = _create_sinks(config_dict)
     
-    # Create experiment
-    experiment_config = config_dict.get("experiment", {})
-    experiment_name = experiment_config.get("name", "experiment")
-    experiment = Experiment(
-        name=experiment_name,
+    # Create eval (config key: eval, or experiment for backward compatibility)
+    eval_config = config_dict.get("eval", config_dict.get("experiment", {}))
+    eval_name = eval_config.get("name", "eval")
+    eval_ = Eval(
+        name=eval_name,
         dataset=dataset,
         scorers=scorers,
     )
@@ -295,7 +297,7 @@ def run(
         
         # Run experiment
         run_result = asyncio.run(
-            experiment.run(
+            eval_.run(
                 adapter=adapter,
                 model=model_name,
                 concurrency_limit=concurrency_limit,
@@ -308,7 +310,7 @@ def run(
             sink.flush()
         
         run_results.append(run_result)
-        print(f"Experiment run completed: {run_result.run_id}")
+        print(f"Eval run completed: {run_result.run_id}")
     
     # If multiple models, show comparison
     if len(run_results) > 1:
@@ -328,7 +330,7 @@ def run(
                 count = stats["count"]
                 print(f"  {model_name:30s}: {mean:.4f} (n={count})")
     
-    print("\nExperiment completed!")
+    print("\nEval completed!")
 
 
 @app.command()
@@ -336,9 +338,8 @@ def compare(
     run1_id: str = typer.Option(..., "--run1", help="First run ID"),
     run2_id: str = typer.Option(..., "--run2", help="Second run ID"),
 ):
-    """Compare two experiment runs."""
-    # TODO: Load runs from storage and compare
-    typer.echo("Compare command not yet implemented")
+    """Compare two runs. [Not implemented — requires run storage; see docs/cleanup-audit.md]"""
+    typer.echo("Compare command not yet implemented. See docs/cleanup-audit.md for status.")
     raise NotImplementedError("Compare command requires run storage")
 
 

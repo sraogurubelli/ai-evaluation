@@ -6,9 +6,41 @@ from typing import Any
 
 
 @dataclass
+class GenerateResult:
+    """
+    Result of an adapter generate() call when trace linkage is needed.
+
+    Adapters may return GenerateResult instead of raw output so that
+    trace_id and observation_id can be attached to scores (e.g. for Langfuse).
+    """
+
+    output: Any
+    trace_id: str | None = None
+    observation_id: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+def normalize_adapter_output(result: Any) -> tuple[Any, str | None, str | None]:
+    """
+    Normalize adapter generate() return value to (output, trace_id, observation_id).
+
+    If result is GenerateResult, returns (result.output, result.trace_id, result.observation_id).
+    Otherwise returns (result, None, None). Use this so scorers always get the raw output
+    and callers can attach trace_id/observation_id to Score when present.
+    """
+    if isinstance(result, GenerateResult):
+        return (result.output, result.trace_id, result.observation_id)
+    return (result, None, None)
+
+
+@dataclass
 class Score:
-    """Evaluation score with metadata."""
-    
+    """Evaluation score with metadata.
+
+    metadata may include cost-related keys when linked to a trace (via trace_id):
+    cost, input_tokens, output_tokens, provider, model (see docs/tracing.md).
+    """
+
     name: str
     value: float | bool
     eval_id: str
@@ -31,10 +63,14 @@ class Score:
 
 
 @dataclass
-class ExperimentRun:
-    """Single execution of an experiment."""
-    
-    experiment_id: str
+class Run:
+    """Single execution of an eval.
+
+    metadata may include aggregate_metrics: { accuracy, cost, latency_sec,
+    input_tokens, output_tokens } for run-level summary (see docs/tracing.md).
+    """
+
+    eval_id: str
     run_id: str
     dataset_id: str
     scores: list[Score]
@@ -44,7 +80,7 @@ class ExperimentRun:
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
-            "experiment_id": self.experiment_id,
+            "eval_id": self.eval_id,
             "run_id": self.run_id,
             "dataset_id": self.dataset_id,
             "scores": [score.to_dict() for score in self.scores],

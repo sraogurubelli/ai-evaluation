@@ -23,7 +23,7 @@ class TestHTTPAdapter:
         adapter = HTTPAdapter(
             base_url="https://api.example.com",
             auth_token="test-token",
-            context_field_name="harness_context",
+            context_field_name="context",
             context_data={"account_id": "acc-123"},
             endpoint_mapping={"pipeline": "/custom/pipeline"},
             default_endpoint="/custom/default",
@@ -31,7 +31,7 @@ class TestHTTPAdapter:
         )
         
         assert adapter.base_url == "https://api.example.com"
-        assert adapter.context_field_name == "harness_context"
+        assert adapter.context_field_name == "context"
         assert adapter.context_data["account_id"] == "acc-123"
         assert adapter.endpoint_mapping["pipeline"] == "/custom/pipeline"
         assert adapter.default_endpoint == "/custom/default"
@@ -155,7 +155,7 @@ class TestHTTPAdapter:
     def test_generate_payload_with_context(self):
         """Test payload generation with context."""
         adapter = HTTPAdapter(
-            context_field_name="harness_context",
+            context_field_name="context",
             context_data={"account_id": "acc-123", "org_id": "org-456"}
         )
         
@@ -165,8 +165,8 @@ class TestHTTPAdapter:
             operation_type="create"
         )
         
-        assert payload["harness_context"]["account_id"] == "acc-123"
-        assert payload["harness_context"]["org_id"] == "org-456"
+        assert payload["context"]["account_id"] == "acc-123"
+        assert payload["context"]["org_id"] == "org-456"
         assert payload["prompt"] == "Create pipeline"
     
     def test_generate_payload_with_old_yaml(self):

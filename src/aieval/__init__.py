@@ -1,8 +1,8 @@
-"""AI Evolution - Unified AI Evaluation and Experimentation Platform.
+"""AI Evolution - Unified AI agent evaluation platform.
 
 This package provides:
 - SDK: Clean public API for customers (import from aieval.sdk)
-- Core: Experiment system, types, scorers
+- Core: Eval system, types, scorers
 - Adapters: AI system integrations
 - CLI: Command-line interface
 - API: REST API server
@@ -18,10 +18,10 @@ except ImportError:
 from aieval.sdk import (
     # Core types
     DatasetItem,
-    ExperimentRun,
+    Run,
     Score,
-    # Experiment system
-    Experiment,
+    # Eval system
+    Eval,
     # Adapters
     HTTPAdapter,
     
@@ -64,10 +64,10 @@ __version__ = "0.1.0"
 __all__ = [
     # Core types
     "DatasetItem",
-    "ExperimentRun",
+    "Run",
     "Score",
-    # Experiment system
-    "Experiment",
+    # Eval system
+    "Eval",
     # Adapters
     "HTTPAdapter",
     "LangfuseAdapter",

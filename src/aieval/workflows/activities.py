@@ -10,8 +10,8 @@ from typing import Any
 from temporalio import activity
 from temporalio.common import RetryPolicy
 
-from aieval.core.experiment import Experiment
-from aieval.core.types import DatasetItem, Score, ExperimentRun
+from aieval.core.eval import Eval
+from aieval.core.types import DatasetItem, Score, Run
 from aieval.datasets import load_jsonl_dataset, load_index_csv_dataset
 from aieval.adapters.base import Adapter
 from aieval.scorers.base import Scorer
@@ -88,7 +88,7 @@ async def run_experiment_activity(
         concurrency_limit: Maximum concurrent API calls
         
     Returns:
-        ExperimentRun as dictionary
+        Run as dictionary
     """
     activity.logger.info(f"Running experiment with {len(dataset_items)} items")
     
@@ -124,14 +124,14 @@ async def run_experiment_activity(
         auth_token=adapter_config.get("auth_token", ""),
     )
     
-    # Create and run experiment
-    experiment = Experiment(
-        name="temporal_experiment",
+    # Create and run eval
+    eval_ = Eval(
+        name="temporal_eval",
         dataset=dataset,
         scorers=scorers,
     )
     
-    result = await experiment.run(
+    result = await eval_.run(
         adapter=adapter,
         model=model,
         concurrency_limit=concurrency_limit,
@@ -182,19 +182,19 @@ async def emit_results_activity(
     Emit experiment results to sinks.
     
     Args:
-        result: ExperimentRun as dictionary
+        result: Run as dictionary
         sinks_config: Sink configurations
     """
     activity.logger.info(f"Emitting results to {len(sinks_config)} sinks")
     
-    from aieval.core.types import ExperimentRun
+    from aieval.core.types import Run
     from aieval.sinks.csv import CSVSink
     from aieval.sinks.json import JSONSink
     from aieval.sinks.stdout import StdoutSink
     
-    # Convert result back to ExperimentRun
-    run = ExperimentRun(
-        experiment_id=result["experiment_id"],
+    # Convert result back to Run
+    run = Run(
+        eval_id=result["eval_id"],
         run_id=result["run_id"],
         dataset_id=result["dataset_id"],
         scores=[],  # Would need to reconstruct scores

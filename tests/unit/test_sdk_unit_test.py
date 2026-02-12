@@ -7,7 +7,7 @@ from aieval import (
     assert_score_min,
     DeepDiffScorer,
 )
-from aieval.core.types import DatasetItem, ExperimentRun, Score
+from aieval.core.types import DatasetItem, Run, Score
 
 
 class TestScoreSingleOutput:
@@ -54,7 +54,7 @@ class TestAssertScoreMin:
     def test_assert_score_min_pass(self):
         """assert_score_min does not raise when score >= min_value."""
         result = ExperimentRun(
-            experiment_id="e1",
+            eval_id="e1",
             run_id="r1",
             dataset_id="d1",
             scores=[Score(name="s1", value=0.95, eval_id="s1.v1")],
@@ -65,7 +65,7 @@ class TestAssertScoreMin:
     def test_assert_score_min_fail_below(self):
         """assert_score_min raises when score < min_value."""
         result = ExperimentRun(
-            experiment_id="e1",
+            eval_id="e1",
             run_id="r1",
             dataset_id="d1",
             scores=[Score(name="s1", value=0.7, eval_id="s1.v1")],
@@ -76,7 +76,7 @@ class TestAssertScoreMin:
     def test_assert_score_min_fail_no_scores(self):
         """assert_score_min raises when result has no scores."""
         result = ExperimentRun(
-            experiment_id="e1",
+            eval_id="e1",
             run_id="r1",
             dataset_id="d1",
             scores=[],
@@ -87,7 +87,7 @@ class TestAssertScoreMin:
     def test_assert_score_min_named_score(self):
         """assert_score_min uses score_name when provided."""
         result = ExperimentRun(
-            experiment_id="e1",
+            eval_id="e1",
             run_id="r1",
             dataset_id="d1",
             scores=[

@@ -83,18 +83,18 @@ def upgrade() -> None:
         sa.Column('response', sa.Text(), nullable=True),
         sa.Column('context', sa.Text(), nullable=True),
         sa.Column('model_name', sa.String(255), nullable=True),
-        sa.Column('experiment_run_id', postgresql.UUID(as_uuid=False), nullable=True),
+        sa.Column('run_id', postgresql.UUID(as_uuid=False), nullable=True),
         sa.Column('rule_results', postgresql.JSON, nullable=True),
         sa.Column('passed', sa.Boolean(), nullable=False, server_default='true'),
         sa.Column('blocked', sa.Boolean(), nullable=False, server_default='false'),
         sa.Column('created_at', sa.DateTime(), nullable=False),
         sa.Column('meta_data', postgresql.JSON, nullable=True),
         sa.ForeignKeyConstraint(['task_id'], ['guardrail_tasks.id']),
-        sa.ForeignKeyConstraint(['experiment_run_id'], ['experiment_runs.id']),
+        sa.ForeignKeyConstraint(['run_id'], ['runs.id']),
     )
     op.create_index('ix_inferences_task_id', 'inferences', ['task_id'])
     op.create_index('ix_inferences_model_name', 'inferences', ['model_name'])
-    op.create_index('ix_inferences_experiment_run_id', 'inferences', ['experiment_run_id'])
+    op.create_index('ix_inferences_run_id', 'inferences', ['run_id'])
     op.create_index('ix_inferences_passed', 'inferences', ['passed'])
     op.create_index('ix_inferences_blocked', 'inferences', ['blocked'])
     op.create_index('ix_inferences_created_at', 'inferences', ['created_at'])
@@ -104,7 +104,7 @@ def downgrade() -> None:
     op.drop_index('ix_inferences_created_at', table_name='inferences')
     op.drop_index('ix_inferences_blocked', table_name='inferences')
     op.drop_index('ix_inferences_passed', table_name='inferences')
-    op.drop_index('ix_inferences_experiment_run_id', table_name='inferences')
+    op.drop_index('ix_inferences_run_id', table_name='inferences')
     op.drop_index('ix_inferences_model_name', table_name='inferences')
     op.drop_index('ix_inferences_task_id', table_name='inferences')
     op.drop_table('inferences')

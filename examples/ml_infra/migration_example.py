@@ -52,7 +52,7 @@ from aieval import (
     load_index_csv_dataset,
     CSVSink,
 )
-from samples_sdk.consumers.devops import run_devops_eval, create_devops_experiment
+from samples_sdk.consumers.devops import run_devops_eval, create_devops_eval
 
 
 async def migration_example_simple():
@@ -105,7 +105,7 @@ async def migration_example_detailed():
     adapter = HTTPAdapter(
         base_url="http://localhost:8000",
         auth_token="your-token",
-        context_field_name="harness_context",
+        context_field_name="context",
         context_data={
             "account_id": "account-123",
             "org_id": "org-456",
@@ -120,8 +120,8 @@ async def migration_example_detailed():
         sse_completion_events=["dashboard_complete", "kg_complete"],
     )
     
-    # Step 5: Run experiment (equivalent to call_aidevops_service + add_metric)
-    result = await experiment.run(
+    # Step 5: Run eval (equivalent to call_aidevops_service + add_metric)
+    result = await eval_.run(
         adapter=adapter,
         model="claude-3-7-sonnet-20250219",
         concurrency_limit=5,
@@ -152,7 +152,7 @@ async def migration_example_offline():
         actual_suffix="generated",  # Use *_generated.yaml files
     )
     
-    experiment = create_devops_experiment(
+    eval_ = create_devops_eval(
         index_file="benchmarks/datasets/index.csv",
         base_dir="benchmarks/datasets",
         entity_type="pipeline",
@@ -168,7 +168,7 @@ async def migration_example_offline():
     all_scores = []
     for item in dataset:
         if item.output:
-            for scorer in experiment.scorers:
+            for scorer in eval_.scorers:
                 score = scorer.score(
                     generated=item.output,
                     expected=item.expected,
@@ -176,8 +176,8 @@ async def migration_example_offline():
                 )
                 all_scores.append(score)
     
-    run = ExperimentRun(
-        experiment_id=str(uuid.uuid4()),
+    run = Run(
+        eval_id=str(uuid.uuid4()),
         run_id=str(uuid.uuid4()),
         dataset_id="offline",
         scores=all_scores,

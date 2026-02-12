@@ -1,15 +1,19 @@
 # AI Evaluation
 
-Unified AI evaluation and experimentation platform. Open source, self-hostable.
+Unified AI **agent evaluation** platform. Open source, self-hostable.
+
+**Agent evaluation only.** Not ML experiments. Not feature-flag experiments.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 
 ## What it does
 
-- **Evaluation**: Multiple dataset formats (JSONL, index CSV), scorers (DeepDiff, LLM-as-judge), experiment tracking
+- **Evals**: Multiple data set formats (JSONL, index CSV), scorers (DeepDiff, LLM-as-judge), runs and scores
 - **Adapters**: HTTP/SSE; sample DevOps consumer in `samples_sdk/consumers/devops`
 - **API & UI**: FastAPI server, Gradio UI; PostgreSQL for persistence
+
+See [Concepts](docs/concepts.md) for Eval, Run, Data Set, Task, Trace, and Scores.
 
 ## Install
 
@@ -57,6 +61,8 @@ Then start the server with `task server` and run tests with `task test`. See [DE
 
 **SDK**
 
+Define an **Eval** (name, data set, scorers) and run it to get a **Run** with **Scores**. In the SDK, an Eval is represented by the `Experiment` class.
+
 ```python
 from aieval import Experiment, HTTPAdapter, DeepDiffScorer, load_jsonl_dataset
 
@@ -67,6 +73,8 @@ result = await experiment.run(adapter=adapter, model="gpt-4o")
 ```
 
 **CLI**
+
+Run an eval from a config file:
 
 ```bash
 aieval run --config examples/ml_infra/config.yaml
@@ -108,6 +116,8 @@ ai-evaluation/
 └── docs/
 ```
 
-## License
+## License and maintainer
 
-MIT. See [LICENSE](LICENSE). Contributions welcome (see [DEVELOPMENT.md](DEVELOPMENT.md)).
+This is an **independent open source project**. MIT. See [LICENSE](LICENSE).  
+**Copyright (c) 2026 Srinivasa Rao Gurubelli (VP of Engineering & Fellow).**  
+Contributions welcome from anyone; see [CONTRIBUTING.md](CONTRIBUTING.md) and [DEVELOPMENT.md](DEVELOPMENT.md).

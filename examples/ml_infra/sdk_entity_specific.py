@@ -31,7 +31,7 @@ async def example_pipeline_evaluation():
         DeepDiffScorer(name="deep_diff_v2", eval_id="deep_diff_v2.v1", version="v2"),
     ]
     
-    experiment = Experiment(
+    eval_ = Eval(
         name="pipeline_evaluation",
         dataset=dataset,
         scorers=scorers,
@@ -41,7 +41,7 @@ async def example_pipeline_evaluation():
     # Teams should create their own custom adapters - see docs/custom-adapters.md
     adapter = HTTPAdapter(
         base_url="http://localhost:8000",
-        context_field_name="harness_context",
+        context_field_name="context",
         endpoint_mapping={
             "dashboard": "/chat/dashboard",
             "knowledge_graph": "/chat/knowledge-graph",
@@ -49,7 +49,7 @@ async def example_pipeline_evaluation():
         default_endpoint="/chat/platform",
     )
     
-    result = await experiment.run(adapter=adapter, model="claude-3-7-sonnet-20250219")
+    result = await eval_.run(adapter=adapter, model="claude-3-7-sonnet-20250219")
     print(f"Pipeline evaluation completed: {len(result.scores)} scores")
 
 
@@ -68,7 +68,7 @@ async def example_dashboard_evaluation():
         DashboardQualityScorer(),
     ]
     
-    experiment = Experiment(
+    eval_ = Eval(
         name="dashboard_evaluation",
         dataset=dataset,
         scorers=scorers,
@@ -78,7 +78,7 @@ async def example_dashboard_evaluation():
     # Teams should create their own custom adapters - see docs/custom-adapters.md
     adapter = HTTPAdapter(
         base_url="http://localhost:8000",
-        context_field_name="harness_context",
+        context_field_name="context",
         endpoint_mapping={
             "dashboard": "/chat/dashboard",
             "knowledge_graph": "/chat/knowledge-graph",
@@ -86,7 +86,7 @@ async def example_dashboard_evaluation():
         default_endpoint="/chat/platform",
     )
     
-    result = await experiment.run(adapter=adapter, model="claude-3-7-sonnet-20250219")
+    result = await eval_.run(adapter=adapter, model="claude-3-7-sonnet-20250219")
     print(f"Dashboard evaluation completed: {len(result.scores)} scores")
 
 
@@ -105,7 +105,7 @@ async def example_knowledge_graph_evaluation():
         KnowledgeGraphQualityScorer(),
     ]
     
-    experiment = Experiment(
+    eval_ = Eval(
         name="kg_evaluation",
         dataset=dataset,
         scorers=scorers,
@@ -115,7 +115,7 @@ async def example_knowledge_graph_evaluation():
     # Teams should create their own custom adapters - see docs/custom-adapters.md
     adapter = HTTPAdapter(
         base_url="http://localhost:8000",
-        context_field_name="harness_context",
+        context_field_name="context",
         endpoint_mapping={
             "dashboard": "/chat/dashboard",
             "knowledge_graph": "/chat/knowledge-graph",
@@ -123,7 +123,7 @@ async def example_knowledge_graph_evaluation():
         default_endpoint="/chat/platform",
     )
     
-    result = await experiment.run(adapter=adapter, model="claude-3-7-sonnet-20250219")
+    result = await eval_.run(adapter=adapter, model="claude-3-7-sonnet-20250219")
     print(f"Knowledge Graph evaluation completed: {len(result.scores)} scores")
 
 
@@ -142,7 +142,7 @@ async def example_service_evaluation():
         DeepDiffScorer(name="deep_diff_v3", eval_id="deep_diff_v3.v1", version="v3"),
     ]
     
-    experiment = Experiment(
+    eval_ = Eval(
         name="service_evaluation",
         dataset=dataset,
         scorers=scorers,
@@ -152,7 +152,7 @@ async def example_service_evaluation():
     # Teams should create their own custom adapters - see docs/custom-adapters.md
     adapter = HTTPAdapter(
         base_url="http://localhost:8000",
-        context_field_name="harness_context",
+        context_field_name="context",
         endpoint_mapping={
             "dashboard": "/chat/dashboard",
             "knowledge_graph": "/chat/knowledge-graph",
@@ -160,7 +160,7 @@ async def example_service_evaluation():
         default_endpoint="/chat/platform",
     )
     
-    result = await experiment.run(adapter=adapter, model="claude-3-7-sonnet-20250219")
+    result = await eval_.run(adapter=adapter, model="claude-3-7-sonnet-20250219")
     print(f"Service evaluation completed: {len(result.scores)} scores")
 
 
@@ -184,7 +184,7 @@ async def example_update_operation():
         DeepDiffScorer(name="deep_diff_v3", eval_id="deep_diff_v3.v1", version="v3"),
     ]
     
-    experiment = Experiment(
+    eval_ = Eval(
         name="pipeline_update_evaluation",
         dataset=dataset,
         scorers=scorers,
@@ -194,7 +194,7 @@ async def example_update_operation():
     # Teams should create their own custom adapters - see docs/custom-adapters.md
     adapter = HTTPAdapter(
         base_url="http://localhost:8000",
-        context_field_name="harness_context",
+        context_field_name="context",
         endpoint_mapping={
             "dashboard": "/chat/dashboard",
             "knowledge_graph": "/chat/knowledge-graph",
@@ -202,7 +202,7 @@ async def example_update_operation():
         default_endpoint="/chat/platform",
     )
     
-    result = await experiment.run(adapter=adapter, model="claude-3-7-sonnet-20250219")
+    result = await eval_.run(adapter=adapter, model="claude-3-7-sonnet-20250219")
     print(f"Update operation evaluation completed: {len(result.scores)} scores")
 
 

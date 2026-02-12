@@ -1,6 +1,6 @@
 """pytest fixtures for DevOps consumer unit testing.
 
-This module provides reusable pytest fixtures for DevOps/Harness teams to use
+This module provides reusable pytest fixtures for DevOps evaluation
 when writing unit-level evaluation tests with ai-evolution.
 """
 
@@ -9,7 +9,7 @@ import pytest
 from pathlib import Path
 
 from aieval import (
-    Experiment,
+    Eval,
     DeepDiffScorer,
     HTTPAdapter,
     load_index_csv_dataset,
@@ -34,7 +34,7 @@ def devops_adapter() -> HTTPAdapter:
     return HTTPAdapter(
         base_url=os.getenv("CHAT_BASE_URL", "http://localhost:8000"),
         auth_token=os.getenv("CHAT_PLATFORM_AUTH_TOKEN", ""),
-        context_field_name="harness_context",
+        context_field_name="context",
         context_data={
             "account_id": os.getenv("ACCOUNT_ID", "default"),
             "org_id": os.getenv("ORG_ID", "default"),
@@ -127,15 +127,15 @@ def load_test_case_by_id():
 
 
 @pytest.fixture
-def experiment_factory():
-    """Fixture factory for creating experiments."""
-    def _create_experiment(
+def eval_factory():
+    """Fixture factory for creating evals."""
+    def _create_eval(
         name: str,
         dataset: list[DatasetItem],
         scorers: list[DeepDiffScorer],
-    ) -> Experiment:
-        return Experiment(name=name, dataset=dataset, scorers=scorers)
-    return _create_experiment
+    ) -> Eval:
+        return Eval(name=name, dataset=dataset, scorers=scorers)
+    return _create_eval
 
 
 @pytest.fixture

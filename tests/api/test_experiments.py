@@ -1,16 +1,15 @@
-"""Tests for experiment endpoints."""
+"""Tests for eval endpoints."""
 
 
+class TestEvalsEndpoint:
+    """Tests for /evals endpoint."""
 
-class TestExperimentsEndpoint:
-    """Tests for /experiments endpoint."""
-    
-    def test_create_experiment_success(self, client, sample_dataset_config, sample_adapter_config):
-        """Test successful experiment creation."""
+    def test_create_eval_success(self, client, sample_dataset_config, sample_adapter_config):
+        """Test successful eval creation."""
         response = client.post(
-            "/experiments",
+            "/evals",
             json={
-                "experiment_name": "test_experiment",
+                "eval_name": "test_eval",
                 "config": {
                     "dataset": sample_dataset_config,
                     "adapter": sample_adapter_config,
@@ -20,34 +19,34 @@ class TestExperimentsEndpoint:
                 "run_async": True,
             },
         )
-        
+
         assert response.status_code == 201
         data = response.json()
         assert "id" in data
-        assert data["experiment_name"] == "test_experiment"
+        assert data["eval_name"] == "test_eval"
         assert data["status"] == "pending"
-    
-    def test_create_experiment_invalid_config(self, client):
-        """Test experiment creation with minimal/invalid config (API may accept and create task)."""
+
+    def test_create_eval_invalid_config(self, client):
+        """Test eval creation with minimal/invalid config (API may accept and create task)."""
         response = client.post(
-            "/experiments",
+            "/evals",
             json={
-                "experiment_name": "test",
+                "eval_name": "test",
                 "config": {},  # Minimal config; validation may happen at execution time
                 "run_async": True,
             },
         )
         # API accepts empty config and creates task (201); or returns error (4xx/5xx)
         assert response.status_code in [201, 400, 422, 500]
-    
-    def test_create_experiment_missing_fields(self, client):
-        """Test experiment creation with missing required fields."""
+
+    def test_create_eval_missing_fields(self, client):
+        """Test eval creation with missing required fields."""
         response = client.post(
-            "/experiments",
+            "/evals",
             json={
-                "experiment_name": "test",
+                "eval_name": "test",
                 # Missing config
             },
         )
-        
+
         assert response.status_code == 422  # Validation error

@@ -51,7 +51,7 @@ class HTTPAdapter(Adapter):
         Args:
             base_url: Base URL for the API server
             auth_token: Authentication token
-            context_field_name: Field name for context in API payload (e.g., "context", "harness_context")
+            context_field_name: Field name for context in API payload (e.g., "context")
             context_data: Context data dictionary (e.g., {"account_id": "...", "org_id": "..."})
             endpoint_mapping: Mapping of entity types to endpoint paths
                 Example: {"dashboard": "/chat/dashboard", "knowledge_graph": "/chat/knowledge-graph"}

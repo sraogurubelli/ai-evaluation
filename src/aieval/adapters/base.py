@@ -24,7 +24,8 @@ class Adapter(ABC):
             **kwargs: Additional parameters
             
         Returns:
-            Generated output (YAML string, JSON, etc.)
+            Generated output (e.g. string, dict), or GenerateResult when the adapter
+            propagates trace_id/observation_id for score linking (see docs/tracing.md).
         """
         pass
     

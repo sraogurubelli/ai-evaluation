@@ -36,4 +36,4 @@ class MyAdapter(Adapter):
 
 ## Example
 
-Full example: [examples/adapters/example_custom_adapter.py](../examples/adapters/example_custom_adapter.py). For DevOps/Harness-style usage: [samples_sdk/consumers/devops](../samples_sdk/consumers/devops).
+Full example: [examples/adapters/example_custom_adapter.py](../examples/adapters/example_custom_adapter.py). For DevOps-style usage: [samples_sdk/consumers/devops](../samples_sdk/consumers/devops).

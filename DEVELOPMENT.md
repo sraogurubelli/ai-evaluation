@@ -61,6 +61,8 @@ Ruff (format + lint), MyPy. Line length 100. Run `task format` before commit.
 
 ## Contributing
 
+See [CONTRIBUTING.md](CONTRIBUTING.md) for how to contribute and license terms.
+
 1. Create a feature branch.
 2. Make changes; run `task pre-commit`.
 3. Add/update tests.

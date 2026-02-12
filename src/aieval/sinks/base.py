@@ -2,7 +2,7 @@
 
 from abc import ABC, abstractmethod
 
-from aieval.core.types import Score, ExperimentRun
+from aieval.core.types import Score, Run
 
 
 class Sink(ABC):
@@ -14,8 +14,8 @@ class Sink(ABC):
         pass
     
     @abstractmethod
-    def emit_run(self, run: ExperimentRun) -> None:
-        """Emit an entire experiment run."""
+    def emit_run(self, run: Run) -> None:
+        """Emit an entire run."""
         pass
     
     @abstractmethod

@@ -15,7 +15,7 @@ from aieval.core.types import Score, ExperimentRun
 logger = logging.getLogger(__name__)
 
 
-def _scores_by_test_id(run: ExperimentRun) -> dict[str, list[Score]]:
+def _scores_by_test_id(run: Run) -> dict[str, list[Score]]:
     """Group scores by test_id from metadata."""
     by_id: dict[str, list[Score]] = {}
     for score in run.scores:
@@ -37,7 +37,7 @@ def _test_passed(scores: list[Score]) -> bool:
     return True
 
 
-def _scorer_names(run: ExperimentRun) -> list[str]:
+def _scorer_names(run: Run) -> list[str]:
     """Unique scorer names in order of first appearance."""
     seen: set[str] = set()
     names: list[str] = []
@@ -48,15 +48,15 @@ def _scorer_names(run: ExperimentRun) -> list[str]:
     return names
 
 
-def render_run_to_html(run: ExperimentRun | dict[str, Any], title: str = "Evaluation Report") -> str:
+def render_run_to_html(run: Run | dict[str, Any], title: str = "Evaluation Report") -> str:
     """
-    Render a single run (ExperimentRun or run dict from to_dict()) to HTML string.
+    Render a single run (Run or run dict from to_dict()) to HTML string.
     Used by API GET /runs/{run_id}/report.
     """
     if isinstance(run, dict):
         scores_raw = run.get("scores", [])
         run_id = run.get("run_id", "")
-        experiment_id = run.get("experiment_id", "")
+        eval_id = run.get("eval_id", "")
         metadata = run.get("metadata", {})
         created_at = run.get("created_at", "")
         # Normalize to list of score-like objects with .name, .value, .metadata
@@ -77,7 +77,7 @@ def render_run_to_html(run: ExperimentRun | dict[str, Any], title: str = "Evalua
         ))
         failed = total - passed
         agent_id = metadata.get("agent_id", "")
-        experiment_name = metadata.get("name", experiment_id)
+        eval_name = metadata.get("name", eval_id)
     else:
         by_test = _scores_by_test_id(run)
         scorer_names = _scorer_names(run)
@@ -85,10 +85,10 @@ def render_run_to_html(run: ExperimentRun | dict[str, Any], title: str = "Evalua
         passed = sum(1 for scores in by_test.values() if _test_passed(scores))
         failed = total - passed
         run_id = run.run_id
-        experiment_id = run.experiment_id
+        eval_id = run.eval_id
         metadata = run.metadata or {}
         agent_id = metadata.get("agent_id", "")
-        experiment_name = metadata.get("name", run.experiment_id)
+        eval_name = metadata.get("name", run.eval_id)
         scores = run.scores
 
     rows_list: list[str] = []
@@ -134,7 +134,7 @@ def render_run_to_html(run: ExperimentRun | dict[str, Any], title: str = "Evalua
 </head>
 <body>
 <h1>{html.escape(title)}</h1>
-<div class="meta">Run: {html.escape(run_id)} | Experiment: {html.escape(experiment_name)} | Agent: {html.escape(agent_id or "-")}</div>
+<div class="meta">Run: {html.escape(run_id)} | Eval: {html.escape(eval_name)} | Agent: {html.escape(agent_id or "-")}</div>
 <div class="summary">
   <span>Total: {total}</span>
   <span class="pass">Passed: {passed}</span>
@@ -165,13 +165,13 @@ class HTMLReportSink(Sink):
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.title = title
-        self._runs: list[ExperimentRun] = []
+        self._runs: list[Run] = []
 
     def emit(self, score: Score) -> None:
         """No-op for individual scores (use emit_run instead)."""
         pass
 
-    def emit_run(self, run: ExperimentRun) -> None:
+    def emit_run(self, run: Run) -> None:
         """Buffer run for flush."""
         self._runs.append(run)
 
@@ -188,7 +188,7 @@ class HTMLReportSink(Sink):
         failed = total - passed
         run_meta = run.metadata or {}
         agent_id = run_meta.get("agent_id", "")
-        experiment_name = run_meta.get("name", run.experiment_id)
+        eval_name = run_meta.get("name", run.eval_id)
 
         rows: list[str] = []
         for test_id, scores in sorted(by_test.items()):

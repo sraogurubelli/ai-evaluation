@@ -40,8 +40,8 @@ from aieval.scorers.enriched import EnrichedOutputScorer
 from aieval.scorers.deep_diff import DeepDiffScorer
 from aieval.scorers.metrics import LatencyScorer, TokenUsageScorer
 from aieval.datasets.index_csv import load_index_csv_dataset
-from aieval.core.experiment import Experiment
-from aieval.core.types import ExperimentRun, Score
+from aieval.core.eval import Eval
+from aieval.core.types import Run, Score
 from aieval.sinks.csv import CSVSink
 from aieval.sinks.stdout import StdoutSink
 
@@ -124,7 +124,7 @@ def build_httpAdapter_compatible_payload(input_data: dict[str, Any], model: str 
             {"type": "display_error", "version": "0"},
         ],
         "context": [],
-        "harness_context": {
+        "context": {
             "account_id": os.getenv("ACCOUNT_ID", "kmpySmUISimoRrJL6NL73w"),
             "org_id": os.getenv("ORG_ID", "default"),
             "project_id": os.getenv("PROJECT_ID", "test_project"),
@@ -277,15 +277,15 @@ async def main():
     scorers = [yaml_scorer, latency_scorer, token_scorer]
     print(f"   ✅ Created {len(scorers)} scorers")
     
-    # Create experiment
-    print(f"\n🧪 Creating experiment...")
-    experiment = Experiment(
-        name="streaming_eval", 
+    # Create eval
+    print(f"\n🧪 Creating eval...")
+    eval_ = Eval(
+        name="streaming_eval",
         dataset=dataset,
         scorers=scorers,
         experiment_id="streaming_eval",
     )
-    print(f"   ✅ Experiment created")
+    print(f"   ✅ Eval created")
     
     # Run experiment
     print(f"\n🚀 Running evaluation...")
@@ -322,7 +322,7 @@ async def main():
     base_dir = Path("../ml-infra/evals/benchmarks/datasets")
     saved_count = 0
     
-    for item in experiment.dataset:
+    for item in eval_.dataset:
         if item.output:
             try:
                 # Parse enriched JSON to extract final_yaml

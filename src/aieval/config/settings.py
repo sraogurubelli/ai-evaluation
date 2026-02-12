@@ -75,6 +75,22 @@ class TemporalSettings(BaseSettings):
     ui_port: int = Field(default=8088, description="Temporal UI port")
 
 
+class TracingSettings(BaseSettings):
+    """Tracing adapter configuration (BYOT)."""
+
+    model_config = SettingsConfigDict(env_prefix="TRACING_", case_sensitive=False)
+
+    adapter: Literal["langfuse", "opentelemetry", "none"] = Field(
+        default="none",
+        description="Tracing adapter type: langfuse, opentelemetry, or none",
+    )
+    langfuse_host: str | None = Field(default=None, description="Langfuse host (default from LANGFUSE_HOST)")
+    opentelemetry_endpoint: str | None = Field(
+        default=None,
+        description="Jaeger/OTel HTTP endpoint for trace queries",
+    )
+
+
 class LangfuseSettings(BaseSettings):
     """Langfuse configuration."""
     
@@ -179,6 +195,7 @@ class Settings(BaseSettings):
     server: ServerSettings = Field(default_factory=ServerSettings)
     logging: LoggingSettings = Field(default_factory=LoggingSettings)
     temporal: TemporalSettings = Field(default_factory=TemporalSettings)
+    tracing: TracingSettings = Field(default_factory=TracingSettings)
     langfuse: LangfuseSettings = Field(default_factory=LangfuseSettings)
     llm: LLMSettings = Field(default_factory=LLMSettings)
     ml_infra: MLInfraSettings = Field(default_factory=MLInfraSettings)

@@ -1,6 +1,6 @@
 # SDK
 
-Run evaluations programmatically with the aieval SDK.
+Run evals programmatically with the aieval SDK. Define an **Eval** (name, data set, scorers), run it, and get a **Run** with **Scores**. In the SDK, an Eval is represented by the `Experiment` class.
 
 ## Quick start
 
@@ -14,6 +14,8 @@ scorers = [DeepDiffScorer(name="deep_diff", eval_id="deep_diff.v1", version="v3"
 experiment = Experiment(name="my_eval", dataset=dataset, scorers=scorers)
 result = await experiment.run(adapter=adapter, model="gpt-4o")
 ```
+
+The `result` is a Run (scores and metadata). See [Concepts](concepts.md) for Eval, Run, Data Set, Task, Trace, Scores.
 
 ## Core types
 

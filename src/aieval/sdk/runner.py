@@ -9,8 +9,8 @@ import logging
 from pathlib import Path
 from typing import Any, Callable
 
-from aieval.core.experiment import Experiment
-from aieval.core.types import DatasetItem, Score
+from aieval.core.eval import Eval
+from aieval.core.types import DatasetItem, Score, normalize_adapter_output
 from aieval.adapters.base import Adapter
 from aieval.sinks.base import Sink
 from aieval.sinks.stdout import StdoutSink
@@ -24,7 +24,7 @@ class EvaluationRunner:
     
     Similar to ai-evals runner, but adapted for ai-evolution's architecture.
     Supports both:
-    1. Direct evaluation (using Experiment class)
+    1. Direct evaluation (using Eval class)
     2. Registry-based evaluation (loading evaluators dynamically)
     
     Example:
@@ -60,7 +60,7 @@ class EvaluationRunner:
             adapter: Adapter for generating outputs
             scorers: List of scorers to apply (if None, uses registry-based evaluation)
             model: Optional model name
-            experiment_name: Name for the experiment
+            eval_name: Name for the eval
             concurrency_limit: Maximum concurrent evaluations
             sinks: List of sinks for output (defaults to StdoutSink)
             **kwargs: Additional arguments passed to adapter/scorers
@@ -74,14 +74,14 @@ class EvaluationRunner:
         if scorers is None:
             raise ValueError("scorers must be provided for direct evaluation")
         
-        experiment = Experiment(
+        eval_ = Eval(
             name=experiment_name,
             dataset=dataset,
             scorers=scorers,
         )
         
-        # Run experiment
-        run_result = await experiment.run(
+        # Run eval
+        run_result = await eval_.run(
             adapter=adapter,
             model=model,
             concurrency_limit=concurrency_limit,
@@ -192,10 +192,15 @@ class EvaluationRunner:
                         eval_id=score.eval_id,
                         comment=score.comment,
                         metadata=score.metadata.copy(),
-                        trace_id=score.trace_id,
-                        observation_id=score.observation_id,
+                        trace_id=getattr(score, "trace_id", None) or item.metadata.get("trace_id"),
+                        observation_id=getattr(score, "observation_id", None) or item.metadata.get("observation_id"),
                     )
                     score = evolution_score
+                else:
+                    if item.metadata.get("trace_id") and not getattr(score, "trace_id", None):
+                        score.trace_id = item.metadata["trace_id"]
+                    if item.metadata.get("observation_id") and not getattr(score, "observation_id", None):
+                        score.observation_id = item.metadata["observation_id"]
                 
                 # Enrich with dataset_item_id if not already in metadata
                 if "dataset_item_id" not in score.metadata:
@@ -245,12 +250,12 @@ async def run_evaluation(
     adapter: Adapter,
     scorers: list[Any],
     model: str | None = None,
-    experiment_name: str = "evaluation",
+    eval_name: str = "evaluation",
     **kwargs: Any,
-) -> Any:
+) -> Run:
     """
     Convenience function for running an evaluation.
-    
+
     Example:
         result = await run_evaluation(
             dataset=load_dataset("dataset.jsonl"),
@@ -258,17 +263,17 @@ async def run_evaluation(
             scorers=[DeepDiffScorer(...)],
             model="gpt-4o"
         )
-    
+
     Args:
         dataset: List of dataset items
         adapter: Adapter for generating outputs
         scorers: List of scorers to apply
         model: Optional model name
-        experiment_name: Name for the experiment
+        eval_name: Name for the eval
         **kwargs: Additional arguments
-    
+
     Returns:
-        ExperimentRun result
+        Run result
     """
     runner = EvaluationRunner()
     return await runner.run(
@@ -276,6 +281,6 @@ async def run_evaluation(
         adapter=adapter,
         scorers=scorers,
         model=model,
-        experiment_name=experiment_name,
+        eval_name=eval_name,
         **kwargs,
     )

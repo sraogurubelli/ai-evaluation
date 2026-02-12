@@ -1,4 +1,4 @@
-"""Task manager for executing experiments."""
+"""Task manager for executing evals."""
 
 import asyncio
 import uuid
@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Any
 
 from aieval.tasks.models import Task, TaskStatus, TaskResult
-from aieval.core.experiment import Experiment
+from aieval.core.eval import Eval
 from aieval.core.types import DatasetItem
 from aieval.datasets import load_jsonl_dataset, load_index_csv_dataset
 from aieval.scorers.deep_diff import DeepDiffScorer
@@ -28,31 +28,31 @@ class TaskManager:
     
     async def create_task(
         self,
-        experiment_name: str,
+        eval_name: str,
         config: dict[str, Any],
     ) -> Task:
         """
         Create a new task.
-        
+
         Args:
-            experiment_name: Name of the experiment
-            config: Experiment configuration
-            
+            eval_name: Name of the eval
+            config: Eval configuration
+
         Returns:
             Created task
         """
         task_id = str(uuid.uuid4())
         task = Task(
             id=task_id,
-            experiment_name=experiment_name,
+            eval_name=eval_name,
             config=config,
             status=TaskStatus.PENDING,
         )
-        
+
         async with self._lock:
             self.tasks[task_id] = task
-        
-        logger.info(f"Created task {task_id} for experiment {experiment_name}")
+
+        logger.info(f"Created task {task_id} for eval {eval_name}")
         return task
     
     async def get_task(self, task_id: str) -> Task | None:
@@ -113,21 +113,21 @@ class TaskManager:
             # Create adapter
             adapter = self._create_adapter(task.config)
             
-            # Create experiment
-            experiment = Experiment(
-                name=task.experiment_name,
+            # Create eval
+            eval_ = Eval(
+                name=task.eval_name,
                 dataset=dataset,
                 scorers=scorers,
             )
-            
+
             # Get execution config
             execution_config = task.config.get("execution", {})
             concurrency_limit = execution_config.get("concurrency_limit", 5)
             models = task.config.get("models", [None])
-            
-            # Run experiment for first model (can extend to multiple later)
+
+            # Run eval for first model (can extend to multiple later)
             model = models[0] if models else None
-            
+
             # Agent identity for grouping runs (optional)
             run_kwargs: dict[str, Any] = {}
             if task.config.get("agent_id") is not None:
@@ -136,23 +136,23 @@ class TaskManager:
                 run_kwargs["agent_name"] = task.config["agent_name"]
             if task.config.get("agent_version") is not None:
                 run_kwargs["agent_version"] = task.config["agent_version"]
-            
+
             import time
             start_time = time.time()
-            
-            run = await experiment.run(
+
+            run = await eval_.run(
                 adapter=adapter,
                 model=model,
                 concurrency_limit=concurrency_limit,
                 **run_kwargs,
             )
-            
+
             execution_time = time.time() - start_time
-            
+
             # Create result
             result = TaskResult(
                 task_id=task_id,
-                experiment_run=run,
+                run=run,
                 execution_time_seconds=execution_time,
                 metadata={
                     "model": model,
@@ -273,7 +273,7 @@ class TaskManager:
             return HTTPAdapter(
                 base_url=adapter_config.get("base_url", os.getenv("CHAT_BASE_URL", "http://localhost:8000")),
                 auth_token=adapter_config.get("auth_token", os.getenv("CHAT_PLATFORM_AUTH_TOKEN", "")),
-                context_field_name="harness_context",
+                context_field_name="context",
                 context_data={
                     "account_id": adapter_config.get("account_id", os.getenv("ACCOUNT_ID", "default")),
                     "org_id": adapter_config.get("org_id", os.getenv("ORG_ID", "default")),

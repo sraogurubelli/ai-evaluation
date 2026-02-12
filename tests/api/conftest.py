@@ -2,15 +2,15 @@
 
 import pytest
 from fastapi.testclient import TestClient
-from aieval.api.app import app, adapter_agent, dataset_agent, scorer_agent, experiment_agent, task_agent, evaluation_agent
-from aieval.agents import AdapterAgent, DatasetAgent, ScorerAgent, ExperimentAgent, TaskAgent, EvaluationAgent
+from aieval.api.app import app, adapter_agent, dataset_agent, scorer_agent, eval_agent, task_agent, evaluation_agent
+from aieval.agents import AdapterAgent, DatasetAgent, ScorerAgent, EvalAgent, TaskAgent, EvaluationAgent
 from aieval.tasks.manager import TaskManager
 
 
 @pytest.fixture(autouse=True)
 def initialize_agents():
     """Initialize agents for testing (since TestClient doesn't run lifespan events)."""
-    global adapter_agent, dataset_agent, scorer_agent, experiment_agent, task_agent, evaluation_agent
+    global adapter_agent, dataset_agent, scorer_agent, eval_agent, task_agent, evaluation_agent
     
     # Import the global variables from app module
     import aieval.api.app as app_module
@@ -22,8 +22,8 @@ def initialize_agents():
         app_module.dataset_agent = DatasetAgent()
     if app_module.scorer_agent is None:
         app_module.scorer_agent = ScorerAgent()
-    if app_module.experiment_agent is None:
-        app_module.experiment_agent = ExperimentAgent()
+    if app_module.eval_agent is None:
+        app_module.eval_agent = EvalAgent()
     if app_module.task_agent is None:
         task_manager = TaskManager()
         app_module.task_agent = TaskAgent(task_manager=task_manager)

@@ -9,11 +9,11 @@ from aieval.tasks.models import TaskStatus
 
 
 # Existing models
-class ExperimentConfigRequest(BaseModel):
-    """Request to create/run an experiment."""
-    
-    experiment_name: str = Field(..., description="Name of the experiment")
-    config: dict[str, Any] = Field(..., description="Experiment configuration (YAML-like structure)")
+class EvalConfigRequest(BaseModel):
+    """Request to create/run an eval."""
+
+    eval_name: str = Field(..., description="Name of the eval")
+    config: dict[str, Any] = Field(..., description="Eval configuration (YAML-like structure)")
     run_async: bool = Field(default=False, description="Run asynchronously (returns immediately)")
     agent_id: str | None = Field(None, description="Unique identifier for the agent (for grouping runs)")
     agent_name: str | None = Field(None, description="Display name for the agent")
@@ -22,9 +22,9 @@ class ExperimentConfigRequest(BaseModel):
 
 class TaskResponse(BaseModel):
     """Task response model."""
-    
+
     id: str
-    experiment_name: str
+    eval_name: str
     status: str
     created_at: str
     started_at: str | None = None
@@ -35,17 +35,17 @@ class TaskResponse(BaseModel):
 
 class TaskResultResponse(BaseModel):
     """Task result response model."""
-    
+
     task_id: str
-    experiment_run: dict[str, Any]
+    run: dict[str, Any]
     execution_time_seconds: float
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
-class ExperimentRunResponse(BaseModel):
-    """Experiment run response model."""
-    
-    experiment_id: str
+class RunResponse(BaseModel):
+    """Run response model."""
+
+    eval_id: str
     run_id: str
     dataset_id: str
     scores: list[dict[str, Any]]
@@ -202,18 +202,18 @@ class AdapterRegisterResponse(BaseModel):
     message: str
 
 
-# Experiment Agent Models
+# Experiment Agent Models (field names kept for backward compatibility; user-facing: Eval)
 class ExperimentCreateRequest(BaseModel):
-    """Request to create an experiment."""
-    
-    name: str = Field(..., description="Experiment name")
+    """Request to create an eval."""
+
+    name: str = Field(..., description="Name of the eval")
     dataset_config: dict[str, Any] = Field(..., description="Dataset configuration")
     scorers_config: list[dict[str, Any]] = Field(..., description="List of scorer configurations")
-    experiment_id: str | None = Field(None, description="Optional experiment ID")
+    experiment_id: str | None = Field(None, description="Optional eval ID")
 
 
 class ExperimentCreateResponse(BaseModel):
-    """Response from creating an experiment."""
+    """Response from creating an eval."""
     
     experiment_id: str
     name: str
@@ -222,16 +222,16 @@ class ExperimentCreateResponse(BaseModel):
 
 
 class ExperimentRunRequest(BaseModel):
-    """Request to run an experiment."""
+    """Request to run an eval."""
     
-    experiment_id: str = Field(..., description="Experiment ID")
+    experiment_id: str = Field(..., description="Eval ID")
     adapter_config: dict[str, Any] = Field(..., description="Adapter configuration")
     model: str | None = Field(None, description="Optional model name")
     concurrency_limit: int = Field(default=5, description="Concurrency limit")
 
 
 class ExperimentRunResponse(BaseModel):
-    """Response from running an experiment."""
+    """Response from running an eval (run result)."""
     
     run_id: str
     experiment_id: str
@@ -240,7 +240,7 @@ class ExperimentRunResponse(BaseModel):
 
 
 class ExperimentCompareRequest(BaseModel):
-    """Request to compare experiment runs."""
+    """Request to compare runs."""
     
     run1_id: str = Field(..., description="First run ID")
     run2_id: str = Field(..., description="Second run ID")
@@ -279,7 +279,7 @@ class PushRunRequest(BaseModel):
     """Request to push a run from consumer (e.g. CI) so it appears under an agent."""
     
     run_id: str = Field(..., description="Run ID")
-    experiment_id: str = Field(..., description="Experiment ID")
+    eval_id: str = Field(..., description="Eval ID")
     dataset_id: str = Field(..., description="Dataset ID")
     scores: list[dict[str, Any]] = Field(..., description="Scores")
     metadata: dict[str, Any] = Field(default_factory=dict, description="Run metadata (should include agent_id)")
@@ -289,11 +289,11 @@ class PushRunRequest(BaseModel):
 class EvaluationRequest(BaseModel):
     """Request for unified evaluation."""
     
-    experiment_name: str = Field(..., description="Name of the experiment")
+    eval_name: str = Field(..., description="Name of the eval")
     dataset_config: dict[str, Any] = Field(..., description="Dataset configuration")
     scorers_config: list[dict[str, Any]] = Field(..., description="List of scorer configurations (metrics/scorers)")
     adapter_config: dict[str, Any] = Field(..., description="Adapter configuration")
-    models: list[str] | None = Field(None, description="List of models to evaluate (one experiment run per model)")
+    models: list[str] | None = Field(None, description="List of models to evaluate (one run per model)")
     model: str | None = Field(None, description="[Deprecated] Single model name (use 'models' instead)")
     concurrency_limit: int = Field(default=5, description="Concurrency limit")
     run_async: bool = Field(default=False, description="Run asynchronously")
@@ -317,7 +317,7 @@ class EvaluationResponse(BaseModel):
     task_id: str | None = Field(None, description="Task ID (if run_async=True)")
     runs: list[dict[str, Any]] | None = Field(None, description="Multiple runs (one per model, if multiple models)")
     run_id: str | None = Field(None, description="Single run ID (backward compatibility, if single model)")
-    experiment_id: str
+    eval_id: str
     scores: list[dict[str, Any]] | None = Field(None, description="Scores from single run (if run_async=False and single model)")
     comparison: dict[str, Any] | None = Field(None, description="Model comparison metrics (if multiple models)")
     metadata: dict[str, Any] = Field(default_factory=dict)

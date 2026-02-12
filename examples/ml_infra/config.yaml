@@ -1,4 +1,4 @@
-experiment:
+eval:
   name: "pipeline_creation_benchmark"
   description: "Test pipeline creation across models"
 

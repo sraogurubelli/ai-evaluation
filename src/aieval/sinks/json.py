@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 from aieval.sinks.base import Sink
-from aieval.core.types import Score, ExperimentRun
+from aieval.core.types import Score, Run
 
 
 class JSONSink(Sink):
@@ -25,7 +25,7 @@ class JSONSink(Sink):
         """No-op for individual scores (use emit_run instead)."""
         pass
     
-    def emit_run(self, run: ExperimentRun) -> None:
+    def emit_run(self, run: Run) -> None:
         """Add run to buffer."""
         self.runs.append(run.to_dict())
     

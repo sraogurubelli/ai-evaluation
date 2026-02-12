@@ -169,7 +169,7 @@ def create_ml_infra_adapter(**config: Any) -> Adapter:
         return create_http_adapter(
             base_url=base_url,
             auth_token=auth_token,
-            context_field_name="harness_context",
+            context_field_name="context",
             context_data={
                 "account_id": account_id,
                 "org_id": org_id,

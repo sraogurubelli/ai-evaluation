@@ -3,9 +3,9 @@
 from typing import Any
 
 from aieval.agents.base import BaseEvaluationAgent
-from aieval.agents.experiment_agent import ExperimentAgent
+from aieval.agents.eval_agent import EvalAgent
 from aieval.agents.task_agent import TaskAgent
-from aieval.core.types import ExperimentRun
+from aieval.core.types import Run
 from aieval.tasks.models import Task, TaskResult
 
 
@@ -19,7 +19,7 @@ class EvaluationAgent(BaseEvaluationAgent):
     def __init__(self, config: dict[str, Any] | None = None):
         """Initialize evaluation agent."""
         super().__init__(config)
-        self.experiment_agent = ExperimentAgent(config)
+        self.eval_agent = EvalAgent(config)
         self.task_agent = TaskAgent(config)
     
     async def run(self, query: str, **kwargs: Any) -> Any:
@@ -46,7 +46,7 @@ class EvaluationAgent(BaseEvaluationAgent):
     
     async def evaluate(
         self,
-        experiment_name: str,
+        eval_name: str,
         dataset_config: dict[str, Any],
         scorers_config: list[dict[str, Any]],
         adapter_config: dict[str, Any],
@@ -58,17 +58,17 @@ class EvaluationAgent(BaseEvaluationAgent):
         agent_name: str | None = None,
         agent_version: str | None = None,
         **kwargs: Any,
-    ) -> Task | ExperimentRun | list[ExperimentRun]:
+    ) -> Task | Run | list[Run]:
         """
         Run a complete evaluation workflow.
-        
+
         This orchestrates:
-        1. Creating an experiment
-        2. Running the experiment for each model (if multiple models provided)
+        1. Creating an eval
+        2. Running the eval for each model (if multiple models provided)
         3. Optionally creating a task for async execution
-        
+
         Args:
-            experiment_name: Name of the experiment
+            eval_name: Name of the eval
             dataset_config: Dataset configuration
             scorers_config: List of scorer configurations (metrics/scorers)
             adapter_config: Adapter configuration
@@ -77,11 +77,11 @@ class EvaluationAgent(BaseEvaluationAgent):
             concurrency_limit: Concurrency limit for parallel execution
             run_async: If True, create a task for async execution
             **kwargs: Additional parameters
-            
+
         Returns:
-            Task (if run_async=True) or ExperimentRun/list[ExperimentRun] (if run_async=False)
+            Task (if run_async=True) or Run/list[Run] (if run_async=False)
         """
-        self.logger.info(f"Starting evaluation: {experiment_name}")
+        self.logger.info(f"Starting evaluation: {eval_name}")
         
         # Normalize models input - prioritize models over model for backward compatibility
         if models:
@@ -110,7 +110,7 @@ class EvaluationAgent(BaseEvaluationAgent):
                 config["agent_version"] = agent_version
             
             task = await self.task_agent.create_task(
-                experiment_name=experiment_name,
+                eval_name=eval_name,
                 config=config,
             )
             
@@ -119,14 +119,14 @@ class EvaluationAgent(BaseEvaluationAgent):
         
         else:
             # Run synchronously
-            # Create experiment (shared across all model runs)
-            experiment = await self.experiment_agent.create_experiment(
-                name=experiment_name,
+            # Create eval (shared across all model runs)
+            eval_ = await self.eval_agent.create_eval(
+                name=eval_name,
                 dataset_config=dataset_config,
                 scorers_config=scorers_config,
             )
-            
-            # Run experiment for each model
+
+            # Run eval for each model
             run_kwargs = dict(kwargs)
             if agent_id is not None:
                 run_kwargs["agent_id"] = agent_id
@@ -136,9 +136,9 @@ class EvaluationAgent(BaseEvaluationAgent):
                 run_kwargs["agent_version"] = agent_version
             runs = []
             for model_name in model_list:
-                self.logger.info(f"Running experiment with model: {model_name or 'default'}")
-                run = await self.experiment_agent.run_experiment(
-                    experiment=experiment,
+                self.logger.info(f"Running eval with model: {model_name or 'default'}")
+                run = await self.eval_agent.run_eval(
+                    eval_=eval_,
                     adapter_config=adapter_config,
                     model=model_name,
                     concurrency_limit=concurrency_limit,
@@ -146,7 +146,7 @@ class EvaluationAgent(BaseEvaluationAgent):
                 )
                 runs.append(run)
                 self.logger.info(f"Completed run {run.run_id} for model: {model_name or 'default'}")
-            
+
             # Return single run if only one model, list if multiple
             if len(runs) == 1:
                 self.logger.info(f"Evaluation completed: {runs[0].run_id}")
@@ -157,37 +157,39 @@ class EvaluationAgent(BaseEvaluationAgent):
     
     async def stream_evaluation(
         self,
-        experiment_name: str,
+        eval_name: str,
         dataset_config: dict[str, Any],
         scorers_config: list[dict[str, Any]],
         adapter_config: dict[str, Any],
         model: str | None = None,
+        models: list[str] | None = None,
         concurrency_limit: int = 5,
         **kwargs: Any,
     ) -> Any:
         """
         Stream evaluation progress (placeholder for future implementation).
-        
+
         This would yield progress updates as the evaluation runs.
-        
+
         Args:
-            experiment_name: Name of the experiment
+            eval_name: Name of the eval
             dataset_config: Dataset configuration
             scorers_config: List of scorer configurations
             adapter_config: Adapter configuration
             model: Optional model name
+            models: Optional list of model names
             concurrency_limit: Concurrency limit for parallel execution
             **kwargs: Additional parameters
-            
+
         Yields:
             Progress updates
         """
         # Placeholder - would implement streaming logic here
         # For now, just run normally and return result
-        self.logger.info(f"Streaming evaluation: {experiment_name}")
-        
+        self.logger.info(f"Streaming evaluation: {eval_name}")
+
         result = await self.evaluate(
-            experiment_name=experiment_name,
+            eval_name=eval_name,
             dataset_config=dataset_config,
             scorers_config=scorers_config,
             adapter_config=adapter_config,
@@ -197,5 +199,5 @@ class EvaluationAgent(BaseEvaluationAgent):
             run_async=False,
             **kwargs,
         )
-        
+
         return result

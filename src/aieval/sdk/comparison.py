@@ -5,12 +5,12 @@ Provides side-by-side comparison of experiment runs with regression detection.
 
 from typing import Any
 from dataclasses import dataclass, field
-from aieval.core.types import ExperimentRun, Score, DatasetItem
+from aieval.core.types import Run, Score, DatasetItem
 
 
 @dataclass
 class RunComparison:
-    """Comparison result between two experiment runs."""
+    """Comparison result between two runs."""
     
     run1_id: str
     run2_id: str
@@ -34,8 +34,8 @@ class RunComparison:
 
 
 def compare_runs(
-    run1: ExperimentRun,
-    run2: ExperimentRun,
+    run1: Run,
+    run2: Run,
     dataset: list[DatasetItem] | None = None,
     threshold: float = 0.01,
 ) -> RunComparison:
@@ -48,8 +48,8 @@ def compare_runs(
     - Per-item change tracking
     
     Args:
-        run1: First experiment run (baseline)
-        run2: Second experiment run (to compare)
+        run1: First run (baseline)
+        run2: Second run (to compare)
         dataset: Optional dataset items for per-item comparison
         threshold: Minimum change to consider significant (default: 0.01)
     
@@ -177,11 +177,11 @@ def get_regressions(comparison: RunComparison, min_regressions: int = 1) -> dict
 
 
 def compare_multiple_runs(
-    runs: list[ExperimentRun],
+    runs: list[Run],
     model_names: list[str | None] | None = None,
 ) -> dict[str, Any]:
     """
-    Compare multiple experiment runs (one per model) and generate scoreboard.
+    Compare multiple runs (one per model) and generate scoreboard.
     
     Similar to ml-infra/evals scoreboard, this provides:
     - Mean scores per model per scorer
@@ -189,7 +189,7 @@ def compare_multiple_runs(
     - Summary statistics
     
     Args:
-        runs: List of experiment runs (one per model)
+        runs: List of runs (one per model)
         model_names: Optional list of model names (if None, uses run.run_id)
     
     Returns:

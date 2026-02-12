@@ -20,8 +20,8 @@ class TestCSVSink:
         csv_path = tmp_path / "results.csv"
         sink = CSVSink(csv_path)
         
-        run = ExperimentRun(
-            experiment_id="exp-001",
+        run = Run(
+            eval_id="exp-001",
             run_id="run-001",
             dataset_id="dataset-001",
             scores=[
@@ -44,8 +44,8 @@ class TestCSVSink:
         csv_path = tmp_path / "results.csv"
         sink = CSVSink(csv_path)
         
-        run = ExperimentRun(
-            experiment_id="exp-001",
+        run = Run(
+            eval_id="exp-001",
             run_id="run-001",
             dataset_id="dataset-001",
             scores=[
@@ -77,8 +77,8 @@ class TestJSONSink:
         json_path = tmp_path / "results.json"
         sink = JSONSink(json_path)
         
-        run = ExperimentRun(
-            experiment_id="exp-001",
+        run = Run(
+            eval_id="exp-001",
             run_id="run-001",
             dataset_id="dataset-001",
             scores=[
@@ -104,8 +104,8 @@ class TestStdoutSink:
         """Test emitting experiment run to stdout."""
         sink = StdoutSink()
         
-        run = ExperimentRun(
-            experiment_id="exp-001",
+        run = Run(
+            eval_id="exp-001",
             run_id="run-001",
             dataset_id="dataset-001",
             scores=[
@@ -127,8 +127,8 @@ class TestJUnitSink:
         """Test emitting run produces valid JUnit-style XML."""
         junit_path = tmp_path / "junit.xml"
         sink = JUnitSink(junit_path)
-        run = ExperimentRun(
-            experiment_id="exp-001",
+        run = Run(
+            eval_id="exp-001",
             run_id="run-001",
             dataset_id="dataset-001",
             scores=[
@@ -153,8 +153,8 @@ class TestHTMLReportSink:
         """Test emitting run produces HTML with summary and table."""
         html_path = tmp_path / "report.html"
         sink = HTMLReportSink(html_path)
-        run = ExperimentRun(
-            experiment_id="exp-001",
+        run = Run(
+            eval_id="exp-001",
             run_id="run-001",
             dataset_id="dataset-001",
             scores=[

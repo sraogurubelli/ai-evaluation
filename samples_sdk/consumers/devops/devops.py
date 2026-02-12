@@ -1,4 +1,4 @@
-"""DevOps consumer SDK – helpers for DevOps/Harness evaluation workflow.
+"""DevOps consumer SDK – helpers for DevOps evaluation workflow.
 
 Consumer-side implementation using the agent-agnostic aieval SDK.
 Generic helpers (score_single_output, run_single_item) are in aieval.sdk.unit_test.
@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from aieval import (
-    Experiment,
+    Eval,
     HTTPAdapter,
     DeepDiffScorer,
     load_index_csv_dataset,
@@ -21,7 +21,7 @@ from aieval import (
 from aieval.adapters.sse_streaming import SSEStreamingAdapter
 from aieval.scorers.enriched import EnrichedOutputScorer
 from aieval.scorers.metrics import LatencyScorer, ToolCallScorer, TokenUsageScorer
-from aieval.core.types import DatasetItem, ExperimentRun, Score
+from aieval.core.types import DatasetItem, Run, Score
 from aieval.scorers.base import Scorer
 from aieval.adapters.base import Adapter
 from aieval.sdk.unit_test import score_single_output, run_single_item
@@ -29,7 +29,7 @@ from aieval.sdk.unit_test import score_single_output, run_single_item
 logger = logging.getLogger(__name__)
 
 
-def create_devops_experiment(
+def create_devops_eval(
     index_file: str | Path,
     base_dir: str | Path = "benchmarks/datasets",
     entity_type: str | None = None,
@@ -39,9 +39,9 @@ def create_devops_experiment(
     deep_diff_versions: list[str] | None = None,
     use_enriched_output: bool = False,
     include_metric_scorers: bool = False,
-) -> Experiment:
+) -> Eval:
     """
-    Create an experiment configured for DevOps (e.g. Harness) workflow.
+    Create an eval configured for DevOps workflow.
 
     Args:
         index_file: Path to index.csv file
@@ -55,7 +55,7 @@ def create_devops_experiment(
         include_metric_scorers: If True, add metric scorers (LatencyScorer, ToolCallScorer, TokenUsageScorer)
 
     Returns:
-        Configured Experiment instance
+        Configured Eval instance
     """
     dataset = load_index_csv_dataset(
         index_file=index_file,
@@ -102,12 +102,12 @@ def create_devops_experiment(
             )
         )
 
-    experiment_name = f"devops_{entity_type or 'all'}_{operation_type or 'all'}"
+    eval_name = f"devops_{entity_type or 'all'}_{operation_type or 'all'}"
     if offline:
-        experiment_name += "_offline"
+        eval_name += "_offline"
 
-    return Experiment(
-        name=experiment_name,
+    return Eval(
+        name=eval_name,
         dataset=dataset,
         scorers=scorers,
     )
@@ -136,12 +136,12 @@ async def run_devops_eval(
     agent_version: str = "unknown",
     output_junit: str | Path | None = None,
     output_html: str | Path | None = None,
-) -> ExperimentRun:
+) -> Run:
     """
-    Run DevOps evaluation (convenience function matching Harness/DevOps evals workflow).
+    Run DevOps evaluation (convenience function matching DevOps evals workflow).
     agent_id is the unique identifier for grouping runs in the platform (e.g. GET /agents/{agent_id}/runs).
     """
-    experiment = create_devops_experiment(
+    eval_ = create_devops_eval(
         index_file=index_file,
         base_dir=base_dir,
         entity_type=entity_type,
@@ -182,7 +182,7 @@ async def run_devops_eval(
             adapter = HTTPAdapter(
                 base_url=base_url,
                 auth_token=auth_token,
-                context_field_name="harness_context",
+                context_field_name="context",
                 context_data={
                     "account_id": account_id,
                     "org_id": org_id,
@@ -205,7 +205,7 @@ async def run_devops_eval(
     if output_html:
         sinks.append(HTMLReportSink(Path(output_html)))
 
-    result = await experiment.run(
+    result = await eval_.run(
         adapter=adapter,
         model=model,
         concurrency_limit=concurrency_limit,
@@ -321,7 +321,7 @@ def create_devops_sinks(
         sinks.append(StdoutSink())
 
     timestamp = int(time.time())
-    csv_path = output_dir / f"{experiment_name}_{timestamp}.csv"
+    csv_path = output_dir / f"{eval_name}_{timestamp}.csv"
     sinks.append(CSVSink(csv_path))
 
     return sinks
@@ -361,7 +361,7 @@ async def run_single_test(
     model: str | None = None,
     base_dir: str | Path = "benchmarks/datasets",
     concurrency_limit: int = 1,
-) -> ExperimentRun:
+) -> Run:
     """
     Run a single test case end-to-end (convenience function for unit testing).
     Uses framework run_single_item under the hood.

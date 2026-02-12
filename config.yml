@@ -25,7 +25,7 @@ adapter:
   auth_token: "${CHAT_PLATFORM_AUTH_TOKEN}"  # Will be replaced with token from .env
   
   # ML Infra specific context fields
-  context_field_name: "harness_context"
+  context_field_name: "context"
   context_data:
     account_id: "${ACCOUNT_ID}"
     org_id: "${ORG_ID}"

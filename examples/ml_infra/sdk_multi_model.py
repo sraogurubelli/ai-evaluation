@@ -11,7 +11,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from aieval import (
-    Experiment,
+    Eval,
     HTTPAdapter,
     DeepDiffScorer,
     load_index_csv_dataset,
@@ -19,7 +19,7 @@ from aieval import (
     StdoutSink,
     compare_runs,
 )
-from samples_sdk.consumers.devops import create_devops_experiment, create_devops_sinks, run_devops_eval
+from samples_sdk.consumers.devops import create_devops_eval, create_devops_sinks, run_devops_eval
 
 
 async def example_multi_model_comparison():
@@ -49,7 +49,7 @@ async def example_multi_model_comparison():
     adapter = HTTPAdapter(
         base_url="http://localhost:8000",
         auth_token="your-token",
-        context_field_name="harness_context",
+        context_field_name="context",
         context_data={
             "account_id": "account-123",
             "org_id": "org-456",
@@ -74,7 +74,7 @@ async def example_multi_model_comparison():
             scorers=scorers,
         )
         
-        result = await experiment.run(
+        result = await eval_.run(
             adapter=adapter,
             model=model,
             concurrency_limit=5,

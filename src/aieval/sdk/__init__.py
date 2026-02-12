@@ -7,7 +7,7 @@ This SDK provides a clean, customer-friendly interface for:
 - Integrating with AI systems
 
 Usage:
-    from aieval import Experiment, HTTPAdapter, DeepDiffScorer
+    from aieval import Eval, HTTPAdapter, DeepDiffScorer
     
     # Create experiment
     experiment = Experiment(
@@ -17,14 +17,14 @@ Usage:
     )
     
     # Run evaluation
-    result = await experiment.run(adapter=HTTPAdapter(...), model="gpt-4o")
+    result = await eval_.run(adapter=HTTPAdapter(...), model="gpt-4o")
 """
 
 # Core types
 from aieval.core.types import DatasetItem, ExperimentRun, Score
 
-# Experiment system
-from aieval.core.experiment import Experiment
+# Eval system
+from aieval.core.eval import Eval
 
 # Adapters
 from aieval.adapters import HTTPAdapter, LangfuseAdapter, Adapter
@@ -127,10 +127,10 @@ except ImportError:
 __all__ = [
     # Core types
     "DatasetItem",
-    "ExperimentRun",
+    "Run",
     "Score",
-    # Experiment system
-    "Experiment",
+    # Eval system
+    "Eval",
     # Adapters
     "HTTPAdapter",
     "LangfuseAdapter",

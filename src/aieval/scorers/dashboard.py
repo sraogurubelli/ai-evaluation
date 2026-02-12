@@ -1,9 +1,8 @@
 """Dashboard-specific scorers.
 
 This module contains scorers for evaluating dashboard quality.
-The DashboardQualityScorer is currently designed for ml-infra dashboard format,
-which uses "harness_query" as the query field name. This is a technical API
-term, not branding - it's part of the ml-infra API contract.
+DashboardQualityScorer supports a configurable query field name in widget
+data_query (default "query") for compatibility with different dashboard APIs.
 """
 
 import json
@@ -24,17 +23,22 @@ class DashboardQualityScorer(Scorer):
     - Widget count and type variety
     - Structural similarity
     
-    Note: Currently designed for ml-infra dashboard format which uses
-    "harness_query" field. Can be extended for other dashboard formats.
+    Uses a configurable query field name in widget data_query (default "query").
     """
     
     def __init__(
         self,
         name: str = "dashboard_quality",
         eval_id: str = "dashboard_quality.v1",
+        query_field_name: str = "query",
     ):
-        """Initialize dashboard quality scorer."""
+        """Initialize dashboard quality scorer.
+        
+        Args:
+            query_field_name: Key used in widget data_query for the query string (default "query").
+        """
         super().__init__(name, eval_id)
+        self._query_field_name = query_field_name
     
     def score(
         self,
@@ -96,10 +100,8 @@ class DashboardQualityScorer(Scorer):
         gen_widgets = generated.get("widgets", [])
         exp_widgets = expected.get("widgets", [])
         
-        # Note: "harness_query" refers to the query format used by ml-infra dashboards
-        # This is part of the ml-infra API contract for dashboard widgets
         gen_queries = [
-            w.get("data_query", {}).get("harness_query", "") for w in gen_widgets
+            w.get("data_query", {}).get(self._query_field_name, "") for w in gen_widgets
         ]
         
         # 1. HQL Query Validity
@@ -158,8 +160,7 @@ class DashboardQualityScorer(Scorer):
                     simplified_widget = {
                         "title": w.get("title", ""),
                         "type": w.get("type", ""),
-                        # Note: "harness_query" is ml-infra specific query format
-                        "has_query": bool(w.get("data_query", {}).get("harness_query", "")),
+                        "has_query": bool(w.get("data_query", {}).get(self._query_field_name, "")),
                         "column_count": len(w.get("columns", [])),
                     }
                     widgets.append(simplified_widget)

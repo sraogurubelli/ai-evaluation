@@ -1,7 +1,7 @@
 """Stdout sink for console output."""
 
 from aieval.sinks.base import Sink
-from aieval.core.types import Score, ExperimentRun
+from aieval.core.types import Score, Run
 
 
 class StdoutSink(Sink):
@@ -13,10 +13,10 @@ class StdoutSink(Sink):
         if score.comment:
             print(f"  Comment: {score.comment}")
     
-    def emit_run(self, run: ExperimentRun) -> None:
-        """Print experiment run summary to stdout."""
-        print(f"\nExperiment Run: {run.run_id}")
-        print(f"  Experiment: {run.experiment_id}")
+    def emit_run(self, run: Run) -> None:
+        """Print run summary to stdout."""
+        print(f"\nRun: {run.run_id}")
+        print(f"  Eval: {run.eval_id}")
         print(f"  Scores: {len(run.scores)}")
         
         # Group scores by name

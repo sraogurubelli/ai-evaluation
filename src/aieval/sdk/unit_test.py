@@ -7,14 +7,14 @@ in consumer samples (e.g. samples_sdk/consumers/devops).
 
 from typing import Any
 
-from aieval.core.experiment import Experiment
-from aieval.core.types import DatasetItem, ExperimentRun, Score
+from aieval.core.eval import Eval
+from aieval.core.types import DatasetItem, Run, Score
 from aieval.adapters.base import Adapter
 from aieval.scorers.base import Scorer
 
 
 def assert_score_min(
-    result: ExperimentRun,
+    result: Run,
     min_value: float,
     score_name: str | None = None,
 ) -> None:
@@ -24,7 +24,7 @@ def assert_score_min(
     Purely generic; keeps assertions in the caller's control.
 
     Args:
-        result: ExperimentRun from experiment.run() or run_single_item()
+        result: Run from eval.run() or run_single_item()
         min_value: Minimum acceptable score value (inclusive).
         score_name: If set, use the score with this name; otherwise use the first score.
 
@@ -37,7 +37,7 @@ def assert_score_min(
         assert_score_min(result, min_value=0.8, score_name="deep_diff_v3")
     """
     if not result.scores:
-        raise AssertionError(f"ExperimentRun has no scores (min_value={min_value})")
+        raise AssertionError(f"Run has no scores (min_value={min_value})")
     if score_name is not None:
         for s in result.scores:
             if s.name == score_name:
@@ -98,7 +98,7 @@ async def run_single_item(
     model: str | None = None,
     concurrency_limit: int = 1,
     **kwargs: Any,
-) -> ExperimentRun:
+) -> Run:
     """
     Run a single dataset item end-to-end (convenience for unit/integration tests).
 
@@ -111,10 +111,10 @@ async def run_single_item(
         scorer: Scorer instance
         model: Model name (optional)
         concurrency_limit: Max concurrent calls (default 1 for single item)
-        **kwargs: Passed through to experiment.run()
+        **kwargs: Passed through to eval.run()
 
     Returns:
-        ExperimentRun result
+        Run result
 
     Example:
         from aieval import HTTPAdapter, DeepDiffScorer
@@ -127,12 +127,12 @@ async def run_single_item(
             model="claude-3-7-sonnet",
         )
     """
-    experiment = Experiment(
+    eval_ = Eval(
         name=f"unit_test_{dataset_item.id}",
         dataset=[dataset_item],
         scorers=[scorer],
     )
-    return await experiment.run(
+    return await eval_.run(
         adapter=adapter,
         model=model,
         concurrency_limit=concurrency_limit,

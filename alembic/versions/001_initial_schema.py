@@ -37,7 +37,7 @@ def upgrade() -> None:
     op.create_table(
         'tasks',
         sa.Column('id', postgresql.UUID(as_uuid=False), primary_key=True),
-        sa.Column('experiment_name', sa.String(255), nullable=False),
+        sa.Column('eval_name', sa.String(255), nullable=False),
         sa.Column('config', postgresql.JSON, nullable=False),
         sa.Column('status', task_status_enum, nullable=False),
         sa.Column('created_at', sa.DateTime(), nullable=False),
@@ -46,13 +46,13 @@ def upgrade() -> None:
         sa.Column('error', sa.Text(), nullable=True),
         sa.Column('meta_data', postgresql.JSON, nullable=True),
     )
-    op.create_index('ix_tasks_experiment_name', 'tasks', ['experiment_name'])
+    op.create_index('ix_tasks_eval_name', 'tasks', ['eval_name'])
     op.create_index('ix_tasks_status', 'tasks', ['status'])
     op.create_index('ix_tasks_created_at', 'tasks', ['created_at'])
     
-    # Create experiments table
+    # Create evals table (formerly experiments)
     op.create_table(
-        'experiments',
+        'evals',
         sa.Column('id', postgresql.UUID(as_uuid=False), primary_key=True),
         sa.Column('name', sa.String(255), nullable=False, unique=True),
         sa.Column('description', sa.Text(), nullable=True),
@@ -62,32 +62,32 @@ def upgrade() -> None:
         sa.Column('updated_at', sa.DateTime(), nullable=False),
         sa.Column('meta_data', postgresql.JSON, nullable=True),
     )
-    op.create_index('ix_experiments_name', 'experiments', ['name'])
-    op.create_index('ix_experiments_created_at', 'experiments', ['created_at'])
+    op.create_index('ix_evals_name', 'evals', ['name'])
+    op.create_index('ix_evals_created_at', 'evals', ['created_at'])
     
-    # Create experiment_runs table
+    # Create runs table (formerly experiment_runs)
     op.create_table(
-        'experiment_runs',
+        'runs',
         sa.Column('id', postgresql.UUID(as_uuid=False), primary_key=True),
-        sa.Column('experiment_id', postgresql.UUID(as_uuid=False), nullable=False),
+        sa.Column('eval_id', postgresql.UUID(as_uuid=False), nullable=False),
         sa.Column('run_id', sa.String(255), nullable=False, unique=True),
         sa.Column('dataset_id', sa.String(255), nullable=False),
         sa.Column('model', sa.String(255), nullable=True),
         sa.Column('created_at', sa.DateTime(), nullable=False),
         sa.Column('meta_data', postgresql.JSON, nullable=True),
-        sa.ForeignKeyConstraint(['experiment_id'], ['experiments.id']),
+        sa.ForeignKeyConstraint(['eval_id'], ['evals.id']),
     )
-    op.create_index('ix_experiment_runs_experiment_id', 'experiment_runs', ['experiment_id'])
-    op.create_index('ix_experiment_runs_run_id', 'experiment_runs', ['run_id'])
-    op.create_index('ix_experiment_runs_dataset_id', 'experiment_runs', ['dataset_id'])
-    op.create_index('ix_experiment_runs_model', 'experiment_runs', ['model'])
-    op.create_index('ix_experiment_runs_created_at', 'experiment_runs', ['created_at'])
+    op.create_index('ix_runs_eval_id', 'runs', ['eval_id'])
+    op.create_index('ix_runs_run_id', 'runs', ['run_id'])
+    op.create_index('ix_runs_dataset_id', 'runs', ['dataset_id'])
+    op.create_index('ix_runs_model', 'runs', ['model'])
+    op.create_index('ix_runs_created_at', 'runs', ['created_at'])
     
     # Create scores table
     op.create_table(
         'scores',
         sa.Column('id', postgresql.UUID(as_uuid=False), primary_key=True),
-        sa.Column('experiment_run_id', postgresql.UUID(as_uuid=False), nullable=False),
+        sa.Column('run_id', postgresql.UUID(as_uuid=False), nullable=False),
         sa.Column('name', sa.String(255), nullable=False),
         sa.Column('value', sa.Float(), nullable=False),
         sa.Column('eval_id', sa.String(255), nullable=False),
@@ -96,9 +96,9 @@ def upgrade() -> None:
         sa.Column('trace_id', sa.String(255), nullable=True),
         sa.Column('observation_id', sa.String(255), nullable=True),
         sa.Column('created_at', sa.DateTime(), nullable=False),
-        sa.ForeignKeyConstraint(['experiment_run_id'], ['experiment_runs.id']),
+        sa.ForeignKeyConstraint(['run_id'], ['runs.id']),
     )
-    op.create_index('ix_scores_experiment_run_id', 'scores', ['experiment_run_id'])
+    op.create_index('ix_scores_run_id', 'scores', ['run_id'])
     op.create_index('ix_scores_name', 'scores', ['name'])
     op.create_index('ix_scores_eval_id', 'scores', ['eval_id'])
     op.create_index('ix_scores_trace_id', 'scores', ['trace_id'])
@@ -109,21 +109,21 @@ def upgrade() -> None:
         'task_results',
         sa.Column('id', postgresql.UUID(as_uuid=False), primary_key=True),
         sa.Column('task_id', postgresql.UUID(as_uuid=False), nullable=False, unique=True),
-        sa.Column('experiment_run_id', postgresql.UUID(as_uuid=False), nullable=True),
+        sa.Column('run_id', postgresql.UUID(as_uuid=False), nullable=True),
         sa.Column('execution_time_seconds', sa.Float(), nullable=False),
         sa.Column('meta_data', postgresql.JSON, nullable=True),
         sa.Column('created_at', sa.DateTime(), nullable=False),
         sa.ForeignKeyConstraint(['task_id'], ['tasks.id']),
-        sa.ForeignKeyConstraint(['experiment_run_id'], ['experiment_runs.id']),
+        sa.ForeignKeyConstraint(['run_id'], ['runs.id']),
     )
     op.create_index('ix_task_results_task_id', 'task_results', ['task_id'])
-    op.create_index('ix_task_results_experiment_run_id', 'task_results', ['experiment_run_id'])
+    op.create_index('ix_task_results_run_id', 'task_results', ['run_id'])
 
 
 def downgrade() -> None:
     op.drop_table('task_results')
     op.drop_table('scores')
-    op.drop_table('experiment_runs')
-    op.drop_table('experiments')
+    op.drop_table('runs')
+    op.drop_table('evals')
     op.drop_table('tasks')
     op.execute('DROP TYPE IF EXISTS task_status')

@@ -3,17 +3,17 @@
 import pytest
 from pathlib import Path
 from samples_sdk.consumers.devops import (
-    create_devops_experiment,
+    create_devops_eval,
     run_devops_eval,
     compare_csv_results,
     create_devops_sinks,
 )
-from aieval.core.types import ExperimentRun
+from aieval.core.types import Run
 from aieval.sinks.stdout import StdoutSink
 from aieval.sinks.csv import CSVSink
 
 
-class TestCreateDevOpsExperiment:
+class TestCreateDevOpsEval:
     """Tests for create_devops_experiment."""
 
     def test_create_experiment_basic(self, tmp_path):
@@ -36,7 +36,7 @@ class TestCreateDevOpsExperiment:
         expected_file = pipelines_dir / "001_expected.yaml"
         expected_file.write_text("pipeline:\n  name: Test")
 
-        experiment = create_devops_experiment(
+        eval_ = create_devops_eval(
             index_file=str(index_file),
             base_dir=str(datasets_dir),
             entity_type="pipeline",
@@ -57,7 +57,7 @@ class TestCreateDevOpsExperiment:
             "test_id,entity_type,operation_type,prompt_file,old_yaml_file,expected_yaml_file\n"
         )
 
-        experiment = create_devops_experiment(
+        eval_ = create_devops_eval(
             index_file=str(index_file),
             base_dir=str(datasets_dir),
             deep_diff_versions=["v3"],

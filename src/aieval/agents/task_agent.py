@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Any
 
 from aieval.agents.base import BaseEvaluationAgent
-from aieval.agents.experiment_agent import ExperimentAgent
+from aieval.agents.eval_agent import EvalAgent
 from aieval.tasks.manager import TaskManager
 from aieval.tasks.models import Task, TaskStatus, TaskResult
 
@@ -20,7 +20,7 @@ class TaskAgent(BaseEvaluationAgent):
         """Initialize task agent."""
         super().__init__(config)
         self.task_manager = task_manager or TaskManager()
-        self.experiment_agent = ExperimentAgent(config)
+        self.eval_agent = EvalAgent(config)
     
     async def run(self, query: str, **kwargs: Any) -> Any:
         """
@@ -52,25 +52,25 @@ class TaskAgent(BaseEvaluationAgent):
     
     async def create_task(
         self,
-        experiment_name: str,
+        eval_name: str,
         config: dict[str, Any],
         **kwargs: Any,
     ) -> Task:
         """
         Create a new task.
-        
+
         Args:
-            experiment_name: Name of the experiment
-            config: Experiment configuration
+            eval_name: Name of the eval
+            config: Eval configuration
             **kwargs: Additional parameters
-            
+
         Returns:
             Created task
         """
-        self.logger.info(f"Creating task for experiment: {experiment_name}")
-        
+        self.logger.info(f"Creating task for eval: {eval_name}")
+
         task = await self.task_manager.create_task(
-            experiment_name=experiment_name,
+            eval_name=eval_name,
             config=config,
         )
         

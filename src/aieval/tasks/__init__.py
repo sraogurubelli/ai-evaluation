@@ -1,4 +1,4 @@
-"""Task framework for managing experiment execution."""
+"""Task framework for managing eval execution."""
 
 from aieval.tasks.models import Task, TaskStatus, TaskResult
 from aieval.tasks.manager import TaskManager

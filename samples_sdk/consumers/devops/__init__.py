@@ -1,4 +1,4 @@
-"""DevOps consumer SDK – helpers for DevOps/Harness evaluation workflow.
+"""DevOps consumer SDK – helpers for DevOps evaluation workflow.
 
 Use these after installing ai-evolution and adding the repo root to PYTHONPATH
 so that 'samples_sdk' is importable, or copy this module into your project.
@@ -8,7 +8,7 @@ aieval.sdk.unit_test.
 """
 
 from samples_sdk.consumers.devops.devops import (
-    create_devops_experiment,
+    create_devops_eval,
     run_devops_eval,
     compare_csv_results,
     create_devops_sinks,
@@ -19,7 +19,7 @@ from samples_sdk.consumers.devops.devops import (
 )
 
 __all__ = [
-    "create_devops_experiment",
+    "create_devops_eval",
     "run_devops_eval",
     "compare_csv_results",
     "create_devops_sinks",

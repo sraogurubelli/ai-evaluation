@@ -1,7 +1,7 @@
 """Tests for core types."""
 
 import pytest
-from aieval.core.types import Score, ExperimentRun, DatasetItem
+from aieval.core.types import Score, Run, DatasetItem
 from datetime import datetime
 
 
@@ -34,14 +34,14 @@ def test_score_to_dict():
 
 
 def test_experiment_run_creation():
-    """Test ExperimentRun creation."""
+    """Test Run creation."""
     scores = [
         Score(name="score1", value=0.8, eval_id="test.v1"),
         Score(name="score2", value=0.9, eval_id="test.v1"),
     ]
     
     run = ExperimentRun(
-        experiment_id="exp1",
+        eval_id="exp1",
         run_id="run1",
         dataset_id="dataset1",
         scores=scores,

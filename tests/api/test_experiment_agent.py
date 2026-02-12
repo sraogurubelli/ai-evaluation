@@ -1,15 +1,15 @@
-"""Tests for experiment agent endpoints."""
+"""Tests for eval agent endpoints."""
 
 
-class TestExperimentAgent:
-    """Tests for experiment agent endpoints."""
-    
-    def test_create_experiment_config(self, client):
-        """Test creating experiment configuration."""
+class TestEvalAgent:
+    """Tests for eval agent endpoints."""
+
+    def test_create_eval_config(self, client):
+        """Test creating eval configuration."""
         response = client.post(
-            "/evaluate/experiment/create",
+            "/evaluate/eval/create",
             json={
-                "name": "test_experiment",
+                "name": "test_eval",
                 "dataset_config": {
                     "type": "index_csv",
                     "index_file": "benchmarks/datasets/index.csv",
@@ -20,18 +20,18 @@ class TestExperimentAgent:
                 ],
             },
         )
-        
+
         assert response.status_code == 201
         data = response.json()
-        assert "experiment_id" in data
-    
-    def test_run_experiment(self, client):
-        """Test running an experiment."""
-        # First create experiment
+        assert "eval_id" in data
+
+    def test_run_eval(self, client):
+        """Test running an eval."""
+        # First create eval
         create_response = client.post(
-            "/evaluate/experiment/create",
+            "/evaluate/eval/create",
             json={
-                "name": "test_experiment",
+                "name": "test_eval",
                 "dataset_config": {
                     "type": "index_csv",
                     "index_file": "benchmarks/datasets/index.csv",
@@ -42,11 +42,11 @@ class TestExperimentAgent:
                 ],
             },
         )
-        
+
         if create_response.status_code == 201:
-            experiment_id = create_response.json()["experiment_id"]
-            
-            # Then run experiment
+            eval_id = create_response.json()["eval_id"]
+
+            # Then run eval
             response = client.post(
                 "/evaluate/experiment/run",
                 json={

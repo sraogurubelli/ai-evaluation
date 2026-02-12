@@ -12,10 +12,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, HTMLResponse
 
 from aieval.api.models import (
-    ExperimentConfigRequest,
+    EvalConfigRequest,
     TaskResponse,
     TaskResultResponse,
-    ExperimentRunResponse,
+    RunResponse,
     AgentSummaryResponse,
     AgentRunSummaryResponse,
     PushRunRequest,
@@ -41,13 +41,13 @@ from aieval.api.models import (
     AdapterListResponse,
     AdapterRegisterRequest,
     AdapterRegisterResponse,
-    # Experiment Agent models
-    ExperimentCreateRequest,
-    ExperimentCreateResponse,
-    ExperimentRunRequest,
-    ExperimentRunResponse as ExperimentRunResponseNew,
-    ExperimentCompareRequest,
-    ExperimentCompareResponse,
+    # Eval Agent models
+    EvalCreateRequest,
+    EvalCreateResponse,
+    EvalRunRequest,
+    EvalRunResponse,
+    EvalCompareRequest,
+    EvalCompareResponse,
     # Evaluation Agent models
     EvaluationRequest,
     EvaluationResponse,
@@ -67,7 +67,7 @@ from aieval.agents import (
     DatasetAgent,
     ScorerAgent,
     AdapterAgent,
-    ExperimentAgent,
+    EvalAgent,
     TaskAgent,
     EvaluationAgent,
 )
@@ -84,7 +84,7 @@ worker_task: asyncio.Task | None = None
 dataset_agent: DatasetAgent | None = None
 scorer_agent: ScorerAgent | None = None
 adapter_agent: AdapterAgent | None = None
-experiment_agent: ExperimentAgent | None = None
+eval_agent: EvalAgent | None = None
 task_agent: TaskAgent | None = None
 evaluation_agent: EvaluationAgent | None = None
 
@@ -96,7 +96,7 @@ _pushed_runs: list[dict[str, Any]] = []
 async def lifespan(app: FastAPI):
     """Lifespan context manager for startup/shutdown."""
     global task_manager, task_worker, worker_task
-    global dataset_agent, scorer_agent, adapter_agent, experiment_agent, task_agent, evaluation_agent
+    global dataset_agent, scorer_agent, adapter_agent, eval_agent, task_agent, evaluation_agent
     
     # Startup
     logger.info("Starting AI Evolution Platform API")
@@ -122,7 +122,7 @@ async def lifespan(app: FastAPI):
     dataset_agent = DatasetAgent()
     scorer_agent = ScorerAgent()
     adapter_agent = AdapterAgent()
-    experiment_agent = ExperimentAgent()
+    eval_agent = EvalAgent()
     task_agent = TaskAgent(task_manager=task_manager)
     evaluation_agent = EvaluationAgent()
     
@@ -159,7 +159,7 @@ def create_app() -> FastAPI:
     """Create and configure FastAPI application."""
     app = FastAPI(
         title="AI Evolution API",
-        description="Unified AI Evaluation and Experimentation Platform",
+        description="Unified AI agent evaluation (Eval, Run, Data Set, Scores)",
         version="0.1.0",
         lifespan=lifespan,
     )
@@ -227,21 +227,21 @@ def create_app() -> FastAPI:
     from aieval.monitoring.tracing import initialize_tracing
     initialize_tracing(app)
     
-    @app.post("/experiments", response_model=TaskResponse, status_code=201)
-    async def create_experiment(
-        request: ExperimentConfigRequest,
+    @app.post("/evals", response_model=TaskResponse, status_code=201)
+    async def create_eval(
+        request: EvalConfigRequest,
         background_tasks: BackgroundTasks,
     ):
         """
-        Create and optionally run an experiment.
-        
+        Create and optionally run an eval.
+
         If run_async is True, the task will be queued for background execution.
         If False, the task will be executed synchronously (may take a long time).
         """
         if not task_manager:
             raise HTTPException(status_code=503, detail="Task manager not initialized")
-        
-        # Merge agent identity into config so execute_task can pass to experiment.run()
+
+        # Merge agent identity into config so execute_task can pass to eval.run()
         config = dict(request.config)
         if request.agent_id is not None:
             config["agent_id"] = request.agent_id
@@ -249,20 +249,20 @@ def create_app() -> FastAPI:
             config["agent_name"] = request.agent_name
         if request.agent_version is not None:
             config["agent_version"] = request.agent_version
-        
+
         # Create task
         task = await task_manager.create_task(
-            experiment_name=request.experiment_name,
+            eval_name=request.eval_name,
             config=config,
         )
-        
+
         # Execute task
         if request.run_async:
             # Queue for background execution (worker will pick it up)
             logger.info(
                 "Task queued for async execution",
                 task_id=task.id,
-                experiment_name=request.experiment_name,
+                eval_name=request.eval_name,
             )
         else:
             # Execute synchronously
@@ -321,9 +321,9 @@ def create_app() -> FastAPI:
         
         return TaskResultResponse(**task.result.to_dict())
     
-    @app.get("/tasks/{task_id}/run", response_model=ExperimentRunResponse)
+    @app.get("/tasks/{task_id}/run", response_model=RunResponse)
     async def get_task_run(task_id: str):
-        """Get experiment run from task result."""
+        """Get run from task result."""
         if not task_manager:
             raise HTTPException(status_code=503, detail="Task manager not initialized")
         
@@ -337,7 +337,7 @@ def create_app() -> FastAPI:
                 detail=f"Task {task_id} has no result yet (status: {task.status})",
             )
         
-        return ExperimentRunResponse(**task.result.experiment_run.to_dict())
+        return RunResponse(**task.result.run.to_dict())
     
     @app.delete("/tasks/{task_id}", status_code=204)
     async def cancel_task(task_id: str):
@@ -404,7 +404,7 @@ def create_app() -> FastAPI:
             for task in tasks:
                 if not task.result:
                     continue
-                run = task.result.experiment_run
+                run = task.result.run
                 meta = getattr(run, "metadata", None) or {}
                 aid = meta.get("agent_id")
                 if not aid:
@@ -444,7 +444,7 @@ def create_app() -> FastAPI:
             for task in tasks:
                 if not task.result:
                     continue
-                run = task.result.experiment_run
+                run = task.result.run
                 meta = getattr(run, "metadata", None) or {}
                 if meta.get("agent_id") != agent_id:
                     continue
@@ -470,19 +470,19 @@ def create_app() -> FastAPI:
         page = runs_list[offset : offset + limit]
         return [AgentRunSummaryResponse(**r) for r in page]
     
-    @app.get("/runs/{run_id}", response_model=ExperimentRunResponse)
+    @app.get("/runs/{run_id}", response_model=RunResponse)
     async def get_run(run_id: str):
         """Get run detail by run_id (from task result or pushed run)."""
         global _pushed_runs
         if task_manager:
             tasks = await task_manager.list_tasks(limit=500)
             for task in tasks:
-                if not task.result or task.result.experiment_run.run_id != run_id:
+                if not task.result or task.result.run.run_id != run_id:
                     continue
-                return ExperimentRunResponse(**task.result.experiment_run.to_dict())
+                return RunResponse(**task.result.run.to_dict())
         for entry in _pushed_runs:
             if entry.get("run", {}).get("run_id") == run_id:
-                return ExperimentRunResponse(**entry["run"])
+                return RunResponse(**entry["run"])
         raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
     
     @app.post("/agents/{agent_id}/runs", response_model=dict[str, Any], status_code=201)
@@ -492,7 +492,7 @@ def create_app() -> FastAPI:
         created_at = datetime.now().isoformat()
         run_dict = {
             "run_id": request.run_id,
-            "experiment_id": request.experiment_id,
+            "eval_id": request.eval_id,
             "dataset_id": request.dataset_id,
             "scores": request.scores,
             "metadata": {**request.metadata, "agent_id": agent_id},
@@ -509,9 +509,9 @@ def create_app() -> FastAPI:
         if task_manager:
             tasks = await task_manager.list_tasks(limit=500)
             for task in tasks:
-                if not task.result or task.result.experiment_run.run_id != run_id:
+                if not task.result or task.result.run.run_id != run_id:
                     continue
-                run_dict = task.result.experiment_run.to_dict()
+                run_dict = task.result.run.to_dict()
                 break
         if run_dict is None:
             for entry in _pushed_runs:
@@ -803,83 +803,83 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=500, detail=str(e))
     
     # ============================================================================
-    # Experiment Agent Endpoints
+    # Eval Agent Endpoints
     # ============================================================================
-    
-    @app.post("/evaluate/experiment/create", response_model=ExperimentCreateResponse, status_code=201)
-    async def create_experiment_agent(request: ExperimentCreateRequest):
-        """Create an experiment."""
-        if not experiment_agent:
-            raise HTTPException(status_code=503, detail="Experiment agent not initialized")
-        
+
+    @app.post("/evaluate/eval/create", response_model=EvalCreateResponse, status_code=201)
+    async def create_eval_agent(request: EvalCreateRequest):
+        """Create an eval."""
+        if not eval_agent:
+            raise HTTPException(status_code=503, detail="Eval agent not initialized")
+
         try:
-            experiment = await experiment_agent.create_experiment(
+            eval_ = await eval_agent.create_eval(
                 name=request.name,
                 dataset_config=request.dataset_config,
                 scorers_config=request.scorers_config,
-                experiment_id=request.experiment_id,
+                eval_id=request.eval_id,
             )
             logger.info(
-                "Experiment created",
-                experiment_id=experiment.experiment_id,
-                name=experiment.name,
-                dataset_size=len(experiment.dataset),
-                scorer_count=len(experiment.scorers),
+                "Eval created",
+                eval_id=eval_.eval_id,
+                name=eval_.name,
+                dataset_size=len(eval_.dataset),
+                scorer_count=len(eval_.scorers),
             )
-            return ExperimentCreateResponse(
-                experiment_id=experiment.experiment_id,
-                name=experiment.name,
-                dataset_size=len(experiment.dataset),
-                scorer_count=len(experiment.scorers),
+            return EvalCreateResponse(
+                eval_id=eval_.eval_id,
+                name=eval_.name,
+                dataset_size=len(eval_.dataset),
+                scorer_count=len(eval_.scorers),
             )
         except Exception as e:
             logger.error(
-                "Error creating experiment",
+                "Error creating eval",
                 name=request.name,
-                experiment_id=request.experiment_id,
+                eval_id=request.eval_id,
                 error=str(e),
                 exc_info=True,
             )
             raise HTTPException(status_code=500, detail=str(e))
-    
-    @app.post("/evaluate/experiment/run", response_model=ExperimentRunResponseNew, status_code=200)
-    async def run_experiment_agent(request: ExperimentRunRequest):
-        """Run an experiment."""
-        if not experiment_agent:
-            raise HTTPException(status_code=503, detail="Experiment agent not initialized")
-        
+
+    @app.post("/evaluate/eval/run", response_model=EvalRunResponse, status_code=200)
+    async def run_eval_agent(request: EvalRunRequest):
+        """Run an eval."""
+        if not eval_agent:
+            raise HTTPException(status_code=503, detail="Eval agent not initialized")
+
         try:
-            run = await experiment_agent.run_experiment(
-                experiment=request.experiment_id,
+            run = await eval_agent.run_eval(
+                eval_=request.eval_id,
                 adapter_config=request.adapter_config,
                 model=request.model,
                 concurrency_limit=request.concurrency_limit,
             )
             logger.info(
-                "Experiment run completed",
-                experiment_id=request.experiment_id,
+                "Eval run completed",
+                eval_id=request.eval_id,
                 run_id=run.run_id,
                 model=request.model,
             )
-            return ExperimentRunResponseNew(**run.to_dict())
+            return EvalRunResponse(**run.to_dict())
         except Exception as e:
             logger.error(
-                "Error running experiment",
-                experiment_id=request.experiment_id,
+                "Error running eval",
+                eval_id=request.eval_id,
                 model=request.model,
                 error=str(e),
                 exc_info=True,
             )
             raise HTTPException(status_code=500, detail=str(e))
-    
-    @app.post("/evaluate/experiment/compare", response_model=ExperimentCompareResponse, status_code=200)
-    async def compare_runs(request: ExperimentCompareRequest):
-        """Compare experiment runs."""
-        if not experiment_agent:
-            raise HTTPException(status_code=503, detail="Experiment agent not initialized")
-        
+
+    @app.post("/evaluate/eval/compare", response_model=EvalCompareResponse, status_code=200)
+    async def compare_runs(request: EvalCompareRequest):
+        """Compare runs."""
+        if not eval_agent:
+            raise HTTPException(status_code=503, detail="Eval agent not initialized")
+
         try:
-            result = await experiment_agent.compare_runs(
+            result = await eval_agent.compare_runs(
                 run1=request.run1_id,
                 run2=request.run2_id,
             )
@@ -888,7 +888,7 @@ def create_app() -> FastAPI:
                 run1_id=request.run1_id,
                 run2_id=request.run2_id,
             )
-            return ExperimentCompareResponse(comparison=result)
+            return EvalCompareResponse(comparison=result)
         except Exception as e:
             logger.error(
                 "Error comparing runs",
@@ -905,7 +905,7 @@ def create_app() -> FastAPI:
     
     @app.post("/evaluate/task/create", response_model=TaskResponse, status_code=201)
     async def create_task_agent(
-        experiment_name: str,
+        eval_name: str,
         config: dict[str, Any],
     ):
         """Create evaluation task."""
@@ -914,19 +914,19 @@ def create_app() -> FastAPI:
         
         try:
             task = await task_agent.create_task(
-                experiment_name=experiment_name,
+                eval_name=eval_name,
                 config=config,
             )
             logger.info(
                 "Task created",
                 task_id=task.id,
-                experiment_name=experiment_name,
+                eval_name=eval_name,
             )
             return TaskResponse(**task.to_dict())
         except Exception as e:
             logger.error(
                 "Error creating task",
-                experiment_name=experiment_name,
+                eval_name=eval_name,
                 error=str(e),
                 exc_info=True,
             )
@@ -987,7 +987,7 @@ def create_app() -> FastAPI:
             models_list = request.get_models_list()
             
             result = await evaluation_agent.evaluate(
-                experiment_name=request.experiment_name,
+                eval_name=request.eval_name,
                 dataset_config=request.dataset_config,
                 scorers_config=request.scorers_config,
                 adapter_config=request.adapter_config,
@@ -1007,7 +1007,7 @@ def create_app() -> FastAPI:
                     task_id=task.id,
                     run_id=None,
                     runs=None,
-                    experiment_id=task.experiment_name,
+                    eval_id=task.eval_name,
                     scores=None,
                     comparison=None,
                     metadata=task.metadata,
@@ -1025,7 +1025,8 @@ def create_app() -> FastAPI:
                         task_id=None,
                         run_id=None,  # No single run_id for multiple models
                         runs=[run.to_dict() for run in runs],
-                        experiment_id=runs[0].experiment_id if runs else request.experiment_name,
+                        eval_id=runs[0].eval_id if runs else request.eval_name,
+                    experiment_id=runs[0].eval_id if runs else request.eval_name,  # Backward compatibility
                         scores=None,  # Scores are in individual runs
                         comparison=comparison,
                         metadata={"model_count": len(runs)},
@@ -1039,7 +1040,7 @@ def create_app() -> FastAPI:
                         task_id=None,
                         run_id=run.run_id,
                         runs=None,
-                        experiment_id=run.experiment_id,
+                        eval_id=run.eval_id,
                         scores=[score.to_dict() for score in run.scores],
                         comparison=None,
                         metadata=run_metadata,
@@ -1047,7 +1048,7 @@ def create_app() -> FastAPI:
         except Exception as e:
             logger.error(
                 "Error in unified evaluation",
-                experiment_name=request.experiment_name,
+                eval_name=request.eval_name,
                 model=request.model,
                 models=request.models,
                 error=str(e),
