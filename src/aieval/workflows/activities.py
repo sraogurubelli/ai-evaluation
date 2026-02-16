@@ -31,21 +31,21 @@ ACTIVITY_RETRY_POLICY = RetryPolicy(
 async def load_dataset_activity(config: dict[str, Any]) -> list[dict[str, Any]]:
     """
     Load dataset from configuration.
-    
+
     This activity is idempotent - loading the same dataset multiple times
     produces the same result.
-    
+
     Args:
         config: Dataset configuration
-        
+
     Returns:
         List of dataset items as dictionaries
     """
     activity.logger.info(f"Loading dataset: {config.get('type')}")
-    
+
     dataset_config = config.get("dataset", {})
     dataset_type = dataset_config.get("type", "jsonl")
-    
+
     try:
         if dataset_type == "jsonl":
             dataset = load_jsonl_dataset(dataset_config.get("path"))
@@ -58,12 +58,12 @@ async def load_dataset_activity(config: dict[str, Any]) -> list[dict[str, Any]]:
             )
         else:
             raise ValueError(f"Unknown dataset type: {dataset_type}")
-        
+
         # Convert to dict for serialization
         dataset_dicts = [item.to_dict() for item in dataset]
         activity.logger.info(f"Loaded {len(dataset_dicts)} items")
         return dataset_dicts
-        
+
     except Exception as e:
         activity.logger.error(f"Failed to load dataset: {e}")
         raise
@@ -79,19 +79,19 @@ async def run_experiment_activity(
 ) -> dict[str, Any]:
     """
     Run experiment with given configuration.
-    
+
     Args:
         dataset_items: Dataset items (as dicts)
         scorers_config: Scorer configurations
         adapter_config: Adapter configuration
         model: Model name (optional)
         concurrency_limit: Maximum concurrent API calls
-        
+
     Returns:
         EvalResult as dictionary
     """
     activity.logger.info(f"Running experiment with {len(dataset_items)} items")
-    
+
     # Convert dataset items back from dicts
     dataset = [
         DatasetItem(
@@ -103,9 +103,10 @@ async def run_experiment_activity(
         )
         for item in dataset_items
     ]
-    
+
     # Create scorers (simplified - in production, use scorer factory)
     from aieval.scorers.deep_diff import DeepDiffScorer
+
     scorers: list[Scorer] = []
     for scorer_config in scorers_config:
         if scorer_config.get("type") == "deep_diff":
@@ -116,27 +117,28 @@ async def run_experiment_activity(
                     version=scorer_config.get("version", "v3"),
                 )
             )
-    
+
     # Create adapter (simplified - in production, use adapter factory)
     from aieval.adapters.http import HTTPAdapter
+
     adapter = HTTPAdapter(
         base_url=adapter_config.get("base_url", "http://localhost:8000"),
         auth_token=adapter_config.get("auth_token", ""),
     )
-    
+
     # Create and run eval
     eval_ = Eval(
         name="temporal_eval",
         dataset=dataset,
         scorers=scorers,
     )
-    
+
     result = await eval_.run(
         adapter=adapter,
         model=model,
         concurrency_limit=concurrency_limit,
     )
-    
+
     # Convert to dict for serialization
     return result.to_dict()
 
@@ -150,25 +152,25 @@ async def score_item_activity(
 ) -> dict[str, Any]:
     """
     Score a single item with a scorer.
-    
+
     Args:
         generated: Generated output
         expected: Expected output
         scorer_config: Scorer configuration
         metadata: Additional metadata
-        
+
     Returns:
         Score as dictionary
     """
     # Create scorer and score
     from aieval.scorers.deep_diff import DeepDiffScorer
-    
+
     scorer = DeepDiffScorer(
         name=scorer_config.get("name", "deep_diff"),
         eval_id=scorer_config.get("eval_id", "deep_diff.v1"),
         version=scorer_config.get("version", "v3"),
     )
-    
+
     score = scorer.score(generated, expected, metadata)
     return score.to_dict()
 
@@ -180,18 +182,18 @@ async def emit_results_activity(
 ) -> None:
     """
     Emit experiment results to sinks.
-    
+
     Args:
-        result: Run as dictionary
+        result: EvalResult as dictionary
         sinks_config: Sink configurations
     """
     activity.logger.info(f"Emitting results to {len(sinks_config)} sinks")
-    
+
     from aieval.core.types import EvalResult
     from aieval.sinks.csv import CSVSink
     from aieval.sinks.json import JSONSink
     from aieval.sinks.stdout import StdoutSink
-    
+
     # Convert result back to EvalResult
     run = EvalResult(
         eval_id=result["eval_id"],
@@ -200,7 +202,7 @@ async def emit_results_activity(
         scores=[],  # Would need to reconstruct scores
         metadata=result.get("metadata", {}),
     )
-    
+
     # Create sinks and emit
     sinks = []
     for sink_config in sinks_config:
@@ -211,7 +213,7 @@ async def emit_results_activity(
             sinks.append(JSONSink(sink_config.get("path", "results.json")))
         elif sink_type == "stdout":
             sinks.append(StdoutSink())
-    
+
     for sink in sinks:
         sink.emit_run(run)
         sink.flush()
