@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from aieval.core.eval import Eval
-from aieval.core.types import DatasetItem, Score, normalize_adapter_output
+from aieval.core.types import DatasetItem, EvalResult, Score, normalize_adapter_output
 from aieval.adapters.base import Adapter
 from aieval.sinks.base import Sink
 from aieval.sinks.stdout import StdoutSink
@@ -273,7 +273,7 @@ async def run_evaluation(
         **kwargs: Additional arguments
 
     Returns:
-        Run result
+        EvalResult result
     """
     runner = EvaluationRunner()
     return await runner.run(
