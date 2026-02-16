@@ -323,7 +323,7 @@ def create_app() -> FastAPI:
         
         return TaskResultResponse(**task.result.to_dict())
     
-    @app.get("/tasks/{task_id}/run", response_model=RunResponse)
+    @app.get("/tasks/{task_id}/run", response_model=EvalResultResponse)
     async def get_task_run(task_id: str):
         """Get run from task result."""
         if not task_manager:
@@ -339,7 +339,7 @@ def create_app() -> FastAPI:
                 detail=f"Task {task_id} has no result yet (status: {task.status})",
             )
         
-                return EvalResultResponse(**task.result.eval_result.to_dict())
+        return EvalResultResponse(**task.result.eval_result.to_dict())
     
     @app.delete("/tasks/{task_id}", status_code=204)
     async def cancel_task(task_id: str):
@@ -367,10 +367,10 @@ def create_app() -> FastAPI:
     # Agents and runs (consolidation per agent)
     # ============================================================================
     
-    def _run_summary_from_task(task: Any, run: Any) -> dict[str, Any]:
-        """Build run summary from task result run."""
-        meta = getattr(run, "metadata", None) or {}
-        scores = getattr(run, "scores", [])
+    def _run_summary_from_task(task: Any, eval_result: Any) -> dict[str, Any]:
+        """Build run summary from task result eval_result."""
+        meta = getattr(eval_result, "metadata", None) or {}
+        scores = getattr(eval_result, "scores", [])
         by_test: dict[str, list[Any]] = {}
         for s in scores:
             tid = (s.metadata or {}).get("test_id") or "unknown"
@@ -386,7 +386,7 @@ def create_app() -> FastAPI:
         )
         failed = total - passed
         return {
-            "run_id": run.run_id,
+            "run_id": eval_result.run_id,
             "task_id": task.id,
             "created_at": (dt.isoformat() if (dt := (getattr(task, "completed_at", None) or getattr(task, "created_at", None))) else ""),
             "model": meta.get("model"),
@@ -406,8 +406,8 @@ def create_app() -> FastAPI:
             for task in tasks:
                 if not task.result:
                     continue
-                run = task.result.run
-                meta = getattr(run, "metadata", None) or {}
+                eval_result = task.result.eval_result
+                meta = getattr(eval_result, "metadata", None) or {}
                 aid = meta.get("agent_id")
                 if not aid:
                     continue
@@ -446,11 +446,11 @@ def create_app() -> FastAPI:
             for task in tasks:
                 if not task.result:
                     continue
-                run = task.result.run
-                meta = getattr(run, "metadata", None) or {}
+                eval_result = task.result.eval_result
+                meta = getattr(eval_result, "metadata", None) or {}
                 if meta.get("agent_id") != agent_id:
                     continue
-                runs_list.append(_run_summary_from_task(task, run))
+                runs_list.append(_run_summary_from_task(task, eval_result))
         for entry in _pushed_runs:
             if entry.get("agent_id") != agent_id:
                 continue
@@ -472,19 +472,19 @@ def create_app() -> FastAPI:
         page = runs_list[offset : offset + limit]
         return [AgentRunSummaryResponse(**r) for r in page]
     
-    @app.get("/runs/{run_id}", response_model=RunResponse)
+    @app.get("/runs/{run_id}", response_model=EvalResultResponse)
     async def get_run(run_id: str):
         """Get run detail by run_id (from task result or pushed run)."""
         global _pushed_runs
         if task_manager:
             tasks = await task_manager.list_tasks(limit=500)
             for task in tasks:
-                if not task.result or task.result.run.run_id != run_id:
+                if not task.result or task.result.eval_result.run_id != run_id:
                     continue
                 return EvalResultResponse(**task.result.eval_result.to_dict())
         for entry in _pushed_runs:
             if entry.get("run", {}).get("run_id") == run_id:
-                return RunResponse(**entry["run"])
+                return EvalResultResponse(**entry["run"])
         raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
     
     @app.post("/agents/{agent_id}/runs", response_model=dict[str, Any], status_code=201)
@@ -511,9 +511,9 @@ def create_app() -> FastAPI:
         if task_manager:
             tasks = await task_manager.list_tasks(limit=500)
             for task in tasks:
-                if not task.result or task.result.run.run_id != run_id:
+                if not task.result or task.result.eval_result.run_id != run_id:
                     continue
-                run_dict = task.result.run.to_dict()
+                run_dict = task.result.eval_result.to_dict()
                 break
         if run_dict is None:
             for entry in _pushed_runs:
