@@ -17,15 +17,15 @@ from aieval.core.types import Score
 class DashboardQualityScorer(Scorer):
     """
     Scorer for dashboard generation quality.
-    
+
     Evaluates dashboards based on:
     - Query validity (HQL format)
     - Widget count and type variety
     - Structural similarity
-    
+
     Uses a configurable query field name in widget data_query (default "query").
     """
-    
+
     def __init__(
         self,
         name: str = "dashboard_quality",
@@ -33,13 +33,13 @@ class DashboardQualityScorer(Scorer):
         query_field_name: str = "query",
     ):
         """Initialize dashboard quality scorer.
-        
+
         Args:
             query_field_name: Key used in widget data_query for the query string (default "query").
         """
         super().__init__(name, eval_id)
         self._query_field_name = query_field_name
-    
+
     def score(
         self,
         generated: Any,
@@ -48,7 +48,7 @@ class DashboardQualityScorer(Scorer):
     ) -> Score:
         """
         Score dashboard quality.
-        
+
         Returns overall score (weighted average of all metrics).
         Individual metric scores are stored in metadata.
         """
@@ -64,7 +64,7 @@ class DashboardQualityScorer(Scorer):
                     comment="Failed to parse generated JSON",
                     metadata=metadata,
                 )
-        
+
         if isinstance(expected, str):
             try:
                 expected = json.loads(expected)
@@ -76,13 +76,13 @@ class DashboardQualityScorer(Scorer):
                     comment="Failed to parse expected JSON",
                     metadata=metadata,
                 )
-        
+
         # Extract dashboard from response structure if needed
         if isinstance(generated, dict) and "dashboard" in generated:
             generated = generated["dashboard"]
-        
+
         scores = self._evaluate_dashboard_quality(generated, expected)
-        
+
         return Score(
             name=self.name,
             value=scores["overall"],
@@ -90,20 +90,18 @@ class DashboardQualityScorer(Scorer):
             comment=f"Dashboard quality: {scores['overall']:.2%}",
             metadata={**metadata, "metrics": scores},
         )
-    
+
     def _evaluate_dashboard_quality(
         self, generated: dict[str, Any], expected: dict[str, Any]
     ) -> dict[str, float]:
         """Evaluate dashboard quality with multiple metrics."""
         scores = {}
-        
+
         gen_widgets = generated.get("widgets", [])
         exp_widgets = expected.get("widgets", [])
-        
-        gen_queries = [
-            w.get("data_query", {}).get(self._query_field_name, "") for w in gen_widgets
-        ]
-        
+
+        gen_queries = [w.get("data_query", {}).get(self._query_field_name, "") for w in gen_widgets]
+
         # 1. HQL Query Validity
         valid_queries = sum(
             1
@@ -111,45 +109,41 @@ class DashboardQualityScorer(Scorer):
             if q and "find" in q and ("entity" in q or "event" in q or "metric" in q)
         )
         scores["query_validity"] = valid_queries / max(len(gen_queries), 1)
-        
+
         # 2. Query Has Limit
         queries_with_limit = sum(1 for q in gen_queries if "limit" in q.lower())
         scores["query_has_limit"] = queries_with_limit / max(len(gen_queries), 1)
-        
+
         # 3. Widget Count Match
         gen_count = len(gen_widgets)
         exp_count = len(exp_widgets)
         if exp_count == 0:
             scores["widget_count_match"] = 1.0 if gen_count == 0 else 0.0
         else:
-            scores["widget_count_match"] = max(
-                0, 1 - abs(gen_count - exp_count) / exp_count
-            )
-        
+            scores["widget_count_match"] = max(0, 1 - abs(gen_count - exp_count) / exp_count)
+
         # 4. Widget Type Variety
         gen_types = [w.get("type", "TABLE") for w in gen_widgets]
         unique_gen_types = len(set(gen_types))
         exp_types = [w.get("type", "TABLE") for w in exp_widgets]
         unique_exp_types = len(set(exp_types))
-        
+
         if unique_exp_types == 0:
             scores["widget_type_variety"] = 1.0 if unique_gen_types == 0 else 0.5
         else:
             scores["widget_type_variety"] = min(1.0, unique_gen_types / unique_exp_types)
-        
+
         # Penalize if everything is TABLE
         table_ratio = sum(1 for t in gen_types if t == "TABLE") / max(len(gen_types), 1)
         if table_ratio > 0.7:
             scores["widget_type_variety"] *= 0.5
-        
+
         # 5. Widget Type Match
         type_matches = sum(
-            1
-            for i in range(min(len(gen_types), len(exp_types)))
-            if gen_types[i] == exp_types[i]
+            1 for i in range(min(len(gen_types), len(exp_types))) if gen_types[i] == exp_types[i]
         )
         scores["widget_type_match"] = type_matches / max(len(exp_types), 1)
-        
+
         # 6. Structural Similarity
         def simplify_for_comparison(data: dict[str, Any]) -> dict[str, Any]:
             """Simplify dashboard for structural comparison."""
@@ -166,23 +160,21 @@ class DashboardQualityScorer(Scorer):
                     widgets.append(simplified_widget)
                 simplified["widgets"] = widgets
             return simplified
-        
+
         simplified_gen = simplify_for_comparison(generated)
         simplified_exp = simplify_for_comparison(expected)
-        
+
         diff = DeepDiff(simplified_exp, simplified_gen, ignore_order=True, verbose_level=0)
         if not diff:
             scores["structural_similarity"] = 1.0
         else:
-            diff_count = sum(
-                len(v) if isinstance(v, (list, dict)) else 1 for v in diff.values()
-            )
+            diff_count = sum(len(v) if isinstance(v, (list, dict)) else 1 for v in diff.values())
             scores["structural_similarity"] = max(0, 1 - (diff_count / 10))
-        
+
         # 7. Column Mapping Quality
         widgets_with_columns = sum(1 for w in gen_widgets if w.get("columns"))
         scores["has_column_mapping"] = widgets_with_columns / max(len(gen_widgets), 1)
-        
+
         # Overall score (weighted average)
         weights = {
             "query_validity": 0.30,
@@ -193,7 +185,7 @@ class DashboardQualityScorer(Scorer):
             "structural_similarity": 0.10,
             "has_column_mapping": 0.05,
         }
-        
+
         scores["overall"] = sum(scores[k] * weights[k] for k in weights.keys())
-        
+
         return scores

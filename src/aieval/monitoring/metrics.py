@@ -28,23 +28,23 @@ request_errors = Counter(
     ["method", "endpoint", "error_type"],
 )
 
-# Experiment metrics
-experiment_runs_total = Counter(
-    "experiment_runs_total",
-    "Total experiment runs",
-    ["experiment_id", "status"],
+# Eval metrics
+eval_runs_total = Counter(
+    "eval_runs_total",
+    "Total eval runs",
+    ["eval_id", "status"],
 )
 
-experiment_runs_failed = Counter(
-    "experiment_runs_failed_total",
-    "Total failed experiment runs",
-    ["experiment_id", "error_type"],
+eval_runs_failed = Counter(
+    "eval_runs_failed_total",
+    "Total failed eval runs",
+    ["eval_id", "error_type"],
 )
 
-experiment_duration = Histogram(
-    "experiment_duration_seconds",
-    "Experiment execution duration in seconds",
-    ["experiment_id"],
+eval_duration = Histogram(
+    "eval_duration_seconds",
+    "Eval execution duration in seconds",
+    ["eval_id"],
     buckets=[1.0, 5.0, 10.0, 30.0, 60.0, 300.0, 600.0],
 )
 
@@ -119,15 +119,15 @@ def get_metrics_registry():
 async def metrics_middleware(request: Any, call_next: Callable):
     """Middleware to track request metrics."""
     start_time = time.time()
-    
+
     # Extract endpoint (simplified)
     endpoint = request.url.path
     method = request.method
-    
+
     try:
         response = await call_next(request)
         status_code = response.status_code
-        
+
         # Record metrics
         duration = time.time() - start_time
         request_duration.labels(
@@ -135,20 +135,20 @@ async def metrics_middleware(request: Any, call_next: Callable):
             endpoint=endpoint,
             status_code=status_code,
         ).observe(duration)
-        
+
         request_count.labels(
             method=method,
             endpoint=endpoint,
             status_code=status_code,
         ).inc()
-        
+
         if status_code >= 400:
             request_errors.labels(
                 method=method,
                 endpoint=endpoint,
                 error_type=f"{status_code // 100}xx",
             ).inc()
-        
+
         return response
     except Exception as e:
         duration = time.time() - start_time
@@ -157,13 +157,13 @@ async def metrics_middleware(request: Any, call_next: Callable):
             endpoint=endpoint,
             status_code=500,
         ).observe(duration)
-        
+
         request_errors.labels(
             method=method,
             endpoint=endpoint,
             error_type=type(e).__name__,
         ).inc()
-        
+
         raise
 
 

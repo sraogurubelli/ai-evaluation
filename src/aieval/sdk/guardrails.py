@@ -31,14 +31,14 @@ async def validate_prompt(
 ) -> dict[str, Any]:
     """
     Validate a prompt before sending to LLM.
-    
+
     Args:
         prompt: Prompt text to validate
         task_id: Optional task context
         policy_name: Policy name (if None, uses all policies)
         rule_ids: Specific rule IDs to check
         metadata: Additional metadata
-        
+
     Returns:
         Validation result dictionary
     """
@@ -63,7 +63,7 @@ async def validate_response(
 ) -> dict[str, Any]:
     """
     Validate an LLM response.
-    
+
     Args:
         prompt: Original prompt
         response: Response text to validate
@@ -72,7 +72,7 @@ async def validate_response(
         policy_name: Policy name (if None, uses all policies)
         rule_ids: Specific rule IDs to check
         metadata: Additional metadata
-        
+
     Returns:
         Validation result dictionary
     """
@@ -80,7 +80,7 @@ async def validate_response(
     metadata = metadata or {}
     metadata["context"] = context
     metadata["prompt"] = prompt
-    
+
     result = engine.validate(
         text=response,
         policy_name=policy_name,
@@ -97,29 +97,29 @@ def load_policy(
 ) -> Policy:
     """
     Load a policy from file or YAML string.
-    
+
     Args:
         file_path: Path to policy YAML file
         policy_yaml: Policy YAML content as string
         name: Optional name override
-        
+
     Returns:
         Policy object
     """
     loader = PolicyLoader()
-    
+
     if file_path:
         policy = loader.load_from_file(file_path)
     elif policy_yaml:
         policy = loader.load_from_string(policy_yaml, format="yaml")
     else:
         raise ValueError("Either file_path or policy_yaml must be provided")
-    
+
     # Load into global policy engine
     engine = get_policy_engine()
     policy_name = name or policy.name
     engine.load_policy(policy, name=policy_name)
-    
+
     return policy
 
 
@@ -129,24 +129,24 @@ def validate_policy_config(
 ) -> dict[str, Any]:
     """
     Validate policy configuration.
-    
+
     Args:
         policy_yaml: Policy YAML content
         policy: Policy object (if already loaded)
-        
+
     Returns:
         Validation result with 'valid' and 'errors' keys
     """
     validator = PolicyValidator()
-    
+
     if policy is None:
         if policy_yaml is None:
             raise ValueError("Either policy or policy_yaml must be provided")
         loader = PolicyLoader()
         policy = loader.load_from_string(policy_yaml, format="yaml")
-    
+
     is_valid, errors = validator.validate(policy)
-    
+
     return {
         "valid": is_valid,
         "errors": errors,

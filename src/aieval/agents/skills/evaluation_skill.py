@@ -8,17 +8,17 @@ from aieval.agents.tools import run_tool
 
 class EvaluationSkill(Skill):
     """Skill for running a complete evaluation workflow."""
-    
+
     def __init__(self):
         super().__init__(
             name="evaluation",
             description="Run a complete evaluation workflow: load dataset, create scorers, run eval",
         )
-    
+
     async def execute(self, **kwargs: Any) -> Any:
         """
         Execute evaluation workflow.
-        
+
         Args:
             eval_name: Eval name
             dataset_config: Dataset configuration
@@ -26,7 +26,7 @@ class EvaluationSkill(Skill):
             adapter_config: Adapter configuration
             model: Optional model name
             concurrency_limit: Concurrency limit (default: 5)
-            
+
         Returns:
             Run result
         """
@@ -40,8 +40,8 @@ class EvaluationSkill(Skill):
             model=kwargs.get("model"),
             concurrency_limit=kwargs.get("concurrency_limit", 5),
         )
-        
+
         if not result.success:
             raise RuntimeError(f"Evaluation failed: {result.error}")
-        
+
         return result.data

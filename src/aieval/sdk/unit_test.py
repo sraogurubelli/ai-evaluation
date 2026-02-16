@@ -49,9 +49,7 @@ def assert_score_min(
         raise AssertionError(f"No score named {score_name!r} in result")
     score = result.scores[0]
     if score.value < min_value:
-        raise AssertionError(
-            f"Score {score.name!r} = {score.value} below min_value {min_value}"
-        )
+        raise AssertionError(f"Score {score.name!r} = {score.value} below min_value {min_value}")
 
 
 def score_single_output(
@@ -61,7 +59,7 @@ def score_single_output(
     metadata: dict[str, Any] | None = None,
 ) -> Score:
     """
-    Score a single output without running an experiment (convenience for unit tests).
+    Score a single output without running an eval (convenience for unit tests).
 
     Args:
         generated: Generated output (YAML string, dict, etc.)
@@ -102,7 +100,7 @@ async def run_single_item(
     """
     Run a single dataset item end-to-end (convenience for unit/integration tests).
 
-    Builds Experiment(name=..., dataset=[item], scorers=[scorer]) and runs it.
+    Builds Eval(name=..., dataset=[item], scorers=[scorer]) and runs it.
     Works with any Adapter and Scorer; agent-agnostic.
 
     Args:

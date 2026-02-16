@@ -13,7 +13,7 @@ def test_score_creation():
         eval_id="test.v1",
         comment="Test comment",
     )
-    
+
     assert score.name == "test_score"
     assert score.value == 0.85
     assert score.eval_id == "test.v1"
@@ -27,26 +27,26 @@ def test_score_to_dict():
         value=0.85,
         eval_id="test.v1",
     )
-    
+
     score_dict = score.to_dict()
     assert score_dict["name"] == "test_score"
     assert score_dict["value"] == 0.85
 
 
-def test_experiment_run_creation():
-    """Test Run creation."""
+def test_eval_result_creation():
+    """Test EvalResult creation."""
     scores = [
         Score(name="score1", value=0.8, eval_id="test.v1"),
         Score(name="score2", value=0.9, eval_id="test.v1"),
     ]
-    
+
     run = EvalResult(
         eval_id="exp1",
         run_id="run1",
         dataset_id="dataset1",
         scores=scores,
     )
-    
+
     assert run.eval_id == "exp1"
     assert len(run.scores) == 2
 
@@ -58,6 +58,6 @@ def test_dataset_item_creation():
         input={"prompt": "Test prompt"},
         expected={"yaml": "test: yaml"},
     )
-    
+
     assert item.id == "test-001"
     assert item.input["prompt"] == "Test prompt"

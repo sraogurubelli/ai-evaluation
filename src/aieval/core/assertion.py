@@ -8,7 +8,7 @@ from aieval.core.types import Score
 
 class Assertion(ABC):
     """Base interface for granular assertions."""
-    
+
     @abstractmethod
     def check(
         self,
@@ -18,7 +18,7 @@ class Assertion(ABC):
     ) -> bool:
         """
         Check assertion.
-        
+
         Returns:
             True if assertion passes, False otherwise
         """

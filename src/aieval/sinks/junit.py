@@ -95,7 +95,9 @@ class JUnitSink(Sink):
         )
         for test_id, scores in sorted(by_test.items()):
             passed, msg = _test_passed(scores)
-            case = ET.SubElement(suite, "testcase", name=_escape(test_id), classname=self.testsuite_name)
+            case = ET.SubElement(
+                suite, "testcase", name=_escape(test_id), classname=self.testsuite_name
+            )
             if not passed:
                 ET.SubElement(case, "failure", message=_escape(msg[:200])).text = _escape(msg)
         tree = ET.ElementTree(ET.Element("testsuites"))
@@ -107,4 +109,3 @@ class JUnitSink(Sink):
         self.path.write_text(xml_str, encoding="utf-8")
         logger.info(f"Wrote JUnit XML to {self.path} ({tests} tests, {failures} failures)")
         self._runs.clear()
-

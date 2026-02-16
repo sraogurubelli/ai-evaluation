@@ -21,11 +21,11 @@ def _detect_entity_type(data_dict: dict[str, Any]) -> tuple[str | None, str | No
         "connector": "connector",
         "secret": "secret",
     }
-    
+
     for entity_type, entity_key in entity_keys.items():
         if entity_key in data_dict:
             return entity_type, entity_key
-    
+
     return None, None
 
 
@@ -44,7 +44,7 @@ def _remove_optional_keys(obj: Any, keys_to_remove: set[str]) -> Any:
 
 class DeepDiffScorer(Scorer):
     """Base DeepDiff scorer."""
-    
+
     def __init__(
         self,
         name: str = "deep_diff",
@@ -55,7 +55,7 @@ class DeepDiffScorer(Scorer):
     ):
         """
         Initialize DeepDiff scorer.
-        
+
         Args:
             name: Score name
             eval_id: Evaluation ID
@@ -67,14 +67,14 @@ class DeepDiffScorer(Scorer):
         self.version = version
         self.entity_type = entity_type
         self.validation_func = validation_func
-    
+
     def _parse_yaml(self, yaml_str: str) -> tuple[dict[str, Any] | None, str | None]:
         """Parse YAML string to dict."""
         try:
             return yaml.safe_load(yaml_str), None
         except Exception as e:
             return None, str(e)
-    
+
     def score(
         self,
         generated: Any,
@@ -94,7 +94,7 @@ class DeepDiffScorer(Scorer):
                     metadata=metadata,
                 )
             generated = gen_dict
-        
+
         if isinstance(expected, str):
             exp_dict, err = self._parse_yaml(expected)
             if err:
@@ -106,7 +106,7 @@ class DeepDiffScorer(Scorer):
                     metadata=metadata,
                 )
             expected = exp_dict
-        
+
         # Handle dict with yaml key (from index_csv format)
         if isinstance(expected, dict) and "yaml" in expected:
             exp_dict, err = self._parse_yaml(expected["yaml"])
@@ -122,7 +122,7 @@ class DeepDiffScorer(Scorer):
             # Get entity type from expected dict if available
             if not self.entity_type and "entity_type" in expected:
                 self.entity_type = expected["entity_type"]
-        
+
         # Handle expected as string (direct YAML string)
         elif isinstance(expected, str):
             exp_dict, err = self._parse_yaml(expected)
@@ -135,11 +135,11 @@ class DeepDiffScorer(Scorer):
                     metadata=metadata,
                 )
             expected = exp_dict
-        
+
         # Get entity type from metadata
         if not self.entity_type:
             self.entity_type = metadata.get("entity_type")
-        
+
         # Call version-specific scoring
         if self.version == "v1":
             score_value, diff, comment = self._score_v1(generated, expected)
@@ -149,7 +149,7 @@ class DeepDiffScorer(Scorer):
             score_value, diff, comment = self._score_v3(generated, expected)
         else:
             raise ValueError(f"Unknown version: {self.version}")
-        
+
         return Score(
             name=self.name,
             value=score_value,
@@ -157,13 +157,13 @@ class DeepDiffScorer(Scorer):
             comment=comment,
             metadata={**metadata, "diff": str(diff) if diff else None},
         )
-    
+
     def _score_v1(
         self, dict1: dict[str, Any] | None, dict2: dict[str, Any] | None
     ) -> tuple[float, Any, str]:
         """
         Score using DeepDiff v1 (basic).
-        
+
         Matches ml-infra/evals deep_diff_v1 implementation:
         - Basic DeepDiff without entity awareness
         - No optional key removal
@@ -173,14 +173,14 @@ class DeepDiffScorer(Scorer):
             return float("nan"), None, "Reference dictionary is None."
         if dict2 is None:
             return float("nan"), None, "Generated dictionary is None."
-        
+
         try:
             # Use same DeepDiff parameters as ml-infra/evals
             diff = DeepDiff(dict1, dict2, get_deep_distance=True, ignore_order=True)
         except Exception as e:
             warnings.warn(f"DeepDiff could not calculate distance: {e}")
             return float("nan"), None, str(e)
-        
+
         if diff:
             try:
                 distance = diff.get("deep_distance", 0.0)
@@ -191,13 +191,13 @@ class DeepDiffScorer(Scorer):
                 return float("nan"), diff, str(e)
         else:
             distance = 0.0
-        
+
         # Round to 2 decimal places (matching ml-infra/evals behavior)
         score = round(1.0 - distance, 2)
         # Ensure score is between 0 and 1
         score = max(0.0, min(1.0, score))
         return score, diff, ""
-    
+
     def _score_v2(
         self, dict1: dict[str, Any] | None, dict2: dict[str, Any] | None
     ) -> tuple[float, Any, str]:
@@ -206,7 +206,7 @@ class DeepDiffScorer(Scorer):
             return float("nan"), None, "Reference dictionary is None."
         if dict2 is None:
             return float("nan"), None, "Generated dictionary is None."
-        
+
         # Detect entity type
         entity_type = self.entity_type
         if entity_type is None:
@@ -221,7 +221,7 @@ class DeepDiffScorer(Scorer):
             entity_key = entity_type
             if entity_key not in dict2:
                 return 0.0, None, f"The input is not a {entity_type}."
-        
+
         # Validate required fields
         required_fields_map = {
             "pipeline": ["name", "identifier", "stages"],
@@ -231,15 +231,13 @@ class DeepDiffScorer(Scorer):
             "connector": ["name", "identifier", "type", "spec"],
             "secret": ["name", "identifier", "type", "spec"],
         }
-        
+
         required_fields = required_fields_map.get(entity_type, ["name", "identifier"])
-        
+
         try:
             entity_data = dict2[entity_key]
-            missing_fields = [
-                field for field in required_fields if field not in entity_data
-            ]
-            
+            missing_fields = [field for field in required_fields if field not in entity_data]
+
             if missing_fields:
                 return (
                     0.0,
@@ -249,12 +247,12 @@ class DeepDiffScorer(Scorer):
         except Exception as e:
             warnings.warn(f"{entity_type.capitalize()} Structure Validation Failed: {e}")
             return float("nan"), None, str(e)
-        
+
         # Remove optional keys
         optional_keys = {"name", "identifier", "description"}
         dict1_cleaned = _remove_optional_keys(dict1, optional_keys)
         dict2_cleaned = _remove_optional_keys(dict2, optional_keys)
-        
+
         # Exclude top-level keys (matching ml-infra/evals behavior)
         top_level_keys = ["projectIdentifier", "orgIdentifier", "accountIdentifier"]
         # Build exclude paths - handle both root level and nested entity level
@@ -263,7 +261,7 @@ class DeepDiffScorer(Scorer):
             # Try both patterns: root level and entity level
             exclude_paths.append(f"root['{key}']")
             exclude_paths.append(f"root['{entity_key}']['{key}']")
-        
+
         try:
             diff = DeepDiff(
                 dict1_cleaned,
@@ -275,11 +273,11 @@ class DeepDiffScorer(Scorer):
         except Exception as e:
             warnings.warn(f"DeepDiff could not calculate distance: {e}")
             return float("nan"), None, str(e)
-        
+
         # Handle added items (matching ml-infra/evals retry logic)
         # Note: ml-infra/evals may retry with added items excluded, but we'll keep it simple
         # If needed, we can add retry logic here
-        
+
         if diff:
             try:
                 distance = diff.get("deep_distance", 0.0)
@@ -288,13 +286,13 @@ class DeepDiffScorer(Scorer):
                 return float("nan"), diff, str(e)
         else:
             distance = 0.0
-        
+
         # Round to 2 decimal places (matching ml-infra/evals behavior)
         score = round(1.0 - distance, 2)
         # Ensure score is between 0 and 1
         score = max(0.0, min(1.0, score))
         return score, diff, ""
-    
+
     def _score_v3(
         self, dict1: dict[str, Any] | None, dict2: dict[str, Any] | None
     ) -> tuple[float, Any, str]:
@@ -303,7 +301,7 @@ class DeepDiffScorer(Scorer):
             return float("nan"), None, "Reference dictionary is None."
         if dict2 is None:
             return float("nan"), None, "Generated dictionary is None."
-        
+
         # Detect entity type
         entity_type = self.entity_type
         if entity_type is None:
@@ -318,14 +316,14 @@ class DeepDiffScorer(Scorer):
             entity_key = entity_type
             if entity_key not in dict2:
                 return 0.0, None, f"The input is not a {entity_type}."
-        
+
         # Perform schema validation if validation function provided
         if self.validation_func:
             try:
                 validation_results = self.validation_func(yaml.dump(dict2))
                 is_valid = validation_results.get("valid", False)
                 errors = validation_results.get("errors", [])
-                
+
                 if not is_valid:
                     return (
                         0.0,
@@ -335,12 +333,12 @@ class DeepDiffScorer(Scorer):
             except Exception as e:
                 warnings.warn(f"{entity_type.capitalize()} Schema Validation Failed: {e}")
                 return float("nan"), None, str(e)
-        
+
         # Remove optional keys
         optional_keys = {"name", "identifier", "description"}
         dict1_cleaned = _remove_optional_keys(dict1, optional_keys)
         dict2_cleaned = _remove_optional_keys(dict2, optional_keys)
-        
+
         # Exclude top-level keys (matching ml-infra/evals behavior)
         top_level_keys = ["projectIdentifier", "orgIdentifier", "accountIdentifier"]
         # Build exclude paths - handle both root level and nested entity level
@@ -349,7 +347,7 @@ class DeepDiffScorer(Scorer):
             # Try both patterns: root level and entity level
             exclude_paths.append(f"root['{key}']")
             exclude_paths.append(f"root['{entity_key}']['{key}']")
-        
+
         # Calculate deep diff
         try:
             diff = DeepDiff(
@@ -362,7 +360,7 @@ class DeepDiffScorer(Scorer):
         except Exception as e:
             warnings.warn(f"DeepDiff could not calculate distance: {e}")
             return float("nan"), None, str(e)
-        
+
         if diff:
             try:
                 distance = diff.get("deep_distance", 0.0)
@@ -371,7 +369,7 @@ class DeepDiffScorer(Scorer):
                 return float("nan"), diff, str(e)
         else:
             distance = 0.0
-        
+
         # Round to 2 decimal places (matching ml-infra/evals behavior)
         score = round(1.0 - distance, 2)
         # Ensure score is between 0 and 1

@@ -54,6 +54,7 @@ class TestAssertScoreMin:
     def test_assert_score_min_pass(self):
         """assert_score_min does not raise when score >= min_value."""
         from aieval.core.types import EvalResult
+
         result = EvalResult(
             eval_id="e1",
             run_id="r1",
@@ -66,6 +67,7 @@ class TestAssertScoreMin:
     def test_assert_score_min_fail_below(self):
         """assert_score_min raises when score < min_value."""
         from aieval.core.types import EvalResult
+
         result = EvalResult(
             eval_id="e1",
             run_id="r1",
@@ -78,6 +80,7 @@ class TestAssertScoreMin:
     def test_assert_score_min_fail_no_scores(self):
         """assert_score_min raises when result has no scores."""
         from aieval.core.types import EvalResult
+
         result = EvalResult(
             eval_id="e1",
             run_id="r1",
@@ -90,6 +93,7 @@ class TestAssertScoreMin:
     def test_assert_score_min_named_score(self):
         """assert_score_min uses score_name when provided."""
         from aieval.core.types import EvalResult
+
         result = EvalResult(
             eval_id="e1",
             run_id="r1",

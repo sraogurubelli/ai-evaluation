@@ -12,7 +12,7 @@ from aieval.adapters.base import Adapter
 
 class CreateEvalTool(Tool):
     """Tool for creating eval definitions."""
-    
+
     def __init__(self):
         super().__init__(
             name="create_eval",
@@ -42,21 +42,21 @@ class CreateEvalTool(Tool):
                 "required": ["name", "dataset", "scorers"],
             },
         )
-    
+
     async def execute(self, **kwargs: Any) -> ToolResult:
         """Execute eval creation."""
         try:
             self.validate_parameters(**kwargs)
-            
+
             # Note: This tool creates an eval definition but doesn't store it
             # The actual Eval object is created when needed
             # This is a placeholder that returns eval metadata
-            
+
             name = kwargs["name"]
             eval_id = kwargs.get("eval_id") or str(uuid.uuid4())
             dataset = kwargs["dataset"]
             scorers = kwargs["scorers"]
-            
+
             return ToolResult(
                 success=True,
                 data={
@@ -79,7 +79,7 @@ class CreateEvalTool(Tool):
 
 class EvalTool(Tool):
     """Tool for running evaluations."""
-    
+
     def __init__(self):
         super().__init__(
             name="eval",
@@ -121,17 +121,17 @@ class EvalTool(Tool):
                 "required": ["eval_name", "dataset_config", "scorers_config", "adapter_config"],
             },
         )
-    
+
     async def execute(self, **kwargs: Any) -> ToolResult:
         """Execute evaluation run."""
         try:
             self.validate_parameters(**kwargs)
-            
+
             # Import here to avoid circular dependencies
             from aieval.agents.tools.dataset_tools import LoadDatasetTool
             from aieval.agents.tools.scorer_tools import CreateScorerTool
             from aieval.cli.main import _create_adapter
-            
+
             # Load dataset
             load_dataset_tool = LoadDatasetTool()
             dataset_result = await load_dataset_tool.execute(**kwargs["dataset_config"])
@@ -141,20 +141,18 @@ class EvalTool(Tool):
                     data=None,
                     error=f"Failed to load dataset: {dataset_result.error}",
                 )
-            
-            dataset_items = [
-                DatasetItem(**item) for item in dataset_result.data["dataset"]
-            ]
-            
+
+            dataset_items = [DatasetItem(**item) for item in dataset_result.data["dataset"]]
+
             # Create scorers using the helper function from CLI
             # Import here to avoid circular dependencies
             from aieval.cli.main import _create_scorers
-            
+
             scorers = _create_scorers({"scorers": kwargs["scorers_config"]})
-            
+
             # Create adapter
             adapter = _create_adapter({"adapter": kwargs["adapter_config"]})
-            
+
             # Create eval
             eval_ = Eval(
                 name=kwargs["eval_name"],
@@ -162,14 +160,14 @@ class EvalTool(Tool):
                 scorers=scorers,
                 eval_id=kwargs.get("eval_id"),
             )
-            
+
             # Run eval
             run = await eval_.run(
                 adapter=adapter,
                 model=kwargs.get("model"),
                 concurrency_limit=kwargs.get("concurrency_limit", 5),
             )
-            
+
             return ToolResult(
                 success=True,
                 data={

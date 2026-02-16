@@ -6,7 +6,11 @@ from aieval.agents.tools.dataset_tools import LoadDatasetTool
 from aieval.agents.tools.scorer_tools import CreateScorerTool
 from aieval.agents.tools.eval_tools import CreateEvalTool, EvalTool
 from aieval.agents.tools.comparison_tools import CompareEvalResultsTool
-from aieval.agents.tools.baseline_tools import SetBaselineTool, GetBaselineTool, get_baseline_manager
+from aieval.agents.tools.baseline_tools import (
+    SetBaselineTool,
+    GetBaselineTool,
+    get_baseline_manager,
+)
 from aieval.agents.tools.online_tools import (
     EvaluateTraceTool,
     EvaluateTracesTool,
@@ -14,7 +18,7 @@ from aieval.agents.tools.online_tools import (
     MonitorTracesTool,
     CollectFeedbackTool,
 )
-from aieval.agents.tools.utils import run_tool
+from aieval.agents.tools.utils import execute_tool
 
 __all__ = [
     "Tool",
@@ -41,13 +45,13 @@ __all__ = [
 def register_builtin_tools(registry: ToolRegistry | None = None) -> None:
     """
     Register all built-in tools with the registry.
-    
+
     Args:
         registry: ToolRegistry instance (uses get_tool_registry() if None)
     """
     if registry is None:
         registry = get_tool_registry()
-    
+
     # Register all built-in tools
     registry.register(LoadDatasetTool())
     registry.register(CreateScorerTool())

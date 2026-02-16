@@ -22,12 +22,12 @@ logger = logging.getLogger(__name__)
 class SSEStreamingAdapter(Adapter):
     """
     SSE Streaming adapter that collects events and metrics.
-    
+
     This adapter streams SSE events from an API and collects:
     - All events with timestamps
     - Tool calls and parameters
     - Performance metrics (latency, tokens)
-    
+
     Returns enriched JSON containing:
     {
         "final_yaml": "...",
@@ -42,7 +42,7 @@ class SSEStreamingAdapter(Adapter):
         }
     }
     """
-    
+
     def __init__(
         self,
         base_url: str | None = None,
@@ -58,7 +58,7 @@ class SSEStreamingAdapter(Adapter):
     ):
         """
         Initialize SSE streaming adapter.
-        
+
         Args:
             base_url: Base URL for the API server (defaults to CHAT_BASE_URL env var or config)
             headers: Custom headers dict (Authorization, X-API-Key, etc.)
@@ -75,15 +75,17 @@ class SSEStreamingAdapter(Adapter):
         """
         # Get settings from config
         settings = get_settings()
-        
+
         # Use provided values or fall back to env vars, then config, then defaults
         # Priority: explicit parameter > env var > config > default
         if base_url is None:
-            base_url = os.getenv("CHAT_BASE_URL") or settings.ml_infra.base_url or "http://localhost:8000"
-        
+            base_url = (
+                os.getenv("CHAT_BASE_URL") or settings.ml_infra.base_url or "http://localhost:8000"
+            )
+
         if endpoint is None:
             endpoint = os.getenv("CHAT_ENDPOINT") or settings.ml_infra.endpoint
-        
+
         self.base_url = base_url.rstrip("/")
         self.context_data = context_data or {}
         self.endpoint = endpoint
@@ -102,16 +104,16 @@ class SSEStreamingAdapter(Adapter):
         self.payload_builder = payload_builder
         self.payload_template = payload_template or {}
         self.include_uuids = include_uuids
-        
+
         # Build headers with defaults
         self.headers = {
             "Content-Type": "application/json",
         }
-        
+
         # Merge custom headers (overrides defaults)
         if headers:
             self.headers.update(headers)
-    
+
     def _apply_template(
         self,
         template: dict[str, Any],
@@ -120,7 +122,7 @@ class SSEStreamingAdapter(Adapter):
     ) -> dict[str, Any]:
         """Apply template with special value substitution."""
         payload = {}
-        
+
         for key, value in template.items():
             if isinstance(value, str):
                 # Handle special template values
@@ -142,15 +144,17 @@ class SSEStreamingAdapter(Adapter):
             elif isinstance(value, list):
                 # Process lists (may contain dicts)
                 payload[key] = [
-                    self._apply_template(item, input_data, model) if isinstance(item, dict) else item
+                    self._apply_template(item, input_data, model)
+                    if isinstance(item, dict)
+                    else item
                     for item in value
                 ]
             else:
                 # Static value
                 payload[key] = value
-        
+
         return payload
-    
+
     def _generate_payload(
         self,
         input_data: dict[str, Any],
@@ -160,10 +164,10 @@ class SSEStreamingAdapter(Adapter):
         # Use custom payload builder if provided
         if self.payload_builder:
             return self.payload_builder(input_data, model)
-        
+
         # Build payload using template or defaults
         payload = {}
-        
+
         # Apply template if provided
         if self.payload_template:
             payload = self._apply_template(self.payload_template, input_data, model)
@@ -173,27 +177,27 @@ class SSEStreamingAdapter(Adapter):
                 "prompt": input_data.get("prompt", ""),
                 "stream": True,
             }
-            
+
             # Add model if specified
             if model:
                 payload["model"] = model
-            
+
             # Copy standard fields from input_data
             for field in ["entity_type", "operation_type", "old_yaml", "schema_context"]:
                 if field in input_data:
                     payload[field] = input_data[field]
-        
+
         # Add UUIDs if requested (HTTPAdapter compatibility)
         if self.include_uuids:
             payload["conversation_id"] = str(uuid_module.uuid4())
             payload["interaction_id"] = str(uuid_module.uuid4())
-        
+
         # Add context data if configured
         if self.context_data:
             payload["context"] = self.context_data
-        
+
         return payload
-    
+
     async def generate(
         self,
         input_data: dict[str, Any],
@@ -202,12 +206,12 @@ class SSEStreamingAdapter(Adapter):
     ) -> str:
         """
         Generate output by streaming SSE events.
-        
+
         Args:
             input_data: Input data with prompt and other parameters
             model: Model name (optional)
             **kwargs: Additional parameters
-            
+
         Returns:
             JSON string with enriched output containing:
             - final_yaml: The final YAML/output
@@ -219,20 +223,20 @@ class SSEStreamingAdapter(Adapter):
         # Generate payload
         payload = self._generate_payload(input_data, model)
         logger.debug(f"Generated payload: {json.dumps(payload, indent=2)}")
-        
+
         # Track metrics
         start_time = time.time()
         all_events = []
         tools_called = []
         final_yaml = None
         token_usage = {}
-        
+
         # Make API call
         endpoint_url = f"{self.base_url}{self.endpoint}"
         timeout = aiohttp.ClientTimeout(total=300)
         logger.info(f"Connecting to SSE endpoint: {endpoint_url}")
         logger.debug(f"Headers: {self.headers}")
-        
+
         try:
             async with aiohttp.ClientSession(timeout=timeout) as session:
                 async with session.post(
@@ -242,15 +246,13 @@ class SSEStreamingAdapter(Adapter):
                 ) as response:
                     if response.status != 200:
                         error_text = await response.text()
-                        raise RuntimeError(
-                            f"API error {response.status}: {error_text}"
-                        )
-                    
+                        raise RuntimeError(f"API error {response.status}: {error_text}")
+
                     logger.info("SSE events receiving")
                     # Parse SSE stream
                     current_event = None
                     event_count = 0
-                    line_count = 0 
+                    line_count = 0
                     async for line in response.content:
                         line_count += 1
                         line = line.decode("utf-8").strip()
@@ -259,97 +261,113 @@ class SSEStreamingAdapter(Adapter):
                             logger.debug(f"Raw line {line_count}: {repr(line)}")
                         if not line:
                             continue
-                        
+
                         if line.startswith("event:"):
                             current_event = line[6:].strip()
                             logger.debug(f"SSE event received: {current_event}")
                         elif line.startswith("data:"):
                             data_str = line[5:].strip()
-                            
+
                             # Skip empty data
                             if not data_str:
                                 continue
-                            
+
                             try:
                                 event_data = json.loads(data_str)
                                 event_count += 1
                                 if event_count == 1:
-                                    logger.info(f"SSE events receiving - first event: {current_event}")
+                                    logger.info(
+                                        f"SSE events receiving - first event: {current_event}"
+                                    )
                                 elif event_count % 10 == 0:
-                                    logger.debug(f"SSE events receiving - {event_count} events received so far")
+                                    logger.debug(
+                                        f"SSE events receiving - {event_count} events received so far"
+                                    )
                             except json.JSONDecodeError as e:
                                 logger.warning(f"Failed to parse SSE data: {e}")
                                 continue
-                            
+
                             # Calculate relative timestamp
                             timestamp = time.time() - start_time
-                            
+
                             # Store all events
-                            all_events.append({
-                                "event": current_event,
-                                "data": event_data,
-                                "timestamp": timestamp,
-                            })
-                            
+                            all_events.append(
+                                {
+                                    "event": current_event,
+                                    "data": event_data,
+                                    "timestamp": timestamp,
+                                }
+                            )
+
                             # Extract tool calls
                             if current_event in self.tool_call_events:
                                 tool_info = {
-                                    "tool": event_data.get("tool_name") or event_data.get("function_name") or event_data.get("tool"),
-                                    "parameters": event_data.get("parameters") or event_data.get("arguments") or event_data.get("input", {}),
+                                    "tool": event_data.get("tool_name")
+                                    or event_data.get("function_name")
+                                    or event_data.get("tool"),
+                                    "parameters": event_data.get("parameters")
+                                    or event_data.get("arguments")
+                                    or event_data.get("input", {}),
                                     "timestamp": timestamp,
                                 }
                                 tools_called.append(tool_info)
-                            
+
                             # Extract final YAML from completion events
                             if current_event in self.completion_events:
                                 # Try multiple possible fields for the output
                                 # Extract from expected YAML fields (not JSON fallback)
                                 yaml_from_field = (
-                                    event_data.get("yaml") or
-                                    event_data.get("output") or
-                                    event_data.get("result")
+                                    event_data.get("yaml")
+                                    or event_data.get("output")
+                                    or event_data.get("result")
                                 )
-                                
+
                                 # Only update if we found YAML in the expected fields
                                 # This prevents JSON fallback from overwriting valid YAML
                                 if yaml_from_field and yaml_from_field.strip():
                                     final_yaml = yaml_from_field
-                            
+
                             # Extract token usage
                             if current_event == self.usage_event or "usage" in event_data:
                                 usage = event_data.get("usage", event_data)
                                 if isinstance(usage, dict):
                                     # Check if this is a nested structure with model names
                                     for key, value in usage.items():
-                                        if isinstance(value, dict) and ("prompt_tokens" in value or "completion_tokens" in value):
+                                        if isinstance(value, dict) and (
+                                            "prompt_tokens" in value or "completion_tokens" in value
+                                        ):
                                             # Found nested model usage data
                                             token_usage.update(value)
                                             break
                                     else:
                                         # Flat structure
                                         token_usage.update(usage)
-            
+
             # Calculate final metrics
             end_time = time.time()
             latency_ms = int((end_time - start_time) * 1000)
-            
+
             metrics = {
                 "latency_ms": latency_ms,
                 "total_events": len(all_events),
             }
-            
+
             # Add token usage if available
             if token_usage:
                 prompt_tokens = token_usage.get("prompt_tokens", 0)
                 completion_tokens = token_usage.get("completion_tokens", 0)
                 total_tokens = prompt_tokens + completion_tokens
-                metrics.update({
-                    "total_tokens": total_tokens,
-                    "prompt_tokens": prompt_tokens,
-                    "completion_tokens": completion_tokens,
-                })
-            
-            logger.info(f"SSE streaming completed - received {len(all_events)} events, latency: {latency_ms}ms")
+                metrics.update(
+                    {
+                        "total_tokens": total_tokens,
+                        "prompt_tokens": prompt_tokens,
+                        "completion_tokens": completion_tokens,
+                    }
+                )
+
+            logger.info(
+                f"SSE streaming completed - received {len(all_events)} events, latency: {latency_ms}ms"
+            )
             logger.debug(f"Final YAML length: {len(final_yaml) if final_yaml else 0}")
             logger.debug(f"First 200 chars of final_yaml: {final_yaml[:200] if final_yaml else ''}")
             # Build enriched output
@@ -361,11 +379,10 @@ class SSEStreamingAdapter(Adapter):
             }
             logger.debug(f"Enriched output: {json.dumps(enriched_output, indent=2)}")
             return json.dumps(enriched_output)
-        
+
         except aiohttp.ClientError as e:
             logger.error(f"Network error during SSE streaming: {e}")
             raise RuntimeError(f"Network error: {e}") from e
         except Exception as e:
             logger.error(f"Error during SSE streaming: {e}")
             raise
-

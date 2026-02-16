@@ -25,11 +25,11 @@ logger = logging.getLogger(__name__)
 class HTTPAdapter(Adapter):
     """
     Generic HTTP adapter for AI system APIs.
-    
+
     This adapter can be configured to work with different API formats by
     specifying endpoint mappings, payload structure, and response parsing.
     """
-    
+
     def __init__(
         self,
         base_url: str = "http://localhost:8000",
@@ -47,7 +47,7 @@ class HTTPAdapter(Adapter):
     ):
         """
         Initialize HTTP adapter.
-        
+
         Args:
             base_url: Base URL for the API server
             auth_token: Authentication token
@@ -69,19 +69,24 @@ class HTTPAdapter(Adapter):
         self.endpoint_mapping = endpoint_mapping or {}
         self.default_endpoint = default_endpoint
         self.response_format = response_format
-        self.yaml_extraction_path = yaml_extraction_path or ["capabilities_to_run", -1, "input", "yaml"]
+        self.yaml_extraction_path = yaml_extraction_path or [
+            "capabilities_to_run",
+            -1,
+            "input",
+            "yaml",
+        ]
         self.sse_completion_events = sse_completion_events or ["dashboard_complete", "kg_complete"]
-        
+
         self.headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {auth_token}" if auth_token else "",
         }
-    
+
     def _get_endpoint(self, entity_type: str) -> str:
         """Get API endpoint for entity type."""
         endpoint_path = self.endpoint_mapping.get(entity_type.lower(), self.default_endpoint)
         return f"{self.base_url}{endpoint_path}"
-    
+
     def _determine_provider(self, model: str | None) -> str:
         """Determine provider from model name."""
         if not model:
@@ -91,7 +96,7 @@ class HTTPAdapter(Adapter):
         elif any(x in model.lower() for x in ["gpt", "o1", "o3"]):
             return "openai"
         return "openai"
-    
+
     def _generate_payload(
         self,
         prompt: str,
@@ -103,7 +108,7 @@ class HTTPAdapter(Adapter):
     ) -> dict[str, Any]:
         """Generate payload for API request."""
         entity_type_lower = entity_type.lower()
-        
+
         # Check if this entity type uses a simplified payload format
         # (typically for dashboard/knowledge_graph endpoints)
         if entity_type_lower in self.endpoint_mapping:
@@ -117,13 +122,13 @@ class HTTPAdapter(Adapter):
             if schema_context:
                 payload["schema_context"] = schema_context
             return payload
-        
+
         # Standard payload format
         provider = self._determine_provider(model)
         entity_upper = entity_type.upper()
         operation_upper = operation_type.upper()
         action = f"{operation_upper}_{entity_upper}"
-        
+
         payload = {
             "prompt": prompt,
             "conversation_id": str(uuid.uuid4()),
@@ -138,19 +143,17 @@ class HTTPAdapter(Adapter):
             ],
             "context": [],
         }
-        
+
         # Add context if configured
         if self.context_data:
             payload[self.context_field_name] = self.context_data
-        
+
         # Add old YAML for update operations
         if operation_type.lower() == "update" and old_yaml:
-            payload["conversation_raw"] = [
-                {"role": "assistant", "content": old_yaml}
-            ]
-        
+            payload["conversation_raw"] = [{"role": "assistant", "content": old_yaml}]
+
         return payload
-    
+
     def _extract_yaml_from_json(self, resp_json: dict[str, Any]) -> str:
         """Extract YAML from JSON response using configured path."""
         current = resp_json
@@ -160,20 +163,22 @@ class HTTPAdapter(Adapter):
                 if (key >= 0 and key < len(current)) or (key < 0 and abs(key) <= len(current)):
                     current = current[key]
                 else:
-                    raise RuntimeError(f"Cannot access list index {key} in response (list length: {len(current)})")
+                    raise RuntimeError(
+                        f"Cannot access list index {key} in response (list length: {len(current)})"
+                    )
             else:
                 if isinstance(current, dict) and key in current:
                     current = current[key]
                 else:
                     raise RuntimeError(f"Cannot access key '{key}' in response")
-        
+
         if isinstance(current, str):
             return current
         elif isinstance(current, dict) and "yaml" in current:
             return current["yaml"]
         else:
             raise RuntimeError(f"Unexpected YAML format at extraction path: {current}")
-    
+
     async def generate(
         self,
         input_data: dict[str, Any],
@@ -182,7 +187,7 @@ class HTTPAdapter(Adapter):
     ) -> str:
         """
         Generate output from input using HTTP API.
-        
+
         Args:
             input_data: Input data with keys:
                 - prompt: User prompt
@@ -192,7 +197,7 @@ class HTTPAdapter(Adapter):
                 - schema_context: Schema context for dashboard/KG (optional)
             model: Model name (optional)
             **kwargs: Additional parameters
-            
+
         Returns:
             Generated YAML/JSON string
         """
@@ -202,7 +207,7 @@ class HTTPAdapter(Adapter):
         operation_type = input_data.get("operation_type", "create")
         old_yaml = input_data.get("old_yaml")
         schema_context = input_data.get("schema_context")
-        
+
         # Generate payload
         payload = self._generate_payload(
             prompt=prompt,
@@ -212,10 +217,10 @@ class HTTPAdapter(Adapter):
             model=model,
             schema_context=schema_context,
         )
-        
+
         # Get endpoint
         endpoint = self._get_endpoint(entity_type)
-        
+
         # Make API call
         timeout = aiohttp.ClientTimeout(total=300)
         async with aiohttp.ClientSession(timeout=timeout) as session:
@@ -226,9 +231,7 @@ class HTTPAdapter(Adapter):
             ) as response:
                 if response.status != 200:
                     error_text = await response.text()
-                    raise RuntimeError(
-                        f"API error {response.status}: {error_text}"
-                    )
+                    raise RuntimeError(f"API error {response.status}: {error_text}")
                 logger.debug("=" * 80)
                 logger.debug(f"HTTP Response Status: {response.status}")
                 logger.debug(f"Content-Type: {response.headers.get('content-type')}")
@@ -236,26 +239,28 @@ class HTTPAdapter(Adapter):
                 # Parse response based on format
                 # Check if this entity uses SSE (dashboard/KG typically do)
                 use_sse = (
-                    self.response_format == "sse" or
-                    entity_type.lower() in self.endpoint_mapping or
-                    response.headers.get("content-type", "").startswith("text/event-stream")
+                    self.response_format == "sse"
+                    or entity_type.lower() in self.endpoint_mapping
+                    or response.headers.get("content-type", "").startswith("text/event-stream")
                 )
                 logger.debug(f"SSE Detection: use_sse={use_sse}")
                 logger.debug(f"  - response_format: {self.response_format}")
-                logger.debug(f"  - entity_type in mapping: {entity_type.lower() in self.endpoint_mapping}")
+                logger.debug(
+                    f"  - entity_type in mapping: {entity_type.lower() in self.endpoint_mapping}"
+                )
                 logger.debug(f"  - content-type header: {response.headers.get('content-type')}")
-                
+
                 if use_sse:
                     # SSE format
                     logger.info("HTTP adapter: SSE events receiving")
                     result_data = None
                     current_event = None
-                    
+
                     async for line in response.content:
                         line = line.decode("utf-8").strip()
                         if not line:
                             continue
-                        
+
                         if line.startswith("event:"):
                             current_event = line[6:].strip()
                             logger.debug(f"HTTP adapter: SSE event received: {current_event}")
@@ -264,10 +269,12 @@ class HTTPAdapter(Adapter):
                             if current_event in self.sse_completion_events:
                                 try:
                                     result_data = json.loads(data_str)
-                                    logger.info(f"HTTP adapter: SSE completion event received: {current_event}")
+                                    logger.info(
+                                        f"HTTP adapter: SSE completion event received: {current_event}"
+                                    )
                                 except json.JSONDecodeError as e:
                                     logger.warning(f"Failed to parse SSE data: {e}")
-                    
+
                     if result_data:
                         return json.dumps(result_data)
                     else:
@@ -279,11 +286,15 @@ class HTTPAdapter(Adapter):
                     logger.debug("JSON RESPONSE RECEIVED")
                     logger.debug("=" * 80)
                     logger.debug(f"Response type: {type(resp_json)}")
-                    logger.debug(f"Response keys: {list(resp_json.keys()) if isinstance(resp_json, dict) else 'not a dict'}")
+                    logger.debug(
+                        f"Response keys: {list(resp_json.keys()) if isinstance(resp_json, dict) else 'not a dict'}"
+                    )
                     logger.debug(f"Full response: {json.dumps(resp_json, indent=2)}")
                     if isinstance(resp_json, dict) and "capabilities_to_run" in resp_json:
                         caps = resp_json["capabilities_to_run"]
-                        logger.info(f"capabilities_to_run length: {len(caps) if isinstance(caps, list) else 'not a list'}")
+                        logger.info(
+                            f"capabilities_to_run length: {len(caps) if isinstance(caps, list) else 'not a list'}"
+                        )
                         logger.info(f"capabilities_to_run: {caps}")
                     logger.info("=" * 80)
                     # Extract YAML using configured path
@@ -306,5 +317,5 @@ class HTTPAdapter(Adapter):
                                 error_msg = last_capability.get("input", {}).get("error", "")
                                 raise RuntimeError(f"API error: {error_msg}")
                         raise RuntimeError(f"Failed to extract YAML: {e}")
-                    
+
                     raise RuntimeError("Unexpected response format")

@@ -59,12 +59,14 @@ def render_run_to_html(run: EvalResult | dict[str, Any], title: str = "Evaluatio
         eval_id = run.get("eval_id", "")
         metadata = run.get("metadata", {})
         created_at = run.get("created_at", "")
+
         # Normalize to list of score-like objects with .name, .value, .metadata
         class _Score:
             def __init__(self, d: dict):
                 self.name = d.get("name", "")
                 self.value = d.get("value", 0)
                 self.metadata = d.get("metadata", {})
+
         scores = [_Score(s) for s in scores_raw]
         by_test: dict[str, list] = {}
         for s in scores:
@@ -72,9 +74,14 @@ def render_run_to_html(run: EvalResult | dict[str, Any], title: str = "Evaluatio
             by_test.setdefault(tid, []).append(s)
         scorer_names = list({s.name for s in scores})
         total = len(by_test) or 1
-        passed = sum(1 for tidscores in by_test.values() if all(
-            sc.value is True or (isinstance(sc.value, (int, float)) and float(sc.value) >= 0.99) for sc in tidscores
-        ))
+        passed = sum(
+            1
+            for tidscores in by_test.values()
+            if all(
+                sc.value is True or (isinstance(sc.value, (int, float)) and float(sc.value) >= 0.99)
+                for sc in tidscores
+            )
+        )
         failed = total - passed
         agent_id = metadata.get("agent_id", "")
         eval_name = metadata.get("name", eval_id)
@@ -100,14 +107,25 @@ def render_run_to_html(run: EvalResult | dict[str, Any], title: str = "Evaluatio
         )
         status_class = "pass" if ok else "fail"
         status_text = "PASS" if ok else "FAIL"
-        cells = [f'<td class="{status_class}">{html.escape(status_text)}</td>', f"<td>{html.escape(test_id)}</td>"]
+        cells = [
+            f'<td class="{status_class}">{html.escape(status_text)}</td>',
+            f"<td>{html.escape(test_id)}</td>",
+        ]
         for name in scorer_names:
             s = score_map.get(name)
             if s is None:
                 cells.append("<td>-</td>")
             else:
                 val = s.value
-                val_str = "✓" if val is True else ("✗" if val is False else (f"{float(val):.3f}" if isinstance(val, (int, float)) else str(val)))
+                val_str = (
+                    "✓"
+                    if val is True
+                    else (
+                        "✗"
+                        if val is False
+                        else (f"{float(val):.3f}" if isinstance(val, (int, float)) else str(val))
+                    )
+                )
                 cells.append(f"<td>{html.escape(val_str)}</td>")
         rows_list.append("<tr>" + "".join(cells) + "</tr>")
     scorer_headers = "".join(f"<th>{html.escape(n)}</th>" for n in scorer_names)
@@ -189,7 +207,6 @@ class HTMLReportSink(Sink):
         run_meta = run.metadata or {}
         agent_id = run_meta.get("agent_id", "")
         eval_name = run_meta.get("name", run.eval_id)
-        experiment_name = eval_name  # For backward compatibility in HTML template
 
         rows: list[str] = []
         for test_id, scores in sorted(by_test.items()):
@@ -252,6 +269,7 @@ class HTMLReportSink(Sink):
 </html>
 """
         self.path.write_text(html_content, encoding="utf-8")
-        logger.info(f"Wrote HTML report to {self.path} ({total} tests, {passed} passed, {failed} failed)")
+        logger.info(
+            f"Wrote HTML report to {self.path} ({total} tests, {passed} passed, {failed} failed)"
+        )
         self._runs.clear()
-

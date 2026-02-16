@@ -20,21 +20,21 @@ _session_factory = None
 def get_database_url() -> str:
     """
     Get database URL from environment variables.
-    
+
     Returns:
         Database URL string
     """
     database_url = os.getenv("DATABASE_URL")
     if database_url:
         return database_url
-    
+
     # Build from individual components
     user = os.getenv("POSTGRES_USER", "aieval")
     password = os.getenv("POSTGRES_PASSWORD", "aieval_dev")
     host = os.getenv("POSTGRES_HOST", "localhost")
     port = os.getenv("POSTGRES_PORT", "5432")
     db = os.getenv("POSTGRES_DB", "aieval")
-    
+
     return f"postgresql+asyncpg://{user}:{password}@{host}:{port}/{db}"
 
 
@@ -48,7 +48,9 @@ def get_engine():
             echo=os.getenv("SQL_ECHO", "false").lower() == "true",
             future=True,
         )
-        logger.info(f"Database engine created for: {database_url.split('@')[1] if '@' in database_url else database_url}")
+        logger.info(
+            f"Database engine created for: {database_url.split('@')[1] if '@' in database_url else database_url}"
+        )
     return _engine
 
 
@@ -68,7 +70,7 @@ def get_session_factory():
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
     """
     Get database session.
-    
+
     Yields:
         AsyncSession instance
     """
@@ -87,16 +89,16 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
 async def init_db() -> None:
     """
     Initialize database (create tables).
-    
+
     This should be called on application startup.
     Note: For production, use Alembic migrations instead.
     """
     engine = get_engine()
     from aieval.db.models import Base
-    
+
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    
+
     logger.info("Database initialized")
 
 

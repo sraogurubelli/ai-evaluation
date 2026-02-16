@@ -14,7 +14,7 @@ from aieval.config.settings import get_settings
 def create_http_adapter(**config: Any) -> HTTPAdapter:
     """
     Factory function for HTTPAdapter.
-    
+
     Args:
         **config: Configuration for HTTPAdapter:
             - base_url: Base URL for the API server
@@ -26,13 +26,13 @@ def create_http_adapter(**config: Any) -> HTTPAdapter:
             - response_format: Response format ("json" or "sse")
             - yaml_extraction_path: Path to extract YAML from response
             - sse_completion_events: SSE events that indicate completion
-            
+
     Returns:
         HTTPAdapter instance
     """
     base_url = config.get("base_url") or os.getenv("CHAT_BASE_URL", "http://localhost:8000")
     auth_token = config.get("auth_token") or os.getenv("CHAT_PLATFORM_AUTH_TOKEN", "")
-    
+
     return HTTPAdapter(
         base_url=base_url,
         auth_token=auth_token,
@@ -49,7 +49,7 @@ def create_http_adapter(**config: Any) -> HTTPAdapter:
 def create_sse_streaming_adapter(**config: Any) -> SSEStreamingAdapter:
     """
     Factory function for SSEStreamingAdapter.
-    
+
     Args:
         **config: Configuration for SSEStreamingAdapter:
             - base_url: Base URL for the API server (defaults to CHAT_BASE_URL env var or config)
@@ -62,40 +62,50 @@ def create_sse_streaming_adapter(**config: Any) -> SSEStreamingAdapter:
             - payload_builder: Custom payload builder function
             - payload_template: Payload template dictionary
             - include_uuids: Whether to include conversation/interaction IDs
-            
+
     Returns:
         SSEStreamingAdapter instance
     """
     settings = get_settings()
-    
+
     # Get base_url from config, env var, or settings (in that order)
     # Pass None to adapter so it can read from env/config if not explicitly provided
     base_url = config.get("base_url") if "base_url" in config else None
-    auth_token = config.get("auth_token") or os.getenv("CHAT_PLATFORM_AUTH_TOKEN") or settings.ml_infra.platform_auth_token
-    
+    auth_token = (
+        config.get("auth_token")
+        or os.getenv("CHAT_PLATFORM_AUTH_TOKEN")
+        or settings.ml_infra.platform_auth_token
+    )
+
     headers = config.get("headers", {})
     if auth_token and "Authorization" not in headers:
         headers["Authorization"] = f"Bearer {auth_token}"
-    
+
     # Get endpoint from config (pass None to adapter so it can read from env/config if not explicitly provided)
     endpoint = config.get("endpoint") if "endpoint" in config else None
-    
+
     return SSEStreamingAdapter(
         base_url=base_url,
         headers=headers,
         context_data=config.get("context_data", {}),
         endpoint=endpoint,
-        completion_events=config.get("completion_events", [
-            "complete",
-            "dashboard_complete",
-            "kg_complete",
-            "done",
-        ]),
-        tool_call_events=config.get("tool_call_events", [
-            "tool_call",
-            "function_call",
-            "tool_execution",
-        ]),
+        completion_events=config.get(
+            "completion_events",
+            [
+                "complete",
+                "dashboard_complete",
+                "kg_complete",
+                "done",
+            ],
+        ),
+        tool_call_events=config.get(
+            "tool_call_events",
+            [
+                "tool_call",
+                "function_call",
+                "tool_execution",
+            ],
+        ),
         usage_event=config.get("usage_event", "usage"),
         payload_builder=config.get("payload_builder"),
         payload_template=config.get("payload_template"),
@@ -106,10 +116,10 @@ def create_sse_streaming_adapter(**config: Any) -> SSEStreamingAdapter:
 def create_langfuse_adapter(**config: Any) -> LangfuseAdapter:
     """
     Factory function for LangfuseAdapter.
-    
+
     Args:
         **config: Configuration for LangfuseAdapter (currently unused)
-            
+
     Returns:
         LangfuseAdapter instance
     """
@@ -119,10 +129,10 @@ def create_langfuse_adapter(**config: Any) -> LangfuseAdapter:
 def create_ml_infra_adapter(**config: Any) -> Adapter:
     """
     Factory function for ml_infra adapter (deprecated, for backward compatibility).
-    
+
     This creates an HTTPAdapter with ml-infra specific configuration.
     For new code, use create_http_adapter with ml-infra config instead.
-    
+
     Args:
         **config: Configuration including:
             - base_url: Base URL for ML Infra API
@@ -131,7 +141,7 @@ def create_ml_infra_adapter(**config: Any) -> Adapter:
             - org_id: Organization ID
             - project_id: Project ID
             - use_sse_streaming: If True, use SSEStreamingAdapter instead
-            
+
     Returns:
         HTTPAdapter or SSEStreamingAdapter instance
     """
@@ -139,17 +149,17 @@ def create_ml_infra_adapter(**config: Any) -> Adapter:
         "ml_infra adapter type is deprecated. Use 'http' adapter type with ml-infra "
         "configuration instead. See docs/custom-adapters.md for migration guide.",
         DeprecationWarning,
-        stacklevel=2
+        stacklevel=2,
     )
-    
+
     base_url = config.get("base_url") or os.getenv("CHAT_BASE_URL", "http://localhost:8000")
     auth_token = config.get("auth_token") or os.getenv("CHAT_PLATFORM_AUTH_TOKEN", "")
     account_id = config.get("account_id") or os.getenv("ACCOUNT_ID", "default")
     org_id = config.get("org_id") or os.getenv("ORG_ID", "default")
     project_id = config.get("project_id") or os.getenv("PROJECT_ID", "default")
-    
+
     use_sse_streaming = config.get("use_sse_streaming", False)
-    
+
     if use_sse_streaming:
         settings = get_settings()
         return create_sse_streaming_adapter(
@@ -188,7 +198,7 @@ def create_ml_infra_adapter(**config: Any) -> Adapter:
 def register_builtin_adapters(registry) -> None:
     """
     Register all built-in adapters in the registry.
-    
+
     Args:
         registry: AdapterRegistry instance to register adapters in
     """
@@ -208,9 +218,9 @@ def register_builtin_adapters(registry) -> None:
                 "yaml_extraction_path",
                 "sse_completion_events",
             ],
-        }
+        },
     )
-    
+
     registry.register(
         "rest",
         create_http_adapter,  # Alias for http
@@ -225,9 +235,9 @@ def register_builtin_adapters(registry) -> None:
                 "default_endpoint",
                 "response_format",
             ],
-        }
+        },
     )
-    
+
     registry.register(
         "sse_streaming",
         create_sse_streaming_adapter,
@@ -245,18 +255,18 @@ def register_builtin_adapters(registry) -> None:
                 "payload_template",
                 "include_uuids",
             ],
-        }
+        },
     )
-    
+
     registry.register(
         "langfuse",
         create_langfuse_adapter,
         metadata={
             "description": "Langfuse adapter (placeholder)",
             "config_keys": [],
-        }
+        },
     )
-    
+
     # Register deprecated ml_infra adapter for backward compatibility
     registry.register(
         "ml_infra",
@@ -271,5 +281,5 @@ def register_builtin_adapters(registry) -> None:
                 "project_id",
                 "use_sse_streaming",
             ],
-        }
+        },
     )

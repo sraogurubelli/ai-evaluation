@@ -15,10 +15,10 @@ logger = structlog.get_logger(__name__)
 class ContinuousEvaluator:
     """
     Continuous evaluator that automatically evaluates traces.
-    
+
     Supports both scheduled evaluation (cron-like) and event-driven evaluation.
     """
-    
+
     def __init__(
         self,
         trace_source: str = "langfuse",
@@ -27,7 +27,7 @@ class ContinuousEvaluator:
     ):
         """
         Initialize continuous evaluator.
-        
+
         Args:
             trace_source: Trace source ("langfuse", "otel", etc.)
             scorers: List of scorers to apply
@@ -40,7 +40,7 @@ class ContinuousEvaluator:
         self.logger = structlog.get_logger(__name__)
         self._running = False
         self._evaluation_results: list[EvalResult] = []
-    
+
     async def evaluate_traces(
         self,
         trace_ids: list[str] | None = None,
@@ -49,12 +49,12 @@ class ContinuousEvaluator:
     ) -> list[EvalResult]:
         """
         Evaluate multiple traces.
-        
+
         Args:
             trace_ids: Optional list of specific trace IDs to evaluate
             filters: Optional filters for trace selection
             **kwargs: Additional parameters
-            
+
         Returns:
             List of EvalResult objects
         """
@@ -82,7 +82,7 @@ class ContinuousEvaluator:
             # Fetch traces based on filters and evaluate
             # This would need trace fetching logic
             raise NotImplementedError("Automatic trace fetching not yet implemented")
-    
+
     async def start_monitoring(
         self,
         interval_seconds: int = 60,
@@ -91,7 +91,7 @@ class ContinuousEvaluator:
     ) -> None:
         """
         Start continuous monitoring.
-        
+
         Args:
             interval_seconds: Polling interval in seconds
             filters: Optional filters for trace selection
@@ -103,7 +103,7 @@ class ContinuousEvaluator:
             interval_seconds=interval_seconds,
             trace_source=self.trace_source,
         )
-        
+
         while self._running:
             try:
                 # Poll for new traces and evaluate
@@ -112,18 +112,18 @@ class ContinuousEvaluator:
                 await self.evaluate_traces(filters=filters, **kwargs)
             except Exception as e:
                 self.logger.error("Error in continuous monitoring", error=str(e))
-            
+
             await asyncio.sleep(interval_seconds)
-    
+
     def stop_monitoring(self) -> None:
         """Stop continuous monitoring."""
         self._running = False
         self.logger.info("Stopped continuous monitoring")
-    
+
     def get_results(self) -> list[EvalResult]:
         """Get all evaluation results."""
         return self._evaluation_results.copy()
-    
+
     def check_regressions(
         self,
         baseline_run: EvalResult,
@@ -131,11 +131,11 @@ class ContinuousEvaluator:
     ) -> list[dict[str, Any]]:
         """
         Check for regressions against baseline.
-        
+
         Args:
             baseline_run: Baseline run to compare against
             threshold: Threshold for regression detection
-            
+
         Returns:
             List of regression reports
         """
@@ -143,14 +143,17 @@ class ContinuousEvaluator:
         for run in self._evaluation_results:
             # Compare run against baseline
             from aieval.core.eval import Eval
+
             eval_ = Eval(name="regression_check", dataset=[], scorers=[])
             comparison = eval_.compare(baseline_run, run)
-            
+
             if comparison.get("regressions"):
-                regressions.append({
-                    "run_id": run.run_id,
-                    "regressions": comparison["regressions"],
-                    "comparison": comparison,
-                })
-        
+                regressions.append(
+                    {
+                        "run_id": run.run_id,
+                        "regressions": comparison["regressions"],
+                        "comparison": comparison,
+                    }
+                )
+
         return regressions

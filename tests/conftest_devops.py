@@ -112,8 +112,12 @@ def test_dataset(request: pytest.FixtureRequest) -> list[DatasetItem]:
 @pytest.fixture
 def load_test_case_by_id():
     """Fixture factory for loading test cases by ID (uses DevOps consumer)."""
-    def _load_test_case(test_id: str, index_file: str | None = None, base_dir: str | None = None) -> DatasetItem:
+
+    def _load_test_case(
+        test_id: str, index_file: str | None = None, base_dir: str | None = None
+    ) -> DatasetItem:
         from samples_sdk.consumers.devops import load_single_test_case
+
         if index_file is None:
             index_file = os.getenv("INDEX_FILE", "benchmarks/datasets/index.csv")
         if base_dir is None:
@@ -123,18 +127,21 @@ def load_test_case_by_id():
             test_id=test_id,
             base_dir=base_dir,
         )
+
     return _load_test_case
 
 
 @pytest.fixture
 def eval_factory():
     """Fixture factory for creating evals."""
+
     def _create_eval(
         name: str,
         dataset: list[DatasetItem],
         scorers: list[DeepDiffScorer],
     ) -> Eval:
         return Eval(name=name, dataset=dataset, scorers=scorers)
+
     return _create_eval
 
 

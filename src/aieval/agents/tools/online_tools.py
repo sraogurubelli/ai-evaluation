@@ -11,7 +11,7 @@ from aieval.feedback.collector import FeedbackCollector
 
 class EvaluateTraceTool(Tool):
     """Tool for evaluating a single production trace."""
-    
+
     def __init__(self):
         super().__init__(
             name="evaluate_trace",
@@ -38,28 +38,28 @@ class EvaluateTraceTool(Tool):
                 "required": ["trace_id", "scorers_config"],
             },
         )
-    
+
     async def execute(self, **kwargs: Any) -> ToolResult:
         """Execute trace evaluation."""
         try:
             self.validate_parameters(**kwargs)
-            
+
             # Import here to avoid circular dependencies
             from aieval.cli.main import _create_scorers
-            
+
             # Create scorers
             scorers = _create_scorers({"scorers": kwargs["scorers_config"]})
-            
+
             # Create agent
             agent = OnlineEvaluationAgent()
-            
+
             # Evaluate trace
             run = await agent.evaluate_trace(
                 trace_id=kwargs["trace_id"],
                 trace_source=kwargs.get("trace_source", "langfuse"),
                 scorers=scorers,
             )
-            
+
             return ToolResult(
                 success=True,
                 data={
@@ -78,7 +78,7 @@ class EvaluateTraceTool(Tool):
 
 class EvaluateTracesTool(Tool):
     """Tool for evaluating multiple production traces."""
-    
+
     def __init__(self):
         super().__init__(
             name="evaluate_traces",
@@ -106,26 +106,26 @@ class EvaluateTracesTool(Tool):
                 "required": ["trace_ids", "scorers_config"],
             },
         )
-    
+
     async def execute(self, **kwargs: Any) -> ToolResult:
         """Execute traces evaluation."""
         try:
             self.validate_parameters(**kwargs)
-            
+
             from aieval.cli.main import _create_scorers
-            
+
             # Create scorers
             scorers = _create_scorers({"scorers": kwargs["scorers_config"]})
-            
+
             # Create evaluator
             evaluator = ContinuousEvaluator(
                 trace_source=kwargs.get("trace_source", "langfuse"),
                 scorers=scorers,
             )
-            
+
             # Evaluate traces
             runs = await evaluator.evaluate_traces(trace_ids=kwargs["trace_ids"])
-            
+
             return ToolResult(
                 success=True,
                 data={
@@ -144,7 +144,7 @@ class EvaluateTracesTool(Tool):
 
 class ConvertTracesToDatasetTool(Tool):
     """Tool for converting traces to dataset."""
-    
+
     def __init__(self):
         super().__init__(
             name="convert_traces_to_dataset",
@@ -181,12 +181,12 @@ class ConvertTracesToDatasetTool(Tool):
                 "required": ["traces"],
             },
         )
-    
+
     async def execute(self, **kwargs: Any) -> ToolResult:
         """Execute trace conversion."""
         try:
             self.validate_parameters(**kwargs)
-            
+
             dataset = traces_to_dataset(
                 traces=kwargs["traces"],
                 trace_source=kwargs.get("trace_source", "langfuse"),
@@ -194,7 +194,7 @@ class ConvertTracesToDatasetTool(Tool):
                 sample_size=kwargs.get("sample_size"),
                 sampling_strategy=kwargs.get("sampling_strategy", "random"),
             )
-            
+
             return ToolResult(
                 success=True,
                 data={
@@ -213,7 +213,7 @@ class ConvertTracesToDatasetTool(Tool):
 
 class MonitorTracesTool(Tool):
     """Tool for setting up continuous monitoring."""
-    
+
     def __init__(self):
         super().__init__(
             name="monitor_traces",
@@ -245,32 +245,33 @@ class MonitorTracesTool(Tool):
                 "required": ["scorers_config"],
             },
         )
-    
+
     async def execute(self, **kwargs: Any) -> ToolResult:
         """Execute monitoring setup."""
         try:
             self.validate_parameters(**kwargs)
-            
+
             from aieval.cli.main import _create_scorers
-            
+
             # Create scorers
             scorers = _create_scorers({"scorers": kwargs["scorers_config"]})
-            
+
             # Create evaluator
             evaluator = ContinuousEvaluator(
                 trace_source=kwargs.get("trace_source", "langfuse"),
                 scorers=scorers,
             )
-            
+
             # Start monitoring (this runs in background)
             import asyncio
+
             monitoring_task = asyncio.create_task(
                 evaluator.start_monitoring(
                     interval_seconds=kwargs.get("interval_seconds", 60),
                     filters=kwargs.get("filters"),
                 )
             )
-            
+
             return ToolResult(
                 success=True,
                 data={
@@ -289,7 +290,7 @@ class MonitorTracesTool(Tool):
 
 class CollectFeedbackTool(Tool):
     """Tool for collecting user feedback."""
-    
+
     def __init__(self):
         super().__init__(
             name="collect_feedback",
@@ -323,15 +324,15 @@ class CollectFeedbackTool(Tool):
                 "required": [],
             },
         )
-    
+
     async def execute(self, **kwargs: Any) -> ToolResult:
         """Execute feedback collection."""
         try:
             self.validate_parameters(**kwargs)
-            
+
             collector = FeedbackCollector()
             feedback_id = collector.collect_feedback(**kwargs)
-            
+
             return ToolResult(
                 success=True,
                 data={

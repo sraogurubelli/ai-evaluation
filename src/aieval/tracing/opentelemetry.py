@@ -18,7 +18,9 @@ def _tags_to_attributes(tags: list[dict[str, Any]] | None) -> dict[str, Any]:
     """Convert Jaeger span tags (list of {key, value}) to a flat dict."""
     if not tags:
         return {}
-    return {t["key"]: t["value"] for t in tags if isinstance(t, dict) and "key" in t and "value" in t}
+    return {
+        t["key"]: t["value"] for t in tags if isinstance(t, dict) and "key" in t and "value" in t
+    }
 
 
 class OpenTelemetryTracingAdapter(TracingAdapter):
@@ -39,7 +41,9 @@ class OpenTelemetryTracingAdapter(TracingAdapter):
             timeout: Request timeout in seconds.
         """
         if httpx is None:
-            raise ImportError("OpenTelemetry tracing adapter requires httpx. Install with: pip install aieval[tracing-otel]")
+            raise ImportError(
+                "OpenTelemetry tracing adapter requires httpx. Install with: pip install aieval[tracing-otel]"
+            )
         self._base = endpoint.rstrip("/")
         self._timeout = timeout
 
@@ -80,9 +84,13 @@ class OpenTelemetryTracingAdapter(TracingAdapter):
                 Span(
                     span_id=s.get("spanID", ""),
                     name=s.get("operationName", "span"),
-                    parent_id=(s.get("references") or [{}])[0].get("spanID") if s.get("references") else None,
+                    parent_id=(s.get("references") or [{}])[0].get("spanID")
+                    if s.get("references")
+                    else None,
                     start_time=str(s["startTime"]) if s.get("startTime") is not None else None,
-                    end_time=str(s["startTime"] + s["duration"]) if s.get("startTime") is not None and s.get("duration") is not None else None,
+                    end_time=str(s["startTime"] + s["duration"])
+                    if s.get("startTime") is not None and s.get("duration") is not None
+                    else None,
                     attributes=attrs,
                 )
             )

@@ -8,14 +8,14 @@ This SDK provides a clean, customer-friendly interface for:
 
 Usage:
     from aieval import Eval, HTTPAdapter, DeepDiffScorer
-    
-    # Create experiment
-    experiment = Experiment(
+
+    # Create eval
+    eval_ = Eval(
         name="my_eval",
         dataset=load_dataset("dataset.jsonl"),
         scorers=[DeepDiffScorer(...)]
     )
-    
+
     # Run evaluation
     result = await eval_.run(adapter=HTTPAdapter(...), model="gpt-4o")
 """
@@ -46,6 +46,7 @@ try:
         EmbeddingSimilarityScorer,
         RAGRelevanceScorer,
     )
+
     AUTOEVALS_AVAILABLE = True
 except ImportError:
     AUTOEVALS_AVAILABLE = False
@@ -77,7 +78,12 @@ from aieval.feedback.integrator import FeedbackIntegrator
 from aieval.evaluation.incremental import IncrementalEvaluator
 
 # Agent tracing
-from aieval.tracing import AgentTrace, parse_langgraph_trace, parse_openai_agents_trace, parse_pydantic_ai_trace
+from aieval.tracing import (
+    AgentTrace,
+    parse_langgraph_trace,
+    parse_openai_agents_trace,
+    parse_pydantic_ai_trace,
+)
 
 # CI/CD
 from aieval.ci.gates import DeploymentGate
@@ -151,6 +157,7 @@ try:
         RegexScorer,
         KeywordScorer,
     )
+
     GUARDRAILS_AVAILABLE = True
 except ImportError:
     GUARDRAILS_AVAILABLE = False
@@ -191,7 +198,18 @@ __all__ = [
     "KnowledgeGraphQualityScorer",
     "Scorer",
     # Autoevals-style scorers (if available)
-    *(["FactualityScorer", "HelpfulnessScorer", "LevenshteinScorer", "BLUEScorer", "EmbeddingSimilarityScorer", "RAGRelevanceScorer"] if AUTOEVALS_AVAILABLE else []),
+    *(
+        [
+            "FactualityScorer",
+            "HelpfulnessScorer",
+            "LevenshteinScorer",
+            "BLUEScorer",
+            "EmbeddingSimilarityScorer",
+            "RAGRelevanceScorer",
+        ]
+        if AUTOEVALS_AVAILABLE
+        else []
+    ),
     # Dataset loaders
     "load_jsonl_dataset",
     "load_index_csv_dataset",
@@ -229,7 +247,25 @@ __all__ = [
     "run_single_item",
     "assert_score_min",
     # Guardrail SDK (if available)
-    *(["validate_prompt", "validate_response", "load_policy", "validate_policy_config", "get_policy_engine", "GuardrailScorer", "HallucinationScorer", "PromptInjectionScorer", "ToxicityScorer", "PIIScorer", "SensitiveDataScorer", "RegexScorer", "KeywordScorer"] if GUARDRAILS_AVAILABLE else []),
+    *(
+        [
+            "validate_prompt",
+            "validate_response",
+            "load_policy",
+            "validate_policy_config",
+            "get_policy_engine",
+            "GuardrailScorer",
+            "HallucinationScorer",
+            "PromptInjectionScorer",
+            "ToxicityScorer",
+            "PIIScorer",
+            "SensitiveDataScorer",
+            "RegexScorer",
+            "KeywordScorer",
+        ]
+        if GUARDRAILS_AVAILABLE
+        else []
+    ),
     # Tools system
     "get_tool_registry",
     "execute_tool",

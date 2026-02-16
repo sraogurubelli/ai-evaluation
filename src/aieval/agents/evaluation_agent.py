@@ -12,28 +12,28 @@ from aieval.tasks.models import Task, TaskResult
 class EvaluationAgent(BaseEvaluationAgent):
     """
     High-level evaluation orchestrator (similar to unified_agent in ml-infra).
-    
+
     Coordinates all other agents for end-to-end evaluation workflows.
     """
-    
+
     def __init__(self, config: dict[str, Any] | None = None):
         """Initialize evaluation agent."""
         super().__init__(config)
         self.eval_agent = EvalAgent(config)
         self.task_agent = TaskAgent(config)
-    
+
     async def run(self, query: str, **kwargs: Any) -> Any:
         """
         Run evaluation operation based on query.
-        
+
         Supported queries:
         - "evaluate": Run a complete evaluation
         - "stream": Stream evaluation progress
-        
+
         Args:
             query: Operation to perform
             **kwargs: Operation-specific parameters
-            
+
         Returns:
             Operation result
         """
@@ -43,7 +43,7 @@ class EvaluationAgent(BaseEvaluationAgent):
             return await self.stream_evaluation(**kwargs)
         else:
             raise ValueError(f"Unknown query: {query}")
-    
+
     async def evaluate(
         self,
         eval_name: str,
@@ -82,7 +82,7 @@ class EvaluationAgent(BaseEvaluationAgent):
             Task (if run_async=True) or EvalResult/list[EvalResult] (if run_async=False)
         """
         self.logger.info(f"Starting evaluation: {eval_name}")
-        
+
         # Normalize models input - prioritize models over model for backward compatibility
         if models:
             model_list = models
@@ -90,7 +90,7 @@ class EvaluationAgent(BaseEvaluationAgent):
             model_list = [model]  # Backward compatibility
         else:
             model_list = [None]  # Use adapter default
-        
+
         if run_async:
             # Create task for async execution
             config: dict[str, Any] = {
@@ -108,15 +108,15 @@ class EvaluationAgent(BaseEvaluationAgent):
                 config["agent_name"] = agent_name
             if agent_version is not None:
                 config["agent_version"] = agent_version
-            
+
             task = await self.task_agent.create_task(
                 eval_name=eval_name,
                 config=config,
             )
-            
+
             self.logger.info(f"Created task for async execution: {task.id}")
             return task
-        
+
         else:
             # Run synchronously
             # Create eval (shared across all model runs)
@@ -152,9 +152,11 @@ class EvaluationAgent(BaseEvaluationAgent):
                 self.logger.info(f"Evaluation completed: {runs[0].run_id}")
                 return runs[0]
             else:
-                self.logger.info(f"Evaluation completed: {len(runs)} runs for {len(model_list)} models")
+                self.logger.info(
+                    f"Evaluation completed: {len(runs)} runs for {len(model_list)} models"
+                )
                 return runs
-    
+
     async def stream_evaluation(
         self,
         eval_name: str,

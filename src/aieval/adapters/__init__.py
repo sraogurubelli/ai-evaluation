@@ -34,4 +34,5 @@ __all__ = [
 
 # Initialize default registry with built-in adapters
 from aieval.adapters.factory import register_builtin_adapters
+
 register_builtin_adapters(get_registry())

@@ -24,7 +24,7 @@ bearer_scheme = HTTPBearer(auto_error=False)
 
 class UserRole:
     """User roles."""
-    
+
     ADMIN = "admin"
     USER = "user"
     READ_ONLY = "read_only"
@@ -43,18 +43,16 @@ def get_password_hash(password: str) -> str:
 def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
     """Create JWT access token."""
     settings = get_settings()
-    
+
     if not settings.security.jwt_secret:
         raise ValueError("JWT_SECRET not configured")
-    
+
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(
-            hours=settings.security.jwt_expiration_hours
-        )
-    
+        expire = datetime.utcnow() + timedelta(hours=settings.security.jwt_expiration_hours)
+
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(
         to_encode,
@@ -67,10 +65,10 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> s
 def verify_token(token: str) -> dict:
     """Verify JWT token."""
     settings = get_settings()
-    
+
     if not settings.security.jwt_secret:
         raise ValueError("JWT_SECRET not configured")
-    
+
     try:
         payload = jwt.decode(
             token,
@@ -96,19 +94,19 @@ async def get_api_key(
             detail="API key required",
             headers={"WWW-Authenticate": "ApiKey"},
         )
-    
+
     # In production, validate against database or secrets manager
     # For now, check against environment variable
     valid_api_key = os.getenv("API_KEY")
     if valid_api_key and api_key == valid_api_key:
         return api_key
-    
+
     # If no API_KEY is set, allow in development
     settings = get_settings()
     if settings.is_development and not valid_api_key:
         logger.warning("No API_KEY set - allowing request in development mode")
         return api_key
-    
+
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Invalid API key",
@@ -132,7 +130,7 @@ async def get_current_user(
             }
         except HTTPException:
             pass
-    
+
     # Fall back to API key
     if api_key:
         api_key_value = await get_api_key(api_key)
@@ -141,7 +139,7 @@ async def get_current_user(
             "role": UserRole.USER,
             "auth_method": "api_key",
         }
-    
+
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Authentication required",
@@ -151,24 +149,25 @@ async def get_current_user(
 
 async def require_role(required_role: str):
     """Dependency to require a specific role."""
+
     async def role_checker(current_user: dict = Depends(get_current_user)) -> dict:
         user_role = current_user.get("role", UserRole.USER)
-        
+
         # Role hierarchy: admin > user > read_only
         role_hierarchy = {
             UserRole.ADMIN: 3,
             UserRole.USER: 2,
             UserRole.READ_ONLY: 1,
         }
-        
+
         if role_hierarchy.get(user_role, 0) < role_hierarchy.get(required_role, 0):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Requires {required_role} role",
             )
-        
+
         return current_user
-    
+
     return role_checker
 
 

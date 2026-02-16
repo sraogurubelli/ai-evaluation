@@ -11,7 +11,7 @@ def filter_dataset(
 ) -> list[DatasetItem]:
     """
     Filter dataset by tags and/or metadata.
-    
+
     Args:
         dataset: List of DatasetItem objects to filter
         tags: Optional list of tags - item must have ALL tags to pass
@@ -19,12 +19,12 @@ def filter_dataset(
             - Simple key-value: {"key": "value"} matches items where metadata["key"] == "value"
             - Nested keys: {"key.subkey": "value"} matches items where metadata["key"]["subkey"] == "value"
             - All filters must match (AND logic)
-    
+
     Returns:
         Filtered list of DatasetItem objects
     """
     filtered = []
-    
+
     for item in dataset:
         # Filter by tags
         if tags:
@@ -32,7 +32,7 @@ def filter_dataset(
             required_tags = set(tags)
             if not required_tags.issubset(item_tags):
                 continue
-        
+
         # Filter by metadata
         if metadata_filters:
             matches = True
@@ -55,10 +55,10 @@ def filter_dataset(
                     if item.metadata.get(key) != expected_value:
                         matches = False
                         break
-            
+
             if not matches:
                 continue
-        
+
         filtered.append(item)
-    
+
     return filtered

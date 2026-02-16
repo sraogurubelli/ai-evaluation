@@ -19,13 +19,13 @@ __all__ = [
 def register_builtin_skills(registry: SkillRegistry | None = None) -> None:
     """
     Register all built-in skills with the registry.
-    
+
     Args:
         registry: SkillRegistry instance (uses get_skill_registry() if None)
     """
     if registry is None:
         registry = get_skill_registry()
-    
+
     # Register all built-in skills
     registry.register(EvaluationSkill())
     registry.register(BaselineComparisonSkill())

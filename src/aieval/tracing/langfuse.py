@@ -104,7 +104,9 @@ class LangfuseTracingAdapter(TracingAdapter):
 
         trace_id_res = d.get("id") or trace_id
         name = d.get("name")
-        metadata = {k: v for k, v in (d.get("metadata") or d.get("meta") or {}).items() if v is not None}
+        metadata = {
+            k: v for k, v in (d.get("metadata") or d.get("meta") or {}).items() if v is not None
+        }
         spans: list[Span] = []
 
         # Map observations to spans if present
@@ -198,7 +200,9 @@ class LangfuseTracingAdapter(TracingAdapter):
             return []
 
         result: list[Trace] = []
-        items = raw_list if isinstance(raw_list, list) else getattr(raw_list, "data", raw_list) or []
+        items = (
+            raw_list if isinstance(raw_list, list) else getattr(raw_list, "data", raw_list) or []
+        )
         if not isinstance(items, list):
             items = []
         for raw in items:

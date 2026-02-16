@@ -17,11 +17,11 @@ logger = logging.getLogger(__name__)
 class LatencyScorer(Scorer):
     """
     Scorer that evaluates response latency.
-    
+
     Scores based on whether latency is within acceptable threshold.
     Score is 1.0 if within threshold, decreasing linearly to 0.0 as latency increases.
     """
-    
+
     def __init__(
         self,
         max_latency_ms: int = 30000,
@@ -30,7 +30,7 @@ class LatencyScorer(Scorer):
     ):
         """
         Initialize latency scorer.
-        
+
         Args:
             max_latency_ms: Maximum acceptable latency in milliseconds
             name: Score name
@@ -38,7 +38,7 @@ class LatencyScorer(Scorer):
         """
         super().__init__(name=name, eval_id=eval_id)
         self.max_latency_ms = max_latency_ms
-    
+
     def _extract_latency(self, generated: Any) -> int | None:
         """Extract latency from generated output."""
         try:
@@ -56,7 +56,7 @@ class LatencyScorer(Scorer):
         except (json.JSONDecodeError, KeyError, TypeError):
             pass
         return None
-    
+
     def score(
         self,
         generated: Any,
@@ -65,21 +65,21 @@ class LatencyScorer(Scorer):
     ) -> Score:
         """
         Score latency performance.
-        
+
         Args:
             generated: Generated output (enriched JSON with metrics)
             expected: Expected output (not used)
             metadata: Additional metadata
-            
+
         Returns:
             Score object with latency evaluation
         """
         latency = self._extract_latency(generated)
-        
+
         if latency is None:
             # Try metadata as fallback
             latency = metadata.get("latency_ms")
-        
+
         if latency is None:
             return Score(
                 name=self.name,
@@ -88,7 +88,7 @@ class LatencyScorer(Scorer):
                 comment="No latency data available",
                 metadata=metadata,
             )
-        
+
         # Score: 1.0 if within threshold, decreasing linearly
         if latency <= self.max_latency_ms:
             score_value = 1.0
@@ -96,7 +96,7 @@ class LatencyScorer(Scorer):
             # Linear decrease beyond threshold (0.0 at 2x threshold)
             excess = latency - self.max_latency_ms
             score_value = max(0.0, 1.0 - (excess / self.max_latency_ms))
-        
+
         return Score(
             name=self.name,
             value=score_value,
@@ -113,10 +113,10 @@ class LatencyScorer(Scorer):
 class ToolCallScorer(Scorer):
     """
     Scorer that evaluates tool call usage.
-    
+
     Scores based on whether tools were called (if required) or tracks tool usage.
     """
-    
+
     def __init__(
         self,
         name: str = "tool_calls",
@@ -125,7 +125,7 @@ class ToolCallScorer(Scorer):
     ):
         """
         Initialize tool call scorer.
-        
+
         Args:
             name: Score name
             eval_id: Evaluation ID
@@ -133,7 +133,7 @@ class ToolCallScorer(Scorer):
         """
         super().__init__(name=name, eval_id=eval_id)
         self.require_tools = require_tools
-    
+
     def _extract_tools(self, generated: Any) -> list[dict[str, Any]]:
         """Extract tool calls from generated output."""
         try:
@@ -149,7 +149,7 @@ class ToolCallScorer(Scorer):
         except (json.JSONDecodeError, KeyError, TypeError):
             pass
         return []
-    
+
     def score(
         self,
         generated: Any,
@@ -158,34 +158,34 @@ class ToolCallScorer(Scorer):
     ) -> Score:
         """
         Score tool call usage.
-        
+
         Args:
             generated: Generated output (enriched JSON with tools_called)
             expected: Expected output (not used)
             metadata: Additional metadata
-            
+
         Returns:
             Score object with tool call evaluation
         """
         tools = self._extract_tools(generated)
-        
+
         # Fallback to metadata
         if not tools and "tools_called" in metadata:
             tools = metadata.get("tools_called", [])
-        
+
         tool_count = len(tools)
         tools_used = tool_count > 0
-        
+
         # Score logic
         if self.require_tools:
             score_value = 1.0 if tools_used else 0.0
         else:
             # Always 1.0 if not requiring tools (just tracking)
             score_value = 1.0
-        
+
         tool_names = [t.get("tool", "unknown") for t in tools if isinstance(t, dict)]
         comment = f"Tools called: {tool_names}" if tool_names else "No tools called"
-        
+
         return Score(
             name=self.name,
             value=score_value,
@@ -203,10 +203,10 @@ class ToolCallScorer(Scorer):
 class TokenUsageScorer(Scorer):
     """
     Scorer that evaluates token usage.
-    
+
     Scores based on whether token usage is within acceptable budget.
     """
-    
+
     def __init__(
         self,
         max_tokens: int = 10000,
@@ -215,7 +215,7 @@ class TokenUsageScorer(Scorer):
     ):
         """
         Initialize token usage scorer.
-        
+
         Args:
             max_tokens: Maximum acceptable token count
             name: Score name
@@ -223,7 +223,7 @@ class TokenUsageScorer(Scorer):
         """
         super().__init__(name=name, eval_id=eval_id)
         self.max_tokens = max_tokens
-    
+
     def _extract_tokens(self, generated: Any) -> dict[str, int] | None:
         """Extract token usage from generated output."""
         try:
@@ -251,7 +251,7 @@ class TokenUsageScorer(Scorer):
         except (json.JSONDecodeError, KeyError, TypeError):
             pass
         return None
-    
+
     def score(
         self,
         generated: Any,
@@ -260,17 +260,17 @@ class TokenUsageScorer(Scorer):
     ) -> Score:
         """
         Score token usage.
-        
+
         Args:
             generated: Generated output (enriched JSON with token metrics)
             expected: Expected output (not used)
             metadata: Additional metadata
-            
+
         Returns:
             Score object with token usage evaluation
         """
         token_info = self._extract_tokens(generated)
-        
+
         if token_info is None:
             # Try metadata as fallback
             if "total_tokens" in metadata:
@@ -279,7 +279,7 @@ class TokenUsageScorer(Scorer):
                     "prompt_tokens": metadata.get("prompt_tokens", 0),
                     "completion_tokens": metadata.get("completion_tokens", 0),
                 }
-        
+
         if token_info is None:
             return Score(
                 name=self.name,
@@ -288,9 +288,9 @@ class TokenUsageScorer(Scorer):
                 comment="No token usage data available",
                 metadata=metadata,
             )
-        
+
         total_tokens = token_info.get("total_tokens", 0)
-        
+
         # Score: 1.0 if within budget, decreasing linearly
         if total_tokens <= self.max_tokens:
             score_value = 1.0
@@ -298,7 +298,7 @@ class TokenUsageScorer(Scorer):
             # Linear decrease beyond budget (0.0 at 2x budget)
             excess = total_tokens - self.max_tokens
             score_value = max(0.0, 1.0 - (excess / self.max_tokens))
-        
+
         return Score(
             name=self.name,
             value=score_value,
@@ -312,4 +312,3 @@ class TokenUsageScorer(Scorer):
                 "token_budget": self.max_tokens,
             },
         )
-

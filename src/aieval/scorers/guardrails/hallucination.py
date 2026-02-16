@@ -16,11 +16,11 @@ logger = logging.getLogger(__name__)
 
 class HallucinationScorer(GuardrailScorer):
     """Detects hallucinations by checking claims against context.
-    
+
     Requires context (RAG context, source documents) to evaluate.
     Uses LLM-as-judge to determine if claims are supported.
     """
-    
+
     def __init__(
         self,
         name: str = "hallucination",
@@ -32,7 +32,7 @@ class HallucinationScorer(GuardrailScorer):
     ):
         """
         Initialize hallucination scorer.
-        
+
         Args:
             name: Score name
             eval_id: Evaluation ID
@@ -55,7 +55,7 @@ class HallucinationScorer(GuardrailScorer):
             ),
             api_key=api_key,
         )
-    
+
     def score(
         self,
         generated: Any,
@@ -64,12 +64,12 @@ class HallucinationScorer(GuardrailScorer):
     ) -> Score:
         """
         Score for hallucinations.
-        
+
         Args:
             generated: Generated text to check
             expected: Not used (for compatibility)
             metadata: Should contain 'context' key with source documents/context
-            
+
         Returns:
             Score with value 0.0 (no hallucinations) to 1.0 (hallucinations detected)
         """
@@ -84,10 +84,10 @@ class HallucinationScorer(GuardrailScorer):
                 comment="No context provided for hallucination evaluation",
                 metadata=metadata,
             )
-        
+
         # Convert generated to string if needed
         generated_text = str(generated) if not isinstance(generated, str) else generated
-        
+
         # Add context to metadata for LLM judge
         judge_metadata = {
             **metadata,
@@ -95,14 +95,14 @@ class HallucinationScorer(GuardrailScorer):
                 "prompt": f"Context:\n{context}\n\nGenerated Output:\n{generated_text}",
             },
         }
-        
+
         # Use LLM judge to evaluate
         judge_score = self.llm_judge.score(
             generated=generated_text,
             expected=None,
             metadata=judge_metadata,
         )
-        
+
         # Return score with hallucination-specific metadata
         return Score(
             name=self.name,

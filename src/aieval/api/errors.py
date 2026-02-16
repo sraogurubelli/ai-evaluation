@@ -13,7 +13,7 @@ logger = structlog.get_logger(__name__)
 
 class APIError(Exception):
     """Base exception for API errors."""
-    
+
     def __init__(
         self,
         message: str,
@@ -23,7 +23,7 @@ class APIError(Exception):
     ):
         """
         Initialize API error.
-        
+
         Args:
             message: Error message
             status_code: HTTP status code
@@ -39,7 +39,7 @@ class APIError(Exception):
 
 class ValidationError(APIError):
     """Validation error (400)."""
-    
+
     def __init__(self, message: str, details: dict[str, Any] | None = None):
         super().__init__(
             message=message,
@@ -51,7 +51,7 @@ class ValidationError(APIError):
 
 class NotFoundError(APIError):
     """Resource not found error (404)."""
-    
+
     def __init__(self, resource_type: str, resource_id: str):
         super().__init__(
             message=f"{resource_type} '{resource_id}' not found",
@@ -63,7 +63,7 @@ class NotFoundError(APIError):
 
 class UnauthorizedError(APIError):
     """Unauthorized error (401)."""
-    
+
     def __init__(self, message: str = "Unauthorized"):
         super().__init__(
             message=message,
@@ -74,7 +74,7 @@ class UnauthorizedError(APIError):
 
 class ForbiddenError(APIError):
     """Forbidden error (403)."""
-    
+
     def __init__(self, message: str = "Forbidden"):
         super().__init__(
             message=message,
@@ -85,7 +85,7 @@ class ForbiddenError(APIError):
 
 class ConflictError(APIError):
     """Conflict error (409)."""
-    
+
     def __init__(self, message: str, details: dict[str, Any] | None = None):
         super().__init__(
             message=message,
@@ -97,8 +97,12 @@ class ConflictError(APIError):
 
 class ServiceUnavailableError(APIError):
     """Service unavailable error (503)."""
-    
-    def __init__(self, message: str = "Service temporarily unavailable", details: dict[str, Any] | None = None):
+
+    def __init__(
+        self,
+        message: str = "Service temporarily unavailable",
+        details: dict[str, Any] | None = None,
+    ):
         super().__init__(
             message=message,
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -109,7 +113,7 @@ class ServiceUnavailableError(APIError):
 
 class ErrorResponse(BaseModel):
     """Standard error response model."""
-    
+
     error: str
     error_code: str
     message: str
@@ -120,7 +124,7 @@ class ErrorResponse(BaseModel):
 async def api_error_handler(request: Request, exc: APIError) -> JSONResponse:
     """Handle APIError exceptions."""
     request_id = getattr(request.state, "request_id", None)
-    
+
     logger.error(
         "API error",
         error_code=exc.error_code,
@@ -131,7 +135,7 @@ async def api_error_handler(request: Request, exc: APIError) -> JSONResponse:
         path=request.url.path,
         method=request.method,
     )
-    
+
     return JSONResponse(
         status_code=exc.status_code,
         content=ErrorResponse(
@@ -147,7 +151,7 @@ async def api_error_handler(request: Request, exc: APIError) -> JSONResponse:
 async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
     """Handle FastAPI HTTPException."""
     request_id = getattr(request.state, "request_id", None)
-    
+
     logger.warning(
         "HTTP exception",
         status_code=exc.status_code,
@@ -156,7 +160,7 @@ async def http_exception_handler(request: Request, exc: HTTPException) -> JSONRe
         path=request.url.path,
         method=request.method,
     )
-    
+
     return JSONResponse(
         status_code=exc.status_code,
         content=ErrorResponse(
@@ -171,7 +175,7 @@ async def http_exception_handler(request: Request, exc: HTTPException) -> JSONRe
 async def general_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """Handle unexpected exceptions."""
     request_id = getattr(request.state, "request_id", None)
-    
+
     logger.error(
         "Unhandled exception",
         error=str(exc),
@@ -181,15 +185,16 @@ async def general_exception_handler(request: Request, exc: Exception) -> JSONRes
         method=request.method,
         exc_info=True,
     )
-    
+
     # Don't expose internal error details in production
     import os
+
     is_production = os.getenv("ENVIRONMENT", "development") == "production"
-    
+
     message = "An internal error occurred"
     if not is_production:
         message = f"Internal error: {str(exc)}"
-    
+
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content=ErrorResponse(

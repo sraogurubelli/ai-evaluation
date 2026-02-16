@@ -24,7 +24,6 @@ from aieval.sdk import (
     Eval,
     # Adapters
     HTTPAdapter,
-    
     LangfuseAdapter,
     Adapter,
     # Scorers
@@ -79,7 +78,18 @@ __all__ = [
     "KnowledgeGraphQualityScorer",
     "Scorer",
     # Autoevals-style scorers (if available)
-    *(["FactualityScorer", "HelpfulnessScorer", "LevenshteinScorer", "BLUEScorer", "EmbeddingSimilarityScorer", "RAGRelevanceScorer"] if AUTOEVALS_AVAILABLE else []),
+    *(
+        [
+            "FactualityScorer",
+            "HelpfulnessScorer",
+            "LevenshteinScorer",
+            "BLUEScorer",
+            "EmbeddingSimilarityScorer",
+            "RAGRelevanceScorer",
+        ]
+        if AUTOEVALS_AVAILABLE
+        else []
+    ),
     # Dataset loaders
     "load_jsonl_dataset",
     "load_index_csv_dataset",

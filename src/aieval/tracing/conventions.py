@@ -52,8 +52,14 @@ def extract_cost_from_span_attributes(attrs: dict) -> CostData | None:
         v = attrs.get(key)
         return str(v) if v is not None else None
 
-    input_tokens = _int(ATTR_LLM_TOKEN_COUNT_INPUT) or _int(ATTR_LLM_TOKENS_INPUT) or _int(ATTR_INPUT_TOKENS)
-    output_tokens = _int(ATTR_LLM_TOKEN_COUNT_OUTPUT) or _int(ATTR_LLM_TOKENS_OUTPUT) or _int(ATTR_OUTPUT_TOKENS)
+    input_tokens = (
+        _int(ATTR_LLM_TOKEN_COUNT_INPUT) or _int(ATTR_LLM_TOKENS_INPUT) or _int(ATTR_INPUT_TOKENS)
+    )
+    output_tokens = (
+        _int(ATTR_LLM_TOKEN_COUNT_OUTPUT)
+        or _int(ATTR_LLM_TOKENS_OUTPUT)
+        or _int(ATTR_OUTPUT_TOKENS)
+    )
     cost = _float(ATTR_LLM_COST) or _float(ATTR_TOTAL_COST)
     provider = _str(ATTR_LLM_PROVIDER)
     model = _str(ATTR_LLM_MODEL)

@@ -17,18 +17,18 @@ logger = logging.getLogger(__name__)
 
 class RuleAgent(BaseEvaluationAgent):
     """Agent for managing guardrail tasks and policies."""
-    
+
     def __init__(self, config: dict[str, Any] | None = None):
         """Initialize rule agent."""
         super().__init__(config)
         self.policy_engine = PolicyEngine()
         self.policy_loader = PolicyLoader()
         self.policy_validator = PolicyValidator()
-    
+
     async def run(self, query: str, **kwargs: Any) -> Any:
         """
         Run rule operation based on query.
-        
+
         Supported queries:
         - "create_task": Create a guardrail task
         - "get_task": Get a task by ID
@@ -38,11 +38,11 @@ class RuleAgent(BaseEvaluationAgent):
         - "get_policy": Get policy by name
         - "list_policies": List all policies
         - "validate_policy": Validate policy configuration
-        
+
         Args:
             query: Operation to perform
             **kwargs: Operation-specific parameters
-            
+
         Returns:
             Operation result
         """
@@ -64,7 +64,7 @@ class RuleAgent(BaseEvaluationAgent):
             return await self.validate_policy(**kwargs)
         else:
             raise ValueError(f"Unknown query: {query}")
-    
+
     async def create_task(
         self,
         name: str,
@@ -87,12 +87,12 @@ class RuleAgent(BaseEvaluationAgent):
         except Exception as e:
             logger.error(f"Failed to create task: {e}", exc_info=True)
             raise
-    
+
     async def get_task(self, task_id: str) -> GuardrailTask | None:
         """Get task by ID."""
         try:
             from sqlalchemy import select
-            
+
             async for session in get_session():
                 result = await session.execute(
                     select(GuardrailTask).where(GuardrailTask.id == task_id)
@@ -101,12 +101,12 @@ class RuleAgent(BaseEvaluationAgent):
         except Exception as e:
             logger.error(f"Failed to get task: {e}", exc_info=True)
             raise
-    
+
     async def list_tasks(self) -> list[GuardrailTask]:
         """List all tasks."""
         try:
             from sqlalchemy import select
-            
+
             async for session in get_session():
                 result = await session.execute(
                     select(GuardrailTask).order_by(GuardrailTask.created_at.desc())
@@ -115,7 +115,7 @@ class RuleAgent(BaseEvaluationAgent):
         except Exception as e:
             logger.error(f"Failed to list tasks: {e}", exc_info=True)
             raise
-    
+
     async def create_policy(
         self,
         name: str,
@@ -131,10 +131,10 @@ class RuleAgent(BaseEvaluationAgent):
         # Load and validate policy
         policy = self.policy_loader.load_from_string(policy_yaml, format="yaml")
         is_valid, errors = self.policy_validator.validate(policy)
-        
+
         if not is_valid:
             raise ValueError(f"Policy validation failed: {', '.join(errors)}")
-        
+
         try:
             async for session in get_session():
                 # Create policy record
@@ -150,7 +150,7 @@ class RuleAgent(BaseEvaluationAgent):
                     meta=metadata or {},
                 )
                 session.add(policy_record)
-                
+
                 # Create rule records
                 for rule in policy.rules:
                     rule_record = GuardrailRule(
@@ -164,18 +164,18 @@ class RuleAgent(BaseEvaluationAgent):
                         config=rule.config,
                     )
                     session.add(rule_record)
-                
+
                 await session.commit()
                 await session.refresh(policy_record)
-                
+
                 # Load into policy engine
                 self.policy_engine.load_policy(policy, name=name)
-                
+
                 return policy_record
         except Exception as e:
             logger.error(f"Failed to create policy: {e}", exc_info=True)
             raise
-    
+
     async def load_policy(
         self,
         file_path: str | None = None,
@@ -189,17 +189,17 @@ class RuleAgent(BaseEvaluationAgent):
             policy = self.policy_loader.load_from_string(policy_yaml, format="yaml")
         else:
             raise ValueError("Either file_path or policy_yaml must be provided")
-        
+
         # Load into policy engine
         policy_name = name or policy.name
         self.policy_engine.load_policy(policy, name=policy_name)
-        
+
         return policy
-    
+
     async def get_policy(self, name: str) -> Policy | None:
         """Get policy by name from engine."""
         return self.policy_engine.get_policy(name)
-    
+
     async def list_policies(self) -> list[dict[str, Any]]:
         """List all policies."""
         return [
@@ -211,7 +211,7 @@ class RuleAgent(BaseEvaluationAgent):
             }
             for name, policy in self.policy_engine.policies.items()
         ]
-    
+
     async def validate_policy(
         self,
         policy_yaml: str | None = None,
@@ -222,9 +222,9 @@ class RuleAgent(BaseEvaluationAgent):
             if policy_yaml is None:
                 raise ValueError("Either policy or policy_yaml must be provided")
             policy = self.policy_loader.load_from_string(policy_yaml, format="yaml")
-        
+
         is_valid, errors = self.policy_validator.validate(policy)
-        
+
         return {
             "valid": is_valid,
             "errors": errors,

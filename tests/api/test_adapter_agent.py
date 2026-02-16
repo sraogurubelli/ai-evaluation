@@ -1,10 +1,9 @@
 """Tests for adapter agent endpoints."""
 
 
-
 class TestAdapterAgent:
     """Tests for adapter agent endpoints."""
-    
+
     def test_create_adapter(self, client):
         """Test creating an adapter."""
         response = client.post(
@@ -18,11 +17,11 @@ class TestAdapterAgent:
                 },
             },
         )
-        
+
         assert response.status_code == 201
         data = response.json()
         assert "adapter_id" in data
-    
+
     def test_generate_output(self, client):
         """Test generating output with adapter."""
         # First create adapter
@@ -37,10 +36,10 @@ class TestAdapterAgent:
                 },
             },
         )
-        
+
         if create_response.status_code == 201:
             adapter_id = create_response.json()["adapter_id"]
-            
+
             # Then generate output
             response = client.post(
                 "/evaluate/adapter/generate",
@@ -54,17 +53,17 @@ class TestAdapterAgent:
                     "model": "gpt-4o",
                 },
             )
-            
+
             # May fail if adapter can't connect, but should return proper error
             assert response.status_code in [200, 500]
             if response.status_code == 200:
                 data = response.json()
                 assert "output" in data
-    
+
     def test_list_adapters(self, client):
         """Test listing adapters."""
         response = client.get("/evaluate/adapter/list")
-        
+
         assert response.status_code == 200
         data = response.json()
         assert "cached" in data

@@ -13,6 +13,7 @@ logger = structlog.get_logger(__name__)
 # Try to import croniter
 try:
     import croniter
+
     CRONITER_AVAILABLE = True
 except ImportError:
     CRONITER_AVAILABLE = False
@@ -23,13 +24,13 @@ class EvaluationScheduler:
     """
     Scheduler for running evaluations on a schedule (cron-like).
     """
-    
+
     def __init__(self):
         """Initialize scheduler."""
         self.logger = structlog.get_logger(__name__)
         self._tasks: dict[str, asyncio.Task] = {}
         self._running = False
-    
+
     def schedule_evaluation(
         self,
         name: str,
@@ -40,7 +41,7 @@ class EvaluationScheduler:
     ) -> None:
         """
         Schedule an evaluation to run on a cron schedule.
-        
+
         Args:
             name: Schedule name
             cron_expression: Cron expression (e.g., "0 * * * *" for hourly)
@@ -49,11 +50,13 @@ class EvaluationScheduler:
             **kwargs: Additional parameters
         """
         if not CRONITER_AVAILABLE:
-            raise ImportError("croniter is required for scheduling. Install with: pip install croniter")
-        
+            raise ImportError(
+                "croniter is required for scheduling. Install with: pip install croniter"
+            )
+
         if name in self._tasks:
             raise ValueError(f"Schedule '{name}' already exists")
-        
+
         # Create scheduled task
         async def scheduled_task():
             while self._running:
@@ -63,16 +66,16 @@ class EvaluationScheduler:
                     cron = croniter(cron_expression, now)
                     next_run = cron.get_next(datetime)
                     wait_seconds = (next_run - now).total_seconds()
-                    
+
                     self.logger.info(
                         "Scheduled evaluation",
                         name=name,
                         next_run=next_run.isoformat(),
                         wait_seconds=wait_seconds,
                     )
-                    
+
                     await asyncio.sleep(wait_seconds)
-                    
+
                     # Run evaluation
                     self.logger.info("Running scheduled evaluation", name=name)
                     await evaluator.evaluate_traces(filters=filters, **kwargs)
@@ -82,16 +85,16 @@ class EvaluationScheduler:
                         name=name,
                         error=str(e),
                     )
-        
+
         task = asyncio.create_task(scheduled_task())
         self._tasks[name] = task
         self.logger.info("Scheduled evaluation", name=name, cron=cron_expression)
-    
+
     def start(self) -> None:
         """Start scheduler."""
         self._running = True
         self.logger.info("Evaluation scheduler started")
-    
+
     def stop(self) -> None:
         """Stop scheduler and cancel all tasks."""
         self._running = False
@@ -99,7 +102,7 @@ class EvaluationScheduler:
             task.cancel()
         self._tasks.clear()
         self.logger.info("Evaluation scheduler stopped")
-    
+
     def remove_schedule(self, name: str) -> None:
         """Remove a scheduled evaluation."""
         if name in self._tasks:

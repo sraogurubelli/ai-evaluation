@@ -10,21 +10,21 @@ from aieval.core.types import DatasetItem
 def load_jsonl_dataset(path: str | Path) -> list[DatasetItem]:
     """
     Load dataset from JSONL file.
-    
+
     Each line must be a valid JSON object matching the DatasetItem schema.
-    
+
     Args:
         path: Path to .jsonl file
-        
+
     Returns:
         List of DatasetItem objects
-        
+
     Raises:
         ValueError: If any line fails to parse or validate
     """
     path = Path(path)
     items = []
-    
+
     with path.open(encoding="utf-8") as f:
         for line_num, line in enumerate(f, 1):
             line = line.strip()
@@ -35,7 +35,7 @@ def load_jsonl_dataset(path: str | Path) -> list[DatasetItem]:
                 items.append(_dict_to_dataset_item(data))
             except Exception as e:
                 raise ValueError(f"Error parsing line {line_num}: {e}") from e
-    
+
     return items
 
 

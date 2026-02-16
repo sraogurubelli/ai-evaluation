@@ -14,10 +14,10 @@ from aieval.sinks.csv import CSVSink
 
 
 class TestCreateDevOpsEval:
-    """Tests for create_devops_experiment."""
+    """Tests for create_devops_eval."""
 
-    def test_create_experiment_basic(self, tmp_path):
-        """Test creating DevOps experiment."""
+    def test_create_eval_basic(self, tmp_path):
+        """Test creating DevOps eval."""
         datasets_dir = tmp_path / "datasets"
         datasets_dir.mkdir()
 
@@ -43,12 +43,12 @@ class TestCreateDevOpsEval:
             operation_type="create",
         )
 
-        assert experiment is not None
-        assert len(experiment.dataset) == 1
-        assert len(experiment.scorers) == 3  # v3, v2, v1
+        assert eval_ is not None
+        assert len(eval_.dataset) == 1
+        assert len(eval_.scorers) == 3  # v3, v2, v1
 
-    def test_create_experiment_custom_versions(self, tmp_path):
-        """Test creating experiment with custom DeepDiff versions."""
+    def test_create_eval_custom_versions(self, tmp_path):
+        """Test creating eval with custom DeepDiff versions."""
         datasets_dir = tmp_path / "datasets"
         datasets_dir.mkdir()
 
@@ -63,8 +63,8 @@ class TestCreateDevOpsEval:
             deep_diff_versions=["v3"],
         )
 
-        assert len(experiment.scorers) == 1
-        assert experiment.scorers[0].version == "v3"
+        assert len(eval_.scorers) == 1
+        assert eval_.scorers[0].version == "v3"
 
 
 class TestCompareCSVResults:
@@ -75,17 +75,9 @@ class TestCompareCSVResults:
         csv1 = tmp_path / "results1.csv"
         csv2 = tmp_path / "results2.csv"
 
-        csv1.write_text(
-            "test_id,deep_diff_v1\n"
-            "test-001,0.9\n"
-            "test-002,0.8\n"
-        )
+        csv1.write_text("test_id,deep_diff_v1\ntest-001,0.9\ntest-002,0.8\n")
 
-        csv2.write_text(
-            "test_id,deep_diff_v1\n"
-            "test-001,0.9\n"
-            "test-002,0.8\n"
-        )
+        csv2.write_text("test_id,deep_diff_v1\ntest-001,0.9\ntest-002,0.8\n")
 
         comparison = compare_csv_results(csv1, csv2)
 
@@ -99,15 +91,9 @@ class TestCompareCSVResults:
         csv1 = tmp_path / "results1.csv"
         csv2 = tmp_path / "results2.csv"
 
-        csv1.write_text(
-            "test_id,deep_diff_v1\n"
-            "test-001,0.9\n"
-        )
+        csv1.write_text("test_id,deep_diff_v1\ntest-001,0.9\n")
 
-        csv2.write_text(
-            "test_id,deep_diff_v1\n"
-            "test-001,0.7\n"
-        )
+        csv2.write_text("test_id,deep_diff_v1\ntest-001,0.7\n")
 
         comparison = compare_csv_results(csv1, csv2, tolerance=0.1)
 
@@ -131,7 +117,7 @@ class TestCreateDevOpsSinks:
         """Test creating sinks with defaults."""
         sinks = create_devops_sinks(
             output_dir=str(tmp_path),
-            experiment_name="test_experiment",
+            eval_name="test_eval",
         )
 
         assert len(sinks) == 2  # Stdout + CSV
@@ -142,7 +128,7 @@ class TestCreateDevOpsSinks:
         """Test creating sinks without stdout."""
         sinks = create_devops_sinks(
             output_dir=str(tmp_path),
-            experiment_name="test_experiment",
+            eval_name="test_eval",
             include_stdout=False,
         )
 

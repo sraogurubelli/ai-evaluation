@@ -21,12 +21,12 @@ logger = logging.getLogger(__name__)
 class EvaluationRunner:
     """
     Runner for executing evaluations.
-    
+
     Similar to ai-evals runner, but adapted for ai-evolution's architecture.
     Supports both:
     1. Direct evaluation (using Eval class)
     2. Registry-based evaluation (loading evaluators dynamically)
-    
+
     Example:
         runner = EvaluationRunner()
         result = await runner.run(
@@ -36,25 +36,25 @@ class EvaluationRunner:
             model="gpt-4o"
         )
     """
-    
+
     def __init__(self):
         """Initialize the evaluation runner."""
         self.logger = logging.getLogger(__name__)
-    
+
     async def run(
         self,
         dataset: list[DatasetItem],
         adapter: Adapter,
         scorers: list[Any] | None = None,
         model: str | None = None,
-        experiment_name: str = "evaluation",
+        eval_name: str = "evaluation",
         concurrency_limit: int = 5,
         sinks: list[Sink] | None = None,
         **kwargs: Any,
     ) -> Any:
         """
         Run an evaluation.
-        
+
         Args:
             dataset: List of dataset items to evaluate
             adapter: Adapter for generating outputs
@@ -64,22 +64,22 @@ class EvaluationRunner:
             concurrency_limit: Maximum concurrent evaluations
             sinks: List of sinks for output (defaults to StdoutSink)
             **kwargs: Additional arguments passed to adapter/scorers
-        
+
         Returns:
             EvalResult result
         """
         sinks = sinks or [StdoutSink()]
-        
-        # Create experiment
+
+        # Create eval
         if scorers is None:
             raise ValueError("scorers must be provided for direct evaluation")
-        
+
         eval_ = Eval(
-            name=experiment_name,
+            name=eval_name,
             dataset=dataset,
             scorers=scorers,
         )
-        
+
         # Run eval
         run_result = await eval_.run(
             adapter=adapter,
@@ -87,14 +87,14 @@ class EvaluationRunner:
             concurrency_limit=concurrency_limit,
             **kwargs,
         )
-        
+
         # Emit to sinks
         for sink in sinks:
             sink.emit_run(run_result)
             sink.flush()
-        
+
         return run_result
-    
+
     async def run_from_registry(
         self,
         registry_path: str | Path,
@@ -110,9 +110,9 @@ class EvaluationRunner:
     ) -> list[Score]:
         """
         Run evaluation from registry (ai-evals style).
-        
+
         This loads an evaluator dynamically from the registry and runs it.
-        
+
         Args:
             registry_path: Path to registry.yaml
             eval_id: ID of the eval to run (e.g., "groundedness.v1")
@@ -124,32 +124,32 @@ class EvaluationRunner:
             env: Environment (e.g., 'local', 'ci', 'prod')
             sinks: List of sinks for output
             **kwargs: Additional arguments
-        
+
         Returns:
             List of scores produced
         """
         from aieval.sdk.registry import load_registry
-        
+
         registry_path = Path(registry_path)
         sinks = sinks or [StdoutSink()]
-        
+
         # Load registry and find eval
         registry = load_registry(registry_path)
         entry = next((e for e in registry if e.eval_id == eval_id), None)
         if entry is None:
             available = [e.eval_id for e in registry]
             raise ValueError(f"Eval '{eval_id}' not found. Available: {available}")
-        
+
         # Check environment compatibility
         if entry.environments and env not in entry.environments:
             raise ValueError(
                 f"Eval '{eval_id}' not configured for environment '{env}'. "
                 f"Supported: {entry.environments}"
             )
-        
+
         # Load evaluator
         evaluate_fn = self._load_evaluator(registry_path, entry.evaluator)
-        
+
         # Check if outputs need to be generated
         items_without_output = [item for item in dataset if item.output is None]
         if items_without_output:
@@ -165,7 +165,7 @@ class EvaluationRunner:
                 except Exception as e:
                     self.logger.error(f"Failed to generate output for item {item.id}: {e}")
                     raise
-        
+
         # Run evaluation
         all_scores: list[Score] = []
         for item in dataset:
@@ -179,13 +179,14 @@ class EvaluationRunner:
                 agent_version=agent_version,
                 env=env,
             )
-            
+
             # Emit scores
             for score in scores:
                 # Convert ai-evals Score format to ai-evolution Score format if needed
                 if hasattr(score, "score_name"):
                     # ai-evals format: convert to ai-evolution format
                     from aieval.core.types import Score as EvolutionScore
+
                     evolution_score = EvolutionScore(
                         name=score.score_name,
                         value=score.value,
@@ -193,55 +194,58 @@ class EvaluationRunner:
                         comment=score.comment,
                         metadata=score.metadata.copy(),
                         trace_id=getattr(score, "trace_id", None) or item.metadata.get("trace_id"),
-                        observation_id=getattr(score, "observation_id", None) or item.metadata.get("observation_id"),
+                        observation_id=getattr(score, "observation_id", None)
+                        or item.metadata.get("observation_id"),
                     )
                     score = evolution_score
                 else:
                     if item.metadata.get("trace_id") and not getattr(score, "trace_id", None):
                         score.trace_id = item.metadata["trace_id"]
-                    if item.metadata.get("observation_id") and not getattr(score, "observation_id", None):
+                    if item.metadata.get("observation_id") and not getattr(
+                        score, "observation_id", None
+                    ):
                         score.observation_id = item.metadata["observation_id"]
-                
+
                 # Enrich with dataset_item_id if not already in metadata
                 if "dataset_item_id" not in score.metadata:
                     score.metadata["dataset_item_id"] = item.id
-                
+
                 all_scores.append(score)
                 for sink in sinks:
                     sink.emit(score)
-        
+
         # Flush all sinks
         for sink in sinks:
             sink.flush()
-        
+
         return all_scores
-    
+
     def _load_evaluator(self, registry_path: Path, evaluator_path: str) -> Callable:
         """
         Dynamically load an evaluator module.
-        
+
         Args:
             registry_path: Path to registry.yaml (used to resolve relative paths)
             evaluator_path: Relative path to evaluator module
-        
+
         Returns:
             The evaluate function from the module
-        
+
         Raises:
             ValueError: If evaluator cannot be loaded or doesn't have evaluate function
         """
         full_path = registry_path.parent / evaluator_path
-        
+
         spec = importlib.util.spec_from_file_location("evaluator", full_path)
         if spec is None or spec.loader is None:
             raise ValueError(f"Could not load evaluator from {full_path}")
-        
+
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
-        
+
         if not hasattr(module, "evaluate"):
             raise ValueError(f"Evaluator {full_path} must have an 'evaluate' function")
-        
+
         return module.evaluate
 
 

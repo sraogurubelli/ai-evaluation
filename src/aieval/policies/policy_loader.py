@@ -14,22 +14,22 @@ logger = logging.getLogger(__name__)
 
 class PolicyLoader:
     """Loads policies from YAML or JSON files."""
-    
+
     @staticmethod
     def load_from_file(file_path: str | Path) -> Policy:
         """
         Load policy from YAML or JSON file.
-        
+
         Args:
             file_path: Path to policy file
-            
+
         Returns:
             Policy object
         """
         path = Path(file_path)
         if not path.exists():
             raise FileNotFoundError(f"Policy file not found: {file_path}")
-        
+
         with open(path, "r", encoding="utf-8") as f:
             if path.suffix in [".yaml", ".yml"]:
                 data = yaml.safe_load(f)
@@ -43,17 +43,17 @@ class PolicyLoader:
                 except Exception:
                     f.seek(0)
                     data = json.load(f)
-        
+
         return PolicyLoader.load_from_dict(data)
-    
+
     @staticmethod
     def load_from_dict(data: dict[str, Any]) -> Policy:
         """
         Load policy from dictionary.
-        
+
         Args:
             data: Policy data dictionary
-            
+
         Returns:
             Policy object
         """
@@ -62,23 +62,23 @@ class PolicyLoader:
         for rule_data in data.get("rules", []):
             rule = RuleConfig(**rule_data)
             rules.append(rule)
-        
+
         return Policy(
             name=data.get("name", "unnamed"),
             version=data.get("version", "v1"),
             description=data.get("description"),
             rules=rules,
         )
-    
+
     @staticmethod
     def load_from_string(content: str, format: str = "yaml") -> Policy:
         """
         Load policy from string content.
-        
+
         Args:
             content: Policy content as string
             format: Format ("yaml" or "json")
-            
+
         Returns:
             Policy object
         """
@@ -88,5 +88,5 @@ class PolicyLoader:
             data = json.loads(content)
         else:
             raise ValueError(f"Unsupported format: {format}")
-        
+
         return PolicyLoader.load_from_dict(data)

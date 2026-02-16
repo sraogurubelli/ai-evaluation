@@ -21,17 +21,17 @@ _tracer_provider: TracerProvider | None = None
 def initialize_tracing(app: Any | None = None) -> None:
     """Initialize OpenTelemetry tracing."""
     settings = get_settings()
-    
+
     if not settings.monitoring.opentelemetry_enabled:
         logger.info("OpenTelemetry tracing disabled")
         return
-    
+
     global _tracer_provider
-    
+
     if _tracer_provider is not None:
         logger.info("OpenTelemetry tracing already initialized")
         return
-    
+
     try:
         # Create resource
         resource = Resource.create(
@@ -40,10 +40,10 @@ def initialize_tracing(app: Any | None = None) -> None:
                 "service.version": "0.1.0",
             }
         )
-        
+
         # Create tracer provider
         _tracer_provider = TracerProvider(resource=resource)
-        
+
         # Add span processor
         if settings.monitoring.opentelemetry_endpoint:
             exporter = OTLPSpanExporter(
@@ -54,21 +54,22 @@ def initialize_tracing(app: Any | None = None) -> None:
         else:
             # Use console exporter for development
             from opentelemetry.sdk.trace.export import ConsoleSpanExporter
+
             _tracer_provider.add_span_processor(BatchSpanProcessor(ConsoleSpanExporter()))
-        
+
         # Set global tracer provider
         trace.set_tracer_provider(_tracer_provider)
-        
+
         # Instrument FastAPI
         if app is not None:
             FastAPIInstrumentor.instrument_app(app)
-        
+
         # Instrument SQLAlchemy
         try:
             SQLAlchemyInstrumentor().instrument()
         except Exception as e:
             logger.warning(f"Failed to instrument SQLAlchemy: {e}")
-        
+
         logger.info(
             "OpenTelemetry tracing initialized",
             service_name=settings.monitoring.opentelemetry_service_name,

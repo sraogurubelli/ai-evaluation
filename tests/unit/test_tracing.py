@@ -54,7 +54,9 @@ class TestLangfuseTracingAdapter:
     def test_get_trace_success(self, mock_trace_response):
         """get_trace returns Trace when API returns data."""
         adapter = LangfuseTracingAdapter(secret_key="sk", public_key="pk", host="http://localhost")
-        adapter._client.api.trace.get = lambda tid: mock_trace_response if tid == "trace-123" else None
+        adapter._client.api.trace.get = lambda tid: (
+            mock_trace_response if tid == "trace-123" else None
+        )
 
         trace = adapter.get_trace("trace-123")
         assert trace is not None
@@ -77,7 +79,9 @@ class TestLangfuseTracingAdapter:
     def test_get_cost_data_from_trace_level(self, mock_trace_response):
         """get_cost_data extracts cost from trace-level usage and total_cost."""
         adapter = LangfuseTracingAdapter(secret_key="sk", public_key="pk", host="http://localhost")
-        adapter._client.api.trace.get = lambda tid: mock_trace_response if tid == "trace-123" else None
+        adapter._client.api.trace.get = lambda tid: (
+            mock_trace_response if tid == "trace-123" else None
+        )
 
         cost = adapter.get_cost_data("trace-123")
         assert cost is not None

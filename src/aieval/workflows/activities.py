@@ -69,8 +69,8 @@ async def load_dataset_activity(config: dict[str, Any]) -> list[dict[str, Any]]:
         raise
 
 
-@activity.defn(name="run_experiment")
-async def run_experiment_activity(
+@activity.defn(name="run_eval")
+async def run_eval_activity(
     dataset_items: list[dict[str, Any]],
     scorers_config: list[dict[str, Any]],
     adapter_config: dict[str, Any],
@@ -78,7 +78,7 @@ async def run_experiment_activity(
     concurrency_limit: int = 5,
 ) -> dict[str, Any]:
     """
-    Run experiment with given configuration.
+    Run eval with given configuration.
 
     Args:
         dataset_items: Dataset items (as dicts)
@@ -90,7 +90,7 @@ async def run_experiment_activity(
     Returns:
         EvalResult as dictionary
     """
-    activity.logger.info(f"Running experiment with {len(dataset_items)} items")
+    activity.logger.info(f"Running eval with {len(dataset_items)} items")
 
     # Convert dataset items back from dicts
     dataset = [
@@ -181,7 +181,7 @@ async def emit_results_activity(
     sinks_config: list[dict[str, Any]],
 ) -> None:
     """
-    Emit experiment results to sinks.
+    Emit eval results to sinks.
 
     Args:
         result: EvalResult as dictionary

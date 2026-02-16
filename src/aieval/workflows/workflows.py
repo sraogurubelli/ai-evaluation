@@ -13,7 +13,7 @@ from temporalio.common import RetryPolicy as TemporalRetryPolicy
 
 from aieval.workflows.activities import (
     load_dataset_activity,
-    run_experiment_activity,
+    run_eval_activity,
     emit_results_activity,
 )
 
@@ -28,35 +28,35 @@ WORKFLOW_RETRY_POLICY = TemporalRetryPolicy(
 )
 
 
-@workflow.defn(name="experiment_workflow")
-class ExperimentWorkflow:
+@workflow.defn(name="eval_workflow")
+class EvalWorkflow:
     """
-    Workflow for running a single experiment.
-    
+    Workflow for running a single eval.
+
     This workflow orchestrates:
     1. Loading the dataset
-    2. Running the experiment
+    2. Running the eval
     3. Emitting results to sinks
     """
-    
+
     @workflow.run
     async def run(
         self,
-        experiment_name: str,
+        eval_name: str,
         config: dict[str, Any],
     ) -> dict[str, Any]:
         """
-        Run experiment workflow.
-        
+        Run eval workflow.
+
         Args:
-            experiment_name: Name of the experiment
-            config: Experiment configuration
-            
+            eval_name: Name of the eval
+            config: Eval configuration
+
         Returns:
-            ExperimentRun as dictionary
+            EvalResult as dictionary
         """
-        workflow.logger.info(f"Starting experiment workflow: {experiment_name}")
-        
+        workflow.logger.info(f"Starting eval workflow: {eval_name}")
+
         # Step 1: Load dataset
         dataset_config = config.get("dataset", {})
         dataset_items = await workflow.execute_activity(
@@ -68,16 +68,16 @@ class ExperimentWorkflow:
                 maximum_attempts=3,
             ),
         )
-        
+
         workflow.logger.info(f"Loaded {len(dataset_items)} dataset items")
-        
-        # Step 2: Run experiment
+
+        # Step 2: Run eval
         execution_config = config.get("execution", {})
         models = config.get("models", [None])
         model = models[0] if models else None
-        
+
         result = await workflow.execute_activity(
-            run_experiment_activity,
+            run_eval_activity,
             args=[
                 dataset_items,
                 config.get("scorers", []),
@@ -85,7 +85,7 @@ class ExperimentWorkflow:
                 model,
                 execution_config.get("concurrency_limit", 5),
             ],
-            start_to_close_timeout=timedelta(hours=2),  # Long timeout for large experiments
+            start_to_close_timeout=timedelta(hours=2),  # Long timeout for large evals
             retry_policy=TemporalRetryPolicy(
                 initial_interval=timedelta(seconds=5),
                 backoff_coefficient=2.0,
@@ -93,9 +93,9 @@ class ExperimentWorkflow:
                 maximum_attempts=3,
             ),
         )
-        
-        workflow.logger.info(f"Experiment completed: {result.get('run_id')}")
-        
+
+        workflow.logger.info(f"Eval completed: {result.get('run_id')}")
+
         # Step 3: Emit results (optional, don't fail workflow if this fails)
         sinks_config = config.get("sinks", [])
         if sinks_config:
@@ -112,60 +112,60 @@ class ExperimentWorkflow:
             except Exception as e:
                 workflow.logger.warning(f"Failed to emit results: {e}")
                 # Don't fail the workflow if emitting fails
-        
+
         return result
 
 
 @workflow.defn(name="multi_model_workflow")
 class MultiModelWorkflow:
     """
-    Workflow for running experiments across multiple models.
-    
-    This workflow runs the same experiment with different models
+    Workflow for running evals across multiple models.
+
+    This workflow runs the same eval with different models
     and collects all results.
     """
-    
+
     @workflow.run
     async def run(
         self,
-        experiment_name: str,
+        eval_name: str,
         config: dict[str, Any],
     ) -> list[dict[str, Any]]:
         """
-        Run experiment workflow for multiple models.
-        
+        Run eval workflow for multiple models.
+
         Args:
-            experiment_name: Name of the experiment
-            config: Experiment configuration
-            
+            eval_name: Name of the eval
+            config: Eval configuration
+
         Returns:
-            List of ExperimentRun dictionaries (one per model)
+            List of EvalResult dictionaries (one per model)
         """
-        workflow.logger.info(f"Starting multi-model workflow: {experiment_name}")
-        
+        workflow.logger.info(f"Starting multi-model workflow: {eval_name}")
+
         models = config.get("models", [None])
         if not models:
             models = [None]
-        
+
         results = []
-        
-        # Run experiment for each model sequentially
+
+        # Run eval for each model sequentially
         # (Could be parallelized with workflow.execute_activity for each)
         for model in models:
-            workflow.logger.info(f"Running experiment with model: {model or 'default'}")
-            
+            workflow.logger.info(f"Running eval with model: {model or 'default'}")
+
             # Create single-model config
             single_model_config = config.copy()
             single_model_config["models"] = [model]
-            
-            # Run experiment workflow as child workflow
+
+            # Run eval workflow as child workflow
             child_result = await workflow.execute_child_workflow(
-                ExperimentWorkflow.run,
-                args=[experiment_name, single_model_config],
-                id=f"{experiment_name}-{model or 'default'}",
+                EvalWorkflow.run,
+                args=[eval_name, single_model_config],
+                id=f"{eval_name}-{model or 'default'}",
             )
-            
+
             results.append(child_result)
-        
-        workflow.logger.info(f"Completed {len(results)} model experiments")
+
+        workflow.logger.info(f"Completed {len(results)} model evals")
         return results

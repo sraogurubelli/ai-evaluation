@@ -11,7 +11,7 @@ logger = structlog.get_logger(__name__)
 @dataclass
 class AgentStep:
     """Single step in an agent trace."""
-    
+
     step_number: int
     action: str  # "llm_call", "tool_call", "reasoning", etc.
     input: dict[str, Any]
@@ -25,7 +25,7 @@ class AgentStep:
 @dataclass
 class ToolCall:
     """Tool call in an agent trace."""
-    
+
     id: str
     tool_name: str
     parameters: dict[str, Any]
@@ -39,14 +39,14 @@ class ToolCall:
 @dataclass
 class AgentTrace:
     """Complete agent trace."""
-    
+
     trace_id: str
     agent_name: str
     steps: list[AgentStep]
     tool_calls: list[ToolCall]
     metadata: dict[str, Any] = field(default_factory=dict)
     created_at: datetime = field(default_factory=datetime.now)
-    
+
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
@@ -86,25 +86,25 @@ class AgentTrace:
 def parse_langgraph_trace(trace_data: dict[str, Any]) -> AgentTrace:
     """
     Parse LangGraph trace format.
-    
+
     Args:
         trace_data: LangGraph trace data
-        
+
     Returns:
         AgentTrace object
     """
     trace_id = trace_data.get("trace_id") or trace_data.get("id", "")
     agent_name = trace_data.get("agent_name", "langgraph_agent")
-    
+
     steps = []
     tool_calls = []
-    
+
     # Parse LangGraph steps
     langgraph_steps = trace_data.get("steps", []) or trace_data.get("events", [])
-    
+
     for i, step_data in enumerate(langgraph_steps):
         step_type = step_data.get("type") or step_data.get("event_type", "")
-        
+
         if step_type in ("tool", "tool_call"):
             # Tool call
             tool_call = ToolCall(
@@ -113,10 +113,12 @@ def parse_langgraph_trace(trace_data: dict[str, Any]) -> AgentTrace:
                 parameters=step_data.get("parameters", {}) or step_data.get("input", {}),
                 result=step_data.get("result") or step_data.get("output"),
                 metadata=step_data.get("metadata", {}),
-                timestamp=datetime.fromisoformat(step_data["timestamp"]) if step_data.get("timestamp") else None,
+                timestamp=datetime.fromisoformat(step_data["timestamp"])
+                if step_data.get("timestamp")
+                else None,
             )
             tool_calls.append(tool_call)
-        
+
         # Create step
         step = AgentStep(
             step_number=i + 1,
@@ -124,10 +126,12 @@ def parse_langgraph_trace(trace_data: dict[str, Any]) -> AgentTrace:
             input=step_data.get("input", {}) or step_data.get("data", {}),
             output=step_data.get("output") or step_data.get("result"),
             metadata=step_data.get("metadata", {}),
-            timestamp=datetime.fromisoformat(step_data["timestamp"]) if step_data.get("timestamp") else None,
+            timestamp=datetime.fromisoformat(step_data["timestamp"])
+            if step_data.get("timestamp")
+            else None,
         )
         steps.append(step)
-    
+
     return AgentTrace(
         trace_id=trace_id,
         agent_name=agent_name,
@@ -140,26 +144,26 @@ def parse_langgraph_trace(trace_data: dict[str, Any]) -> AgentTrace:
 def parse_openai_agents_trace(trace_data: dict[str, Any]) -> AgentTrace:
     """
     Parse OpenAI Agents SDK trace format.
-    
+
     Args:
         trace_data: OpenAI Agents SDK trace data
-        
+
     Returns:
         AgentTrace object
     """
     trace_id = trace_data.get("thread_id") or trace_data.get("id", "")
     agent_name = trace_data.get("assistant_id", "openai_agent")
-    
+
     steps = []
     tool_calls = []
-    
+
     # Parse OpenAI messages/steps
     messages = trace_data.get("messages", []) or trace_data.get("steps", [])
-    
+
     for i, msg in enumerate(messages):
         role = msg.get("role", "")
         content = msg.get("content", "")
-        
+
         # Check for tool calls
         if msg.get("tool_calls"):
             for tc in msg["tool_calls"]:
@@ -171,7 +175,7 @@ def parse_openai_agents_trace(trace_data: dict[str, Any]) -> AgentTrace:
                     metadata={"role": role},
                 )
                 tool_calls.append(tool_call)
-        
+
         # Create step
         step = AgentStep(
             step_number=i + 1,
@@ -181,7 +185,7 @@ def parse_openai_agents_trace(trace_data: dict[str, Any]) -> AgentTrace:
             metadata=msg.get("metadata", {}),
         )
         steps.append(step)
-    
+
     return AgentTrace(
         trace_id=trace_id,
         agent_name=agent_name,
@@ -194,25 +198,25 @@ def parse_openai_agents_trace(trace_data: dict[str, Any]) -> AgentTrace:
 def parse_pydantic_ai_trace(trace_data: dict[str, Any]) -> AgentTrace:
     """
     Parse PydanticAI trace format.
-    
+
     Args:
         trace_data: PydanticAI trace data
-        
+
     Returns:
         AgentTrace object
     """
     trace_id = trace_data.get("trace_id") or trace_data.get("id", "")
     agent_name = trace_data.get("agent_name", "pydantic_ai_agent")
-    
+
     steps = []
     tool_calls = []
-    
+
     # Parse PydanticAI steps
     pydantic_steps = trace_data.get("steps", []) or trace_data.get("events", [])
-    
+
     for i, step_data in enumerate(pydantic_steps):
         step_type = step_data.get("type", "step")
-        
+
         # Check for tool calls
         if step_data.get("tool_calls"):
             for tc in step_data["tool_calls"]:
@@ -224,7 +228,7 @@ def parse_pydantic_ai_trace(trace_data: dict[str, Any]) -> AgentTrace:
                     metadata=tc.get("metadata", {}),
                 )
                 tool_calls.append(tool_call)
-        
+
         # Create step
         step = AgentStep(
             step_number=i + 1,
@@ -234,7 +238,7 @@ def parse_pydantic_ai_trace(trace_data: dict[str, Any]) -> AgentTrace:
             metadata=step_data.get("metadata", {}),
         )
         steps.append(step)
-    
+
     return AgentTrace(
         trace_id=trace_id,
         agent_name=agent_name,

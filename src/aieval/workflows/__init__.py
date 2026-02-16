@@ -2,16 +2,16 @@
 
 from aieval.workflows.activities import (
     load_dataset_activity,
-    run_experiment_activity,
+    run_eval_activity,
     score_item_activity,
     emit_results_activity,
 )
 from aieval.workflows.workflows import (
-    ExperimentWorkflow,
+    EvalWorkflow,
     MultiModelWorkflow,
 )
 from aieval.workflows.client import (
-    start_experiment_workflow,
+    start_eval_workflow,
     get_workflow_status,
     get_workflow_result,
 )
@@ -19,14 +19,14 @@ from aieval.workflows.client import (
 __all__ = [
     # Activities
     "load_dataset_activity",
-    "run_experiment_activity",
+    "run_eval_activity",
     "score_item_activity",
     "emit_results_activity",
     # Workflows
-    "ExperimentWorkflow",
+    "EvalWorkflow",
     "MultiModelWorkflow",
     # Client
-    "start_experiment_workflow",
+    "start_eval_workflow",
     "get_workflow_status",
     "get_workflow_result",
 ]

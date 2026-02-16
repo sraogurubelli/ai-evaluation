@@ -14,16 +14,16 @@ logger = structlog.get_logger(__name__)
 def load_tools_from_entry_points(group: str = "aieval.tools") -> None:
     """
     Load tools from entry points.
-    
+
     Entry points should be defined in pyproject.toml or setup.py:
     [project.entry-points."aieval.tools"]
     my_tool = "mypackage.tools:MyTool"
-    
+
     Args:
         group: Entry point group name (default: "aieval.tools")
     """
     registry = get_tool_registry()
-    
+
     try:
         entry_points = importlib.metadata.entry_points(group=group)
         for entry_point in entry_points:
@@ -32,7 +32,11 @@ def load_tools_from_entry_points(group: str = "aieval.tools") -> None:
                 if issubclass(tool_class, Tool):
                     tool_instance = tool_class()
                     registry.register(tool_instance)
-                    logger.info("Loaded tool from entry point", tool_name=tool_instance.name, entry_point=entry_point.name)
+                    logger.info(
+                        "Loaded tool from entry point",
+                        tool_name=tool_instance.name,
+                        entry_point=entry_point.name,
+                    )
                 else:
                     logger.warning(
                         "Entry point does not provide a Tool subclass",
@@ -52,16 +56,16 @@ def load_tools_from_entry_points(group: str = "aieval.tools") -> None:
 def load_skills_from_entry_points(group: str = "aieval.skills") -> None:
     """
     Load skills from entry points.
-    
+
     Entry points should be defined in pyproject.toml or setup.py:
     [project.entry-points."aieval.skills"]
     my_skill = "mypackage.skills:MySkill"
-    
+
     Args:
         group: Entry point group name (default: "aieval.skills")
     """
     registry = get_skill_registry()
-    
+
     try:
         entry_points = importlib.metadata.entry_points(group=group)
         for entry_point in entry_points:
@@ -70,7 +74,11 @@ def load_skills_from_entry_points(group: str = "aieval.skills") -> None:
                 if issubclass(skill_class, Skill):
                     skill_instance = skill_class()
                     registry.register(skill_instance)
-                    logger.info("Loaded skill from entry point", skill_name=skill_instance.name, entry_point=entry_point.name)
+                    logger.info(
+                        "Loaded skill from entry point",
+                        skill_name=skill_instance.name,
+                        entry_point=entry_point.name,
+                    )
                 else:
                     logger.warning(
                         "Entry point does not provide a Skill subclass",

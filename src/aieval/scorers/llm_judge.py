@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 class LLMJudgeScorer(Scorer):
     """Scorer that uses LLM to evaluate outputs."""
-    
+
     def __init__(
         self,
         name: str = "llm_judge",
@@ -26,7 +26,7 @@ class LLMJudgeScorer(Scorer):
     ):
         """
         Initialize LLM judge scorer.
-        
+
         Args:
             name: Score name
             eval_id: Evaluation ID
@@ -39,7 +39,7 @@ class LLMJudgeScorer(Scorer):
         self.rubric = rubric or "Evaluate the quality of the response."
         self.api_key = api_key
         self.provider = self._determine_provider(model)
-    
+
     def _determine_provider(self, model: str) -> str:
         """Determine provider from model name."""
         model_lower = model.lower()
@@ -50,7 +50,7 @@ class LLMJudgeScorer(Scorer):
         else:
             # Default to OpenAI
             return "openai"
-    
+
     def _build_prompt(
         self,
         generated: Any,
@@ -65,53 +65,52 @@ class LLMJudgeScorer(Scorer):
                 input_context = metadata["input"].get("prompt", str(metadata["input"]))
             else:
                 input_context = str(metadata["input"])
-        
+
         # Format the prompt
         prompt = f"""You are an expert evaluator. {self.rubric}
 
 """
-        
+
         if input_context:
             prompt += f"""Input/Context:
 {input_context}
 
 """
-        
+
         prompt += f"""Generated Output:
 {str(generated)}
 
 """
-        
+
         if expected:
             prompt += f"""Expected Output (for reference):
 {str(expected)}
 
 """
-        
+
         prompt += """Evaluate the generated output based on the rubric above. Respond with a JSON object in the following format:
 {
     "score": <float between 0 and 1, where 1 is excellent and 0 is poor>,
     "reason": "<brief explanation of your evaluation>"
 }"""
-        
+
         return prompt
-    
+
     async def _call_openai(self, prompt: str) -> str:
         """Call OpenAI API."""
         try:
             from openai import OpenAI
         except ImportError:
             raise ImportError(
-                "OpenAI package required for LLM judge scorer. "
-                "Install with: pip install openai"
+                "OpenAI package required for LLM judge scorer. Install with: pip install openai"
             )
-        
+
         api_key = self.api_key or os.getenv("OPENAI_API_KEY")
         if not api_key:
             raise ValueError("OPENAI_API_KEY environment variable not set and no api_key provided")
-        
+
         client = OpenAI(api_key=api_key)
-        
+
         try:
             # Use structured output for better reliability
             response = client.chat.completions.create(
@@ -126,16 +125,16 @@ class LLMJudgeScorer(Scorer):
                 response_format={"type": "json_object"},  # Force JSON output
                 temperature=0.0,  # Deterministic scoring
             )
-            
+
             content = response.choices[0].message.content
             if not content:
                 raise ValueError("Empty response from OpenAI")
-            
+
             return content
         except Exception as e:
             logger.error(f"OpenAI API call failed: {e}")
             raise RuntimeError(f"OpenAI API call failed: {e}") from e
-    
+
     async def _call_anthropic(self, prompt: str) -> str:
         """Call Anthropic API."""
         try:
@@ -145,13 +144,15 @@ class LLMJudgeScorer(Scorer):
                 "Anthropic package required for Anthropic models. "
                 "Install with: pip install anthropic"
             )
-        
+
         api_key = self.api_key or os.getenv("ANTHROPIC_API_KEY")
         if not api_key:
-            raise ValueError("ANTHROPIC_API_KEY environment variable not set and no api_key provided")
-        
+            raise ValueError(
+                "ANTHROPIC_API_KEY environment variable not set and no api_key provided"
+            )
+
         client = Anthropic(api_key=api_key)
-        
+
         try:
             # Anthropic doesn't support JSON mode directly, but we can request it in the prompt
             response = client.messages.create(
@@ -165,7 +166,7 @@ class LLMJudgeScorer(Scorer):
                     }
                 ],
             )
-            
+
             # Extract text from response
             if response.content and len(response.content) > 0:
                 content = response.content[0].text
@@ -177,7 +178,7 @@ class LLMJudgeScorer(Scorer):
         except Exception as e:
             logger.error(f"Anthropic API call failed: {e}")
             raise RuntimeError(f"Anthropic API call failed: {e}") from e
-    
+
     async def _call_llm(self, prompt: str) -> str:
         """Call LLM API based on provider."""
         if self.provider == "openai":
@@ -186,11 +187,11 @@ class LLMJudgeScorer(Scorer):
             return await self._call_anthropic(prompt)
         else:
             raise ValueError(f"Unsupported provider: {self.provider}")
-    
+
     def _parse_response(self, response: str) -> tuple[float, str]:
         """
         Parse LLM response to extract score and reason.
-        
+
         Returns:
             Tuple of (score, reason)
         """
@@ -205,29 +206,29 @@ class LLMJudgeScorer(Scorer):
             if cleaned.endswith("```"):
                 cleaned = cleaned[:-3]
             cleaned = cleaned.strip()
-            
+
             result = json.loads(cleaned)
             score = float(result.get("score", 0.0))
             reason = result.get("reason", "No reason provided")
-            
+
             # Clamp score to [0, 1]
             score = max(0.0, min(1.0, score))
-            
+
             return score, reason
         except (json.JSONDecodeError, ValueError, KeyError) as e:
             logger.warning(f"Failed to parse JSON response: {e}. Response: {response[:200]}")
-            
+
             # Fallback: try to extract score from text
             # Look for numbers between 0 and 1
             score_patterns = [
                 r'"score"\s*:\s*([0-9]*\.?[0-9]+)',  # JSON-like: "score": 0.85
                 r'score["\']?\s*[:=]\s*([0-9]*\.?[0-9]+)',  # score: 0.85 or score=0.85
-                r'\b(0\.\d+|1\.0|1)\b',  # Any float between 0 and 1
+                r"\b(0\.\d+|1\.0|1)\b",  # Any float between 0 and 1
             ]
-            
+
             score = 0.0
             reason = response[:200]  # Use first 200 chars as reason
-            
+
             for pattern in score_patterns:
                 matches = re.findall(pattern, response, re.IGNORECASE)
                 if matches:
@@ -237,9 +238,9 @@ class LLMJudgeScorer(Scorer):
                         break
                     except ValueError:
                         continue
-            
+
             return score, reason
-    
+
     def score(
         self,
         generated: Any,
@@ -248,18 +249,18 @@ class LLMJudgeScorer(Scorer):
     ) -> Score:
         """
         Score using LLM-as-judge.
-        
+
         Args:
             generated: Generated output to evaluate
             expected: Expected output (for reference, optional)
             metadata: Additional metadata (may contain 'input' for context)
-        
+
         Returns:
             Score object with evaluation result
         """
         # Build prompt
         prompt = self._build_prompt(generated, expected, metadata)
-        
+
         # Call LLM (sync wrapper for async)
         try:
             response = asyncio.run(self._call_llm(prompt))
@@ -291,7 +292,7 @@ class LLMJudgeScorer(Scorer):
                 comment=f"LLM judge error: {e}",
                 metadata={"error": str(e), "provider": self.provider},
             )
-        
+
         # Parse response
         try:
             score_value, reason = self._parse_response(response)
@@ -308,7 +309,7 @@ class LLMJudgeScorer(Scorer):
                     "provider": self.provider,
                 },
             )
-        
+
         return Score(
             name=self.name,
             value=score_value,

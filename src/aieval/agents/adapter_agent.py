@@ -10,7 +10,7 @@ from aieval.adapters.registry import get_registry
 
 class AdapterAgent(BaseEvaluationAgent):
     """Agent for AI system integration (ML Infra, Langfuse, etc.)."""
-    
+
     def __init__(self, config: dict[str, Any] | None = None):
         """Initialize adapter agent."""
         super().__init__(config)
@@ -18,20 +18,20 @@ class AdapterAgent(BaseEvaluationAgent):
         self._registry = get_registry()
         # Discover entry points on initialization
         self._registry.discover_entry_points()
-    
+
     async def run(self, query: str, **kwargs: Any) -> Any:
         """
         Run adapter operation based on query.
-        
+
         Supported queries:
         - "create": Create an adapter
         - "generate": Generate output using adapter
         - "list": List available adapters
-        
+
         Args:
             query: Operation to perform
             **kwargs: Operation-specific parameters
-            
+
         Returns:
             Operation result
         """
@@ -43,7 +43,7 @@ class AdapterAgent(BaseEvaluationAgent):
             return await self.list_adapters(**kwargs)
         else:
             raise ValueError(f"Unknown query: {query}")
-    
+
     async def create_adapter(
         self,
         adapter_type: str,
@@ -52,40 +52,40 @@ class AdapterAgent(BaseEvaluationAgent):
     ) -> Adapter:
         """
         Create an adapter using the registry system.
-        
+
         Args:
             adapter_type: Type of adapter (e.g., "http", "sse_streaming", "langfuse", or custom)
             name: Optional name for the adapter (for caching)
             **kwargs: Adapter-specific configuration
-            
+
         Returns:
             Created adapter instance
-            
+
         Raises:
             ValueError: If adapter type is not registered
         """
         self.logger.info(f"Creating adapter of type: {adapter_type}")
-        
+
         adapter_id = name or f"{adapter_type}_{id(kwargs)}"
-        
+
         # Check cache
         if adapter_id in self._adapters:
             self.logger.info(f"Returning cached adapter: {adapter_id}")
             return self._adapters[adapter_id]
-        
+
         # Create adapter using registry
         try:
             adapter = self._registry.create(adapter_type, **kwargs)
         except ValueError as e:
             self.logger.error(f"Failed to create adapter {adapter_type}: {e}")
             raise
-        
+
         # Cache adapter
         self._adapters[adapter_id] = adapter
-        
+
         self.logger.info(f"Created adapter: {adapter_type}")
         return adapter
-    
+
     def register_adapter(
         self,
         adapter_type: str,
@@ -96,7 +96,7 @@ class AdapterAgent(BaseEvaluationAgent):
     ) -> None:
         """
         Register a custom adapter dynamically.
-        
+
         Args:
             adapter_type: Unique identifier for the adapter type
             module_path: Python module path (e.g., "my_team.adapters")
@@ -111,8 +111,10 @@ class AdapterAgent(BaseEvaluationAgent):
             factory_kwargs=factory_kwargs,
             metadata=metadata,
         )
-        self.logger.info(f"Registered custom adapter: {adapter_type} from {module_path}.{class_name}")
-    
+        self.logger.info(
+            f"Registered custom adapter: {adapter_type} from {module_path}.{class_name}"
+        )
+
     async def generate(
         self,
         adapter: Adapter | str,
@@ -122,13 +124,13 @@ class AdapterAgent(BaseEvaluationAgent):
     ) -> Any:
         """
         Generate output using adapter.
-        
+
         Args:
             adapter: Adapter instance or adapter ID (if cached)
             input_data: Input data for generation
             model: Optional model name
             **kwargs: Additional parameters
-            
+
         Returns:
             Generated output
         """
@@ -137,39 +139,41 @@ class AdapterAgent(BaseEvaluationAgent):
             if adapter not in self._adapters:
                 raise ValueError(f"Adapter {adapter} not found. Create it first.")
             adapter = self._adapters[adapter]
-        
+
         self.logger.info(f"Generating output with adapter {type(adapter).__name__}")
-        
+
         output = await adapter.generate(
             input_data,
             model=model,
             **kwargs,
         )
-        
+
         self.logger.info("Output generated successfully")
         return output
-    
+
     async def list_adapters(self, **kwargs: Any) -> dict[str, Any]:
         """
         List available adapters.
-        
+
         Returns:
             Dictionary with cached adapters and available adapter types
         """
         adapters = []
-        
+
         # List cached adapters
         for adapter_id, adapter in self._adapters.items():
             metadata = adapter.get_metadata()
-            adapters.append({
-                "id": adapter_id,
-                "type": type(adapter).__name__,
-                "metadata": metadata,
-            })
-        
+            adapters.append(
+                {
+                    "id": adapter_id,
+                    "type": type(adapter).__name__,
+                    "metadata": metadata,
+                }
+            )
+
         # List available adapter types from registry
         available_types = self._registry.list_types()
-        
+
         return {
             "cached": adapters,
             "available_types": available_types,

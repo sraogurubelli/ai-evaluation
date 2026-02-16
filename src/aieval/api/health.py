@@ -21,7 +21,7 @@ _startup_complete: bool = False
 
 class HealthResponse(BaseModel):
     """Health check response."""
-    
+
     status: str
     timestamp: str
     version: str = "0.1.0"
@@ -31,7 +31,7 @@ class HealthResponse(BaseModel):
 
 class DependencyCheck(BaseModel):
     """Dependency health check result."""
-    
+
     name: str
     status: str
     message: str | None = None
@@ -44,11 +44,11 @@ async def check_database() -> DependencyCheck:
     try:
         from aieval.db.session import get_engine
         from sqlalchemy import text
-        
+
         engine = get_engine()
         async with engine.begin() as conn:
             await conn.execute(text("SELECT 1"))
-        
+
         response_time = (time.time() - start_time) * 1000
         return DependencyCheck(
             name="database",
@@ -96,12 +96,12 @@ async def check_temporal() -> DependencyCheck:
 async def health_check() -> HealthResponse:
     """Basic health check endpoint."""
     global _startup_time
-    
+
     if _startup_time is None:
         _startup_time = time.time()
-    
+
     uptime = time.time() - _startup_time if _startup_time else None
-    
+
     return HealthResponse(
         status="healthy",
         timestamp=datetime.utcnow().isoformat(),
@@ -114,16 +114,16 @@ async def health_check() -> HealthResponse:
 async def liveness_probe() -> HealthResponse:
     """
     Liveness probe for Kubernetes.
-    
+
     Returns 200 if the application is alive and should not be restarted.
     """
     global _startup_time
-    
+
     if _startup_time is None:
         _startup_time = time.time()
-    
+
     uptime = time.time() - _startup_time if _startup_time else None
-    
+
     return HealthResponse(
         status="alive",
         timestamp=datetime.utcnow().isoformat(),
@@ -136,27 +136,27 @@ async def liveness_probe() -> HealthResponse:
 async def readiness_probe() -> HealthResponse:
     """
     Readiness probe for Kubernetes.
-    
+
     Returns 200 if the application is ready to serve traffic.
     Checks critical dependencies (database, etc.).
     """
     global _startup_time, _startup_complete
-    
+
     if _startup_time is None:
         _startup_time = time.time()
-    
+
     uptime = time.time() - _startup_time if _startup_time else None
-    
+
     # Check dependencies
     checks: dict[str, Any] = {}
     all_healthy = True
-    
+
     # Check database (critical)
     db_check = await check_database()
     checks["database"] = db_check.model_dump()
     if db_check.status != "healthy":
         all_healthy = False
-    
+
     # Check Temporal (optional, but check if configured)
     settings = get_settings()
     if settings.temporal.host != "localhost:7233":  # Only check if not default
@@ -165,15 +165,15 @@ async def readiness_probe() -> HealthResponse:
         if temporal_check.status != "healthy":
             # Temporal is optional, so don't fail readiness if it's down
             pass
-    
+
     if not all_healthy:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Service not ready",
         )
-    
+
     _startup_complete = True
-    
+
     return HealthResponse(
         status="ready",
         timestamp=datetime.utcnow().isoformat(),
@@ -186,11 +186,11 @@ async def readiness_probe() -> HealthResponse:
 async def startup_probe() -> HealthResponse:
     """
     Startup probe for Kubernetes.
-    
+
     Returns 200 once the application has finished starting up.
     """
     global _startup_complete
-    
+
     if not _startup_complete:
         # Run readiness check to ensure we're actually ready
         try:
@@ -200,7 +200,7 @@ async def startup_probe() -> HealthResponse:
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="Service still starting up",
             )
-    
+
     return HealthResponse(
         status="started",
         timestamp=datetime.utcnow().isoformat(),

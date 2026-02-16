@@ -5,7 +5,7 @@ import pytest
 
 class TestScorerAgent:
     """Tests for scorer agent endpoints."""
-    
+
     def test_create_scorer(self, client):
         """Test creating a scorer."""
         response = client.post(
@@ -18,11 +18,11 @@ class TestScorerAgent:
                 },
             },
         )
-        
+
         assert response.status_code == 201
         data = response.json()
         assert "scorer_id" in data
-    
+
     def test_score_item(self, client):
         """Test scoring an item."""
         # First create scorer
@@ -34,10 +34,10 @@ class TestScorerAgent:
                 "config": {"version": "v3"},
             },
         )
-        
+
         if create_response.status_code == 201:
             scorer_id = create_response.json()["scorer_id"]
-            
+
             # Then score an item
             response = client.post(
                 "/evaluate/scorer/score",
@@ -51,15 +51,15 @@ class TestScorerAgent:
                     "output": "key: value",
                 },
             )
-            
+
             assert response.status_code == 200
             data = response.json()
             assert "score" in data
-    
+
     def test_list_scorers(self, client):
         """Test listing scorers."""
         response = client.get("/evaluate/scorer/list")
-        
+
         assert response.status_code == 200
         data = response.json()
         assert "cached" in data

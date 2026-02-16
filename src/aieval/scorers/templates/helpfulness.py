@@ -5,7 +5,7 @@ from aieval.scorers.templates.base_template import LLMJudgeTemplateScorer
 
 class HelpfulnessScorer(LLMJudgeTemplateScorer):
     """Scorer for evaluating helpfulness of generated text."""
-    
+
     def __init__(self, model: str = "gpt-4o-mini", api_key: str | None = None):
         rubric = """Rate the generated text on a scale of 1-5 for helpfulness:
 - 1: Not helpful - doesn't address the question or provides irrelevant information
@@ -15,7 +15,7 @@ class HelpfulnessScorer(LLMJudgeTemplateScorer):
 - 5: Extremely helpful - comprehensive, clear, and directly addresses the question
 
 Return a score from 1-5."""
-        
+
         super().__init__(
             name="helpfulness",
             eval_id="helpfulness.v1",

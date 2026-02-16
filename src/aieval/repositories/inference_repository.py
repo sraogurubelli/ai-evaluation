@@ -15,11 +15,11 @@ logger = logging.getLogger(__name__)
 
 class InferenceRepository:
     """Repository for inference tracking."""
-    
+
     def __init__(self, session: AsyncSession):
         """Initialize repository with database session."""
         self.session = session
-    
+
     async def create(
         self,
         prompt: str,
@@ -50,14 +50,12 @@ class InferenceRepository:
         await self.session.commit()
         await self.session.refresh(inference)
         return inference
-    
+
     async def get_by_id(self, inference_id: str) -> Inference | None:
         """Get inference by ID."""
-        result = await self.session.execute(
-            select(Inference).where(Inference.id == inference_id)
-        )
+        result = await self.session.execute(select(Inference).where(Inference.id == inference_id))
         return result.scalar_one_or_none()
-    
+
     async def list_by_task(
         self,
         task_id: str,
@@ -73,7 +71,7 @@ class InferenceRepository:
             .offset(offset)
         )
         return list(result.scalars().all())
-    
+
     async def list_by_date_range(
         self,
         start_date: datetime,
@@ -88,13 +86,13 @@ class InferenceRepository:
             Inference.created_at >= start_date,
             Inference.created_at <= end_date,
         ]
-        
+
         if task_id:
             conditions.append(Inference.task_id == task_id)
-        
+
         if model_name:
             conditions.append(Inference.model_name == model_name)
-        
+
         result = await self.session.execute(
             select(Inference)
             .where(and_(*conditions))
@@ -103,7 +101,7 @@ class InferenceRepository:
             .offset(offset)
         )
         return list(result.scalars().all())
-    
+
     async def get_statistics(
         self,
         task_id: str | None = None,
@@ -112,42 +110,38 @@ class InferenceRepository:
     ) -> dict[str, Any]:
         """Get aggregate statistics."""
         conditions = []
-        
+
         if task_id:
             conditions.append(Inference.task_id == task_id)
-        
+
         if start_date:
             conditions.append(Inference.created_at >= start_date)
-        
+
         if end_date:
             conditions.append(Inference.created_at <= end_date)
-        
+
         query = select(Inference)
         if conditions:
             query = query.where(and_(*conditions))
-        
+
         # Total count
         total_result = await self.session.execute(
             select(func.count()).select_from(query.subquery())
         )
         total = total_result.scalar() or 0
-        
+
         # Passed count
         passed_result = await self.session.execute(
-            select(func.count()).select_from(
-                query.where(Inference.passed == True).subquery()
-            )
+            select(func.count()).select_from(query.where(Inference.passed == True).subquery())
         )
         passed = passed_result.scalar() or 0
-        
+
         # Blocked count
         blocked_result = await self.session.execute(
-            select(func.count()).select_from(
-                query.where(Inference.blocked == True).subquery()
-            )
+            select(func.count()).select_from(query.where(Inference.blocked == True).subquery())
         )
         blocked = blocked_result.scalar() or 0
-        
+
         return {
             "total": total,
             "passed": passed,

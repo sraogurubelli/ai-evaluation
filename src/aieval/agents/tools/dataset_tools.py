@@ -10,7 +10,7 @@ from aieval.datasets import load_jsonl_dataset, load_index_csv_dataset
 
 class LoadDatasetTool(Tool):
     """Tool for loading datasets from various formats."""
-    
+
     def __init__(self):
         super().__init__(
             name="load_dataset",
@@ -58,15 +58,15 @@ class LoadDatasetTool(Tool):
                 "required": ["dataset_type", "path"],
             },
         )
-    
+
     async def execute(self, **kwargs: Any) -> ToolResult:
         """Execute dataset loading."""
         try:
             self.validate_parameters(**kwargs)
-            
+
             dataset_type = kwargs["dataset_type"]
             path = kwargs["path"]
-            
+
             if dataset_type == "jsonl":
                 dataset = load_jsonl_dataset(path)
             elif dataset_type == "index_csv":
@@ -85,7 +85,7 @@ class LoadDatasetTool(Tool):
                     data=None,
                     error=f"Unknown dataset type: {dataset_type}",
                 )
-            
+
             return ToolResult(
                 success=True,
                 data={

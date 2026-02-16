@@ -1,10 +1,9 @@
 """Tests for dataset agent endpoints."""
 
 
-
 class TestDatasetAgent:
     """Tests for dataset agent endpoints."""
-    
+
     def test_load_dataset_index_csv(self, client):
         """Test loading index CSV dataset."""
         response = client.post(
@@ -18,13 +17,13 @@ class TestDatasetAgent:
                 },
             },
         )
-        
+
         # May fail if files don't exist, but should return proper error
         assert response.status_code in [200, 404, 500]
         if response.status_code == 200:
             data = response.json()
             assert "item_count" in data
-    
+
     def test_validate_dataset(self, client):
         """Test dataset validation (may return 200 with valid/ invalid or 500 if path errors)."""
         response = client.post(
@@ -38,11 +37,11 @@ class TestDatasetAgent:
         if response.status_code == 200:
             data = response.json()
             assert "valid" in data
-    
+
     def test_list_datasets(self, client):
         """Test listing datasets."""
         response = client.get("/evaluate/dataset/list?base_dir=benchmarks/datasets")
-        
+
         assert response.status_code == 200
         data = response.json()
         assert "datasets" in data

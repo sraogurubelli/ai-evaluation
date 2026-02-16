@@ -13,7 +13,7 @@ from aieval.scorers.knowledge_graph import KnowledgeGraphQualityScorer
 
 class CreateScorerTool(Tool):
     """Tool for creating scorers."""
-    
+
     def __init__(self):
         super().__init__(
             name="create_scorer",
@@ -23,7 +23,13 @@ class CreateScorerTool(Tool):
                 "properties": {
                     "scorer_type": {
                         "type": "string",
-                        "enum": ["deep_diff", "schema_validation", "dashboard_quality", "kg_quality", "llm_judge"],
+                        "enum": [
+                            "deep_diff",
+                            "schema_validation",
+                            "dashboard_quality",
+                            "kg_quality",
+                            "llm_judge",
+                        ],
                         "description": "Type of scorer to create",
                     },
                     "name": {
@@ -60,15 +66,15 @@ class CreateScorerTool(Tool):
                 "required": ["scorer_type"],
             },
         )
-    
+
     async def execute(self, **kwargs: Any) -> ToolResult:
         """Execute scorer creation."""
         try:
             self.validate_parameters(**kwargs)
-            
+
             scorer_type = kwargs["scorer_type"]
             scorer: Scorer | None = None
-            
+
             if scorer_type == "deep_diff":
                 version = kwargs.get("version", "v3")
                 name = kwargs.get("name", f"deep_diff_{version}")
@@ -102,18 +108,18 @@ class CreateScorerTool(Tool):
                 )
             elif scorer_type == "llm_judge":
                 from aieval.scorers.llm_judge import LLMJudgeScorer
-                
+
                 model = kwargs.get("model", "gpt-4o-mini")
                 rubric = kwargs.get("rubric")
                 api_key = kwargs.get("api_key") or os.getenv("OPENAI_API_KEY")
-                
+
                 if not api_key:
                     return ToolResult(
                         success=False,
                         data=None,
                         error="API key required for LLM judge scorer (provide api_key or set OPENAI_API_KEY)",
                     )
-                
+
                 name = kwargs.get("name", f"llm_judge_{model}")
                 eval_id = kwargs.get("eval_id", f"llm_judge_{model}.v1")
                 scorer = LLMJudgeScorer(
@@ -129,7 +135,7 @@ class CreateScorerTool(Tool):
                     data=None,
                     error=f"Unknown scorer type: {scorer_type}",
                 )
-            
+
             return ToolResult(
                 success=True,
                 data={

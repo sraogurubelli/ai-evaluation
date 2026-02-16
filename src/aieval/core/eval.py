@@ -65,6 +65,7 @@ class Eval:
                 # Generate output
                 try:
                     import logging
+
                     logger = logging.getLogger(__name__)
                     logger.info(f"Processing item {item.id} with {type(adapter).__name__}")
                     output = await adapter.generate(
@@ -149,9 +150,7 @@ class Eval:
         self.runs.append(run)
         return run
 
-    def compare(
-        self, run1: EvalResult, run2: EvalResult
-    ) -> dict[str, Any]:
+    def compare(self, run1: EvalResult, run2: EvalResult) -> dict[str, Any]:
         """
         Compare two runs.
 

@@ -45,25 +45,25 @@ def _get_log_file() -> str:
 def _configure_standard_logging() -> None:
     """Configure Python's standard logging module."""
     log_level = _get_log_level()
-    
+
     # Configure root logger
     logging.basicConfig(
         format="%(message)s",
         stream=sys.stdout,
         level=getattr(logging, log_level, logging.INFO),
     )
-    
+
     # Suppress noisy loggers
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
     logging.getLogger("uvicorn.error").setLevel(logging.INFO)
-    
+
     # Set specific logger levels from environment
     autogen_log_level = os.getenv("AUTOGEN_LOG_LEVEL", "WARNING").upper()
     logging.getLogger("autogen").setLevel(getattr(logging, autogen_log_level, logging.WARNING))
-    
+
     # Suppress Anthropic SDK logs
     logging.getLogger("anthropic").setLevel(logging.WARNING)
-    
+
     # Suppress OpenAI SDK logs (if present)
     logging.getLogger("openai").setLevel(logging.WARNING)
 
@@ -88,17 +88,15 @@ def _get_processors() -> list[Processor]:
         # Add dict tracebacks
         structlog.processors.dict_tracebacks,
     ]
-    
+
     # Add renderer based on format
     log_format = _get_log_format()
     if log_format == "json":
         processors.append(structlog.processors.JSONRenderer())
     else:
         # Colored console output
-        processors.append(
-            structlog.dev.ConsoleRenderer(colors=True)
-        )
-    
+        processors.append(structlog.dev.ConsoleRenderer(colors=True))
+
     return processors
 
 
@@ -106,9 +104,9 @@ def _configure_file_logging() -> None:
     """Configure file logging if enabled."""
     if not _should_export_logs():
         return
-    
+
     from aieval.logging_utils import configure_file_logging as _configure
-    
+
     log_dir = _get_log_dir()
     log_file = _get_log_file()
     _configure(log_dir, log_file)
@@ -117,12 +115,12 @@ def _configure_file_logging() -> None:
 def initialize_logging() -> None:
     """
     Initialize logging configuration.
-    
+
     This should be called at application startup.
     """
     # Configure standard logging first
     _configure_standard_logging()
-    
+
     # Configure structlog
     structlog.configure(
         processors=_get_processors(),
@@ -131,10 +129,10 @@ def initialize_logging() -> None:
         logger_factory=structlog.stdlib.LoggerFactory(),
         cache_logger_on_first_use=True,
     )
-    
+
     # Configure file logging if enabled
     _configure_file_logging()
-    
+
     # Log initialization
     logger = structlog.get_logger(__name__)
     logger.info(
@@ -148,15 +146,16 @@ def initialize_logging() -> None:
 def get_logger(name: str | None = None) -> structlog.stdlib.BoundLogger:
     """
     Get a structlog logger instance.
-    
+
     Args:
         name: Logger name (defaults to calling module name)
-        
+
     Returns:
         Configured structlog logger
     """
     if name is None:
         import inspect
+
         try:
             frame = inspect.currentframe()
             if frame and frame.f_back:
@@ -166,6 +165,5 @@ def get_logger(name: str | None = None) -> structlog.stdlib.BoundLogger:
         except Exception:
             # Fallback if inspection fails
             name = __name__
-    
-    return structlog.get_logger(name)
 
+    return structlog.get_logger(name)

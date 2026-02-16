@@ -24,7 +24,7 @@ def main():
     # Support debug mode via environment variable
     debug = os.getenv("DEBUG", "false").lower() == "true"
     reload = os.getenv("RELOAD", "false").lower() == "true" or debug
-    
+
     logger.info(
         "Starting FastAPI server",
         host=os.getenv("HOST", "0.0.0.0"),
@@ -32,7 +32,7 @@ def main():
         debug=debug,
         reload=reload,
     )
-    
+
     # Use import string when reload is enabled (required by uvicorn)
     if reload:
         uvicorn.run(

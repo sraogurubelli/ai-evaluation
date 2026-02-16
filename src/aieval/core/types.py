@@ -48,7 +48,7 @@ class Score:
     metadata: dict[str, Any] = field(default_factory=dict)
     trace_id: str | None = None  # For Langfuse linking
     observation_id: str | None = None  # For Langfuse linking
-    
+
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
@@ -79,7 +79,7 @@ class EvalResult:
     scores: list[Score]
     metadata: dict[str, Any] = field(default_factory=dict)
     created_at: datetime = field(default_factory=datetime.now)
-    
+
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
@@ -95,14 +95,14 @@ class EvalResult:
 @dataclass
 class DatasetItem:
     """Single item in a dataset."""
-    
+
     id: str
     input: dict[str, Any]
     output: Any | None = None
     expected: dict[str, Any] | None = None
     tags: list[str] = field(default_factory=list)
     metadata: dict[str, Any] = field(default_factory=dict)
-    
+
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         result = {

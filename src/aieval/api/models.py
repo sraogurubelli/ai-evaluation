@@ -15,7 +15,9 @@ class EvalConfigRequest(BaseModel):
     eval_name: str = Field(..., description="Name of the eval")
     config: dict[str, Any] = Field(..., description="Eval configuration (YAML-like structure)")
     run_async: bool = Field(default=False, description="Run asynchronously (returns immediately)")
-    agent_id: str | None = Field(None, description="Unique identifier for the agent (for grouping runs)")
+    agent_id: str | None = Field(
+        None, description="Unique identifier for the agent (for grouping runs)"
+    )
     agent_name: str | None = Field(None, description="Display name for the agent")
     agent_version: str | None = Field(None, description="Display version for the agent")
 
@@ -55,7 +57,7 @@ class EvalResultResponse(BaseModel):
 
 class ErrorResponse(BaseModel):
     """Error response model."""
-    
+
     error: str
     detail: str | None = None
 
@@ -63,23 +65,27 @@ class ErrorResponse(BaseModel):
 # Conversational Agent Models
 class ChatRequest(BaseModel):
     """Request for conversational chat."""
-    
+
     message: str = Field(..., description="User's natural language message")
     context: dict[str, Any] | None = Field(None, description="Optional conversation context")
-    session_id: str | None = Field(None, description="Optional session ID for conversation continuity")
+    session_id: str | None = Field(
+        None, description="Optional session ID for conversation continuity"
+    )
 
 
 class ChatResponse(BaseModel):
     """Response from conversational chat."""
-    
+
     message: str = Field(..., description="Agent's response message")
     session_id: str | None = Field(None, description="Session ID (if session management enabled)")
-    tool_calls: list[dict[str, Any]] | None = Field(None, description="Tool calls made (for debugging)")
+    tool_calls: list[dict[str, Any]] | None = Field(
+        None, description="Tool calls made (for debugging)"
+    )
 
 
 class HealthResponse(BaseModel):
     """Health check response."""
-    
+
     status: str
     version: str
     tasks: dict[str, int] = Field(description="Task counts by status")
@@ -88,33 +94,35 @@ class HealthResponse(BaseModel):
 # Dataset Agent Models
 class DatasetLoadRequest(BaseModel):
     """Request to load a dataset."""
-    
+
     dataset_type: str = Field(..., description="Type of dataset (jsonl, index_csv, function)")
     path: str | None = Field(None, description="Path to dataset file")
     index_file: str | None = Field(None, description="Path to index CSV file (for index_csv)")
     base_dir: str | None = Field(None, description="Base directory for index_csv datasets")
-    filters: dict[str, Any] = Field(default_factory=dict, description="Filters for index_csv datasets")
+    filters: dict[str, Any] = Field(
+        default_factory=dict, description="Filters for index_csv datasets"
+    )
     offline: bool = Field(default=False, description="Use offline mode for index_csv")
     actual_suffix: str = Field(default="actual", description="Suffix for actual files")
 
 
 class DatasetLoadResponse(BaseModel):
     """Response from loading a dataset."""
-    
+
     item_count: int
     items: list[dict[str, Any]]
 
 
 class DatasetValidateRequest(BaseModel):
     """Request to validate a dataset."""
-    
+
     dataset_type: str | None = Field(None, description="Type of dataset (if loading from file)")
     path: str | None = Field(None, description="Path to dataset file (if loading from file)")
 
 
 class DatasetValidateResponse(BaseModel):
     """Response from dataset validation."""
-    
+
     valid: bool
     item_count: int
     issues: list[str]
@@ -122,22 +130,24 @@ class DatasetValidateResponse(BaseModel):
 
 class DatasetListResponse(BaseModel):
     """Response from listing datasets."""
-    
+
     datasets: list[dict[str, Any]]
 
 
 # Scorer Agent Models
 class ScorerCreateRequest(BaseModel):
     """Request to create a scorer."""
-    
+
     scorer_type: str = Field(..., description="Type of scorer")
     name: str | None = Field(None, description="Optional name for the scorer")
-    config: dict[str, Any] = Field(default_factory=dict, description="Scorer-specific configuration")
+    config: dict[str, Any] = Field(
+        default_factory=dict, description="Scorer-specific configuration"
+    )
 
 
 class ScorerCreateResponse(BaseModel):
     """Response from creating a scorer."""
-    
+
     scorer_id: str
     name: str
     type: str
@@ -145,7 +155,7 @@ class ScorerCreateResponse(BaseModel):
 
 class ScorerScoreRequest(BaseModel):
     """Request to score an item."""
-    
+
     scorer_id: str = Field(..., description="Scorer ID (if cached) or scorer type")
     item: dict[str, Any] = Field(..., description="Dataset item to score")
     output: Any | None = Field(None, description="Generated output (if not in item)")
@@ -153,13 +163,13 @@ class ScorerScoreRequest(BaseModel):
 
 class ScorerScoreResponse(BaseModel):
     """Response from scoring an item."""
-    
+
     score: dict[str, Any]
 
 
 class ScorerListResponse(BaseModel):
     """Response from listing scorers."""
-    
+
     cached: list[dict[str, Any]]
     available_types: list[dict[str, Any]]
 
@@ -167,112 +177,70 @@ class ScorerListResponse(BaseModel):
 # Adapter Agent Models
 class AdapterCreateRequest(BaseModel):
     """Request to create an adapter."""
-    
+
     adapter_type: str = Field(..., description="Type of adapter (http, ml_infra, langfuse)")
     name: str | None = Field(None, description="Optional name for the adapter")
-    config: dict[str, Any] = Field(default_factory=dict, description="Adapter-specific configuration")
+    config: dict[str, Any] = Field(
+        default_factory=dict, description="Adapter-specific configuration"
+    )
 
 
 class AdapterCreateResponse(BaseModel):
     """Response from creating an adapter."""
-    
+
     adapter_id: str
     type: str
 
 
 class AdapterGenerateRequest(BaseModel):
     """Request to generate output using adapter."""
-    
+
     adapter_id: str = Field(..., description="Adapter ID (if cached) or adapter type")
     input_data: dict[str, Any] = Field(..., description="Input data for generation")
     model: str | None = Field(None, description="Optional model name")
-    config: dict[str, Any] = Field(default_factory=dict, description="Adapter-specific configuration")
+    config: dict[str, Any] = Field(
+        default_factory=dict, description="Adapter-specific configuration"
+    )
 
 
 class AdapterGenerateResponse(BaseModel):
     """Response from generating output."""
-    
+
     output: Any
 
 
 class AdapterListResponse(BaseModel):
     """Response from listing adapters."""
-    
+
     cached: list[dict[str, Any]]
     available_types: list[dict[str, Any]]
 
 
 class AdapterRegisterRequest(BaseModel):
     """Request to register a custom adapter dynamically."""
-    
+
     adapter_type: str = Field(..., description="Unique identifier for the adapter type")
     module_path: str = Field(..., description="Python module path (e.g., 'my_team.adapters')")
     class_name: str = Field(..., description="Class name of the adapter")
-    factory_kwargs: dict[str, Any] = Field(default_factory=dict, description="Optional default kwargs for adapter constructor")
-    metadata: dict[str, Any] = Field(default_factory=dict, description="Optional metadata about the adapter")
+    factory_kwargs: dict[str, Any] = Field(
+        default_factory=dict, description="Optional default kwargs for adapter constructor"
+    )
+    metadata: dict[str, Any] = Field(
+        default_factory=dict, description="Optional metadata about the adapter"
+    )
 
 
 class AdapterRegisterResponse(BaseModel):
     """Response from registering an adapter."""
-    
+
     adapter_type: str
     message: str
-
-
-# Experiment Agent Models (field names kept for backward compatibility; user-facing: Eval)
-class ExperimentCreateRequest(BaseModel):
-    """Request to create an eval."""
-
-    name: str = Field(..., description="Name of the eval")
-    dataset_config: dict[str, Any] = Field(..., description="Dataset configuration")
-    scorers_config: list[dict[str, Any]] = Field(..., description="List of scorer configurations")
-    experiment_id: str | None = Field(None, description="Optional eval ID")
-
-
-class ExperimentCreateResponse(BaseModel):
-    """Response from creating an eval."""
-    
-    experiment_id: str
-    name: str
-    dataset_size: int
-    scorer_count: int
-
-
-class ExperimentRunRequest(BaseModel):
-    """Request to run an eval."""
-    
-    experiment_id: str = Field(..., description="Eval ID")
-    adapter_config: dict[str, Any] = Field(..., description="Adapter configuration")
-    model: str | None = Field(None, description="Optional model name")
-    concurrency_limit: int = Field(default=5, description="Concurrency limit")
-
-
-class ExperimentRunResponse(BaseModel):
-    """Response from running an eval (run result)."""
-    
-    run_id: str
-    experiment_id: str
-    scores: list[dict[str, Any]]
-    metadata: dict[str, Any]
-
-
-class ExperimentCompareRequest(BaseModel):
-    """Request to compare runs."""
-    
-    run1_id: str = Field(..., description="First run ID")
-    run2_id: str = Field(..., description="Second run ID")
-
-
-class ExperimentCompareResponse(BaseModel):
-    """Response from comparing runs."""
-    
-    comparison: dict[str, Any]
 
 
 # Agents and runs (consolidation per agent)
 class AgentSummaryResponse(BaseModel):
     """Summary of an agent that has at least one run."""
-    
+
     agent_id: str
     agent_name: str | None = None
     last_run_at: str | None = None
@@ -281,7 +249,7 @@ class AgentSummaryResponse(BaseModel):
 
 class AgentRunSummaryResponse(BaseModel):
     """Summary of a single run for an agent."""
-    
+
     run_id: str
     task_id: str | None = None
     created_at: str
@@ -294,30 +262,40 @@ class AgentRunSummaryResponse(BaseModel):
 
 class PushRunRequest(BaseModel):
     """Request to push a run from consumer (e.g. CI) so it appears under an agent."""
-    
+
     run_id: str = Field(..., description="Run ID")
     eval_id: str = Field(..., description="Eval ID")
     dataset_id: str = Field(..., description="Dataset ID")
     scores: list[dict[str, Any]] = Field(..., description="Scores")
-    metadata: dict[str, Any] = Field(default_factory=dict, description="Run metadata (should include agent_id)")
+    metadata: dict[str, Any] = Field(
+        default_factory=dict, description="Run metadata (should include agent_id)"
+    )
 
 
 # Evaluation Agent Models (Unified)
 class EvaluationRequest(BaseModel):
     """Request for unified evaluation."""
-    
+
     eval_name: str = Field(..., description="Name of the eval")
     dataset_config: dict[str, Any] = Field(..., description="Dataset configuration")
-    scorers_config: list[dict[str, Any]] = Field(..., description="List of scorer configurations (metrics/scorers)")
+    scorers_config: list[dict[str, Any]] = Field(
+        ..., description="List of scorer configurations (metrics/scorers)"
+    )
     adapter_config: dict[str, Any] = Field(..., description="Adapter configuration")
-    models: list[str] | None = Field(None, description="List of models to evaluate (one run per model)")
-    model: str | None = Field(None, description="[Deprecated] Single model name (use 'models' instead)")
+    models: list[str] | None = Field(
+        None, description="List of models to evaluate (one run per model)"
+    )
+    model: str | None = Field(
+        None, description="[Deprecated] Single model name (use 'models' instead)"
+    )
     concurrency_limit: int = Field(default=5, description="Concurrency limit")
     run_async: bool = Field(default=False, description="Run asynchronously")
-    agent_id: str | None = Field(None, description="Unique identifier for the agent (for grouping runs)")
+    agent_id: str | None = Field(
+        None, description="Unique identifier for the agent (for grouping runs)"
+    )
     agent_name: str | None = Field(None, description="Display name for the agent")
     agent_version: str | None = Field(None, description="Display version for the agent")
-    
+
     def get_models_list(self) -> list[str | None]:
         """Normalize models input - prioritize models over model for backward compatibility."""
         if self.models:
@@ -330,20 +308,28 @@ class EvaluationRequest(BaseModel):
 
 class EvaluationResponse(BaseModel):
     """Response from unified evaluation."""
-    
+
     task_id: str | None = Field(None, description="Task ID (if run_async=True)")
-    runs: list[dict[str, Any]] | None = Field(None, description="Multiple runs (one per model, if multiple models)")
-    run_id: str | None = Field(None, description="Single run ID (backward compatibility, if single model)")
+    runs: list[dict[str, Any]] | None = Field(
+        None, description="Multiple runs (one per model, if multiple models)"
+    )
+    run_id: str | None = Field(
+        None, description="Single run ID (backward compatibility, if single model)"
+    )
     eval_id: str
-    scores: list[dict[str, Any]] | None = Field(None, description="Scores from single run (if run_async=False and single model)")
-    comparison: dict[str, Any] | None = Field(None, description="Model comparison metrics (if multiple models)")
+    scores: list[dict[str, Any]] | None = Field(
+        None, description="Scores from single run (if run_async=False and single model)"
+    )
+    comparison: dict[str, Any] | None = Field(
+        None, description="Model comparison metrics (if multiple models)"
+    )
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 # Guardrail Validation Models
 class PromptValidationRequest(BaseModel):
     """Request to validate a prompt."""
-    
+
     prompt: str = Field(..., description="Prompt text to validate")
     task_id: str | None = Field(None, description="Optional task context")
     policy_name: str | None = Field(None, description="Policy name (if None, uses all policies)")
@@ -353,7 +339,7 @@ class PromptValidationRequest(BaseModel):
 
 class ResponseValidationRequest(BaseModel):
     """Request to validate a response."""
-    
+
     prompt: str = Field(..., description="Original prompt")
     response: str = Field(..., description="Response text to validate")
     context: str | None = Field(None, description="RAG context (for hallucination checks)")
@@ -365,7 +351,7 @@ class ResponseValidationRequest(BaseModel):
 
 class BatchValidationRequest(BaseModel):
     """Request for batch validation."""
-    
+
     items: list[dict[str, Any]] = Field(..., description="List of items to validate")
     task_id: str | None = Field(None, description="Optional task context")
     policy_name: str | None = Field(None, description="Policy name")
@@ -373,7 +359,7 @@ class BatchValidationRequest(BaseModel):
 
 class RuleResultResponse(BaseModel):
     """Result from a single rule evaluation."""
-    
+
     rule_id: str
     rule_type: str
     passed: bool
@@ -385,7 +371,7 @@ class RuleResultResponse(BaseModel):
 
 class ValidationResultResponse(BaseModel):
     """Response from validation."""
-    
+
     passed: bool
     blocked: bool
     rule_results: list[RuleResultResponse]
@@ -394,7 +380,7 @@ class ValidationResultResponse(BaseModel):
 
 class BatchValidationResponse(BaseModel):
     """Response from batch validation."""
-    
+
     results: list[ValidationResultResponse]
     total: int
     passed: int

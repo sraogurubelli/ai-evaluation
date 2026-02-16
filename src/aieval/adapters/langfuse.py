@@ -109,11 +109,17 @@ class LangfuseAdapter(Adapter):
             return GenerateResult(output="", trace_id=trace_id, observation_id=None)
 
         # Trace object may have nested observations or we need to fetch them
-        observations = getattr(trace_raw, "observations", None) or (trace_raw.get("observations") if isinstance(trace_raw, dict) else None)
+        observations = getattr(trace_raw, "observations", None) or (
+            trace_raw.get("observations") if isinstance(trace_raw, dict) else None
+        )
         if not observations:
             try:
                 obs_response = self._client.api.observations.get_many(trace_id=trace_id, limit=50)
-                observations = getattr(obs_response, "data", obs_response) if not isinstance(obs_response, list) else obs_response
+                observations = (
+                    getattr(obs_response, "data", obs_response)
+                    if not isinstance(obs_response, list)
+                    else obs_response
+                )
             except Exception:
                 observations = []
 

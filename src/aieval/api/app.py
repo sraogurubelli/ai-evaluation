@@ -99,15 +99,16 @@ async def lifespan(app: FastAPI):
     """Lifespan context manager for startup/shutdown."""
     global task_manager, task_worker, worker_task
     global dataset_agent, scorer_agent, adapter_agent, eval_agent, task_agent, evaluation_agent
-    
+
     # Startup
     logger.info("Starting AI Evolution Platform API")
-    
+
     # Initialize database (optional - only if DATABASE_URL is set)
     database_url = os.getenv("DATABASE_URL")
     if database_url:
         try:
             from aieval.db.session import init_db
+
             await init_db()
             logger.info("Database initialized")
         except Exception as e:
@@ -116,10 +117,10 @@ async def lifespan(app: FastAPI):
                 error=str(e),
                 exc_info=True,
             )
-    
+
     task_manager = TaskManager()
     task_worker = TaskWorker(task_manager, max_concurrent=3)
-    
+
     # Initialize agents
     dataset_agent = DatasetAgent()
     scorer_agent = ScorerAgent()
@@ -127,12 +128,12 @@ async def lifespan(app: FastAPI):
     eval_agent = EvalAgent()
     task_agent = TaskAgent(task_manager=task_manager)
     evaluation_agent = EvaluationAgent()
-    
+
     # Start background worker
     worker_task = asyncio.create_task(task_worker.start())
-    
+
     yield
-    
+
     # Shutdown
     logger.info("Shutting down AI Evolution Platform API")
     if task_worker:
@@ -143,11 +144,12 @@ async def lifespan(app: FastAPI):
             await worker_task
         except asyncio.CancelledError:
             pass
-    
+
     # Close database connections
     if database_url:
         try:
             from aieval.db.session import close_db
+
             await close_db()
         except Exception as e:
             logger.warning(
@@ -165,10 +167,10 @@ def create_app() -> FastAPI:
         version="0.1.0",
         lifespan=lifespan,
     )
-    
+
     # CORS middleware
     from aieval.config import get_settings
-    
+
     settings = get_settings()
     app.add_middleware(
         CORSMiddleware,
@@ -177,58 +179,61 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    
+
     # Add rate limiting middleware
     from aieval.api.rate_limit import RateLimitMiddleware
+
     if settings.security.rate_limit_enabled:
         app.add_middleware(
             RateLimitMiddleware,
             requests_per_minute=settings.security.rate_limit_per_minute,
         )
-    
+
     # Include health check router (provides /health/live, /health/ready, /health/startup)
     app.include_router(health_router)
-    
+
     # Initialize startup time for health checks
     initialize_startup_time()
-    
+
     # Legacy health endpoint (kept for backward compatibility)
     @app.get("/health", response_model=HealthResponse, include_in_schema=False)
     async def health_check_legacy():
         """Legacy health check endpoint (use /health/live or /health/ready instead)."""
         if not task_manager:
             raise HTTPException(status_code=503, detail="Task manager not initialized")
-        
+
         # Get task counts
         tasks = await task_manager.list_tasks(limit=1000)
         task_counts = {
-            status.value: sum(1 for t in tasks if t.status == status)
-            for status in TaskStatus
+            status.value: sum(1 for t in tasks if t.status == status) for status in TaskStatus
         }
-        
+
         return HealthResponse(
             status="healthy",
             version="0.1.0",
             tasks=task_counts,
         )
-    
+
     # Add Prometheus metrics endpoint
     from aieval.monitoring.metrics import metrics_endpoint
-    
+
     if settings.monitoring.prometheus_enabled:
+
         @app.get(settings.monitoring.prometheus_path)
         async def metrics():
             """Prometheus metrics endpoint."""
             return await metrics_endpoint(None)
-        
+
         # Add metrics middleware
         from aieval.monitoring.metrics import metrics_middleware
+
         app.middleware("http")(metrics_middleware)
-    
+
     # Initialize OpenTelemetry tracing
     from aieval.monitoring.tracing import initialize_tracing
+
     initialize_tracing(app)
-    
+
     @app.post("/evals", response_model=TaskResponse, status_code=201)
     async def create_eval(
         request: EvalConfigRequest,
@@ -278,9 +283,9 @@ def create_app() -> FastAPI:
                     exc_info=True,
                 )
                 raise HTTPException(status_code=500, detail=str(e))
-        
+
         return TaskResponse(**task.to_dict())
-    
+
     @app.get("/tasks", response_model=list[TaskResponse])
     async def list_tasks(
         status: TaskStatus | None = None,
@@ -289,84 +294,84 @@ def create_app() -> FastAPI:
         """List tasks, optionally filtered by status."""
         if not task_manager:
             raise HTTPException(status_code=503, detail="Task manager not initialized")
-        
+
         tasks = await task_manager.list_tasks(status=status, limit=limit)
         return [TaskResponse(**task.to_dict()) for task in tasks]
-    
+
     @app.get("/tasks/{task_id}", response_model=TaskResponse)
     async def get_task(task_id: str):
         """Get task by ID."""
         if not task_manager:
             raise HTTPException(status_code=503, detail="Task manager not initialized")
-        
+
         task = await task_manager.get_task(task_id)
         if not task:
             raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
-        
+
         return TaskResponse(**task.to_dict())
-    
+
     @app.get("/tasks/{task_id}/result", response_model=TaskResultResponse)
     async def get_task_result(task_id: str):
         """Get task result."""
         if not task_manager:
             raise HTTPException(status_code=503, detail="Task manager not initialized")
-        
+
         task = await task_manager.get_task(task_id)
         if not task:
             raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
-        
+
         if not task.result:
             raise HTTPException(
                 status_code=404,
                 detail=f"Task {task_id} has no result yet (status: {task.status})",
             )
-        
+
         return TaskResultResponse(**task.result.to_dict())
-    
+
     @app.get("/tasks/{task_id}/run", response_model=EvalResultResponse)
     async def get_task_run(task_id: str):
         """Get run from task result."""
         if not task_manager:
             raise HTTPException(status_code=503, detail="Task manager not initialized")
-        
+
         task = await task_manager.get_task(task_id)
         if not task:
             raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
-        
+
         if not task.result:
             raise HTTPException(
                 status_code=404,
                 detail=f"Task {task_id} has no result yet (status: {task.status})",
             )
-        
+
         return EvalResultResponse(**task.result.eval_result.to_dict())
-    
+
     @app.delete("/tasks/{task_id}", status_code=204)
     async def cancel_task(task_id: str):
         """Cancel a pending or running task."""
         if not task_manager:
             raise HTTPException(status_code=503, detail="Task manager not initialized")
-        
+
         task = await task_manager.get_task(task_id)
         if not task:
             raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
-        
+
         if task.status not in [TaskStatus.PENDING, TaskStatus.RUNNING]:
             raise HTTPException(
                 status_code=400,
                 detail=f"Cannot cancel task in status {task.status}",
             )
-        
+
         # Update status
         task.status = TaskStatus.CANCELLED
         task.completed_at = datetime.now()
-        
+
         return None
-    
+
     # ============================================================================
     # Agents and runs (consolidation per agent)
     # ============================================================================
-    
+
     def _run_summary_from_task(task: Any, eval_result: Any) -> dict[str, Any]:
         """Build run summary from task result eval_result."""
         meta = getattr(eval_result, "metadata", None) or {}
@@ -377,7 +382,8 @@ def create_app() -> FastAPI:
             by_test.setdefault(tid, []).append(s)
         total = len(by_test) or 1
         passed = sum(
-            1 for tidscores in by_test.values()
+            1
+            for tidscores in by_test.values()
             if all(
                 getattr(s, "value", None) is True
                 or (isinstance(getattr(s, "value", None), (int, float)) and float(s.value) >= 0.99)
@@ -388,19 +394,27 @@ def create_app() -> FastAPI:
         return {
             "run_id": eval_result.run_id,
             "task_id": task.id,
-            "created_at": (dt.isoformat() if (dt := (getattr(task, "completed_at", None) or getattr(task, "created_at", None))) else ""),
+            "created_at": (
+                dt.isoformat()
+                if (
+                    dt := (getattr(task, "completed_at", None) or getattr(task, "created_at", None))
+                )
+                else ""
+            ),
             "model": meta.get("model"),
             "total": total,
             "passed": passed,
             "failed": failed,
             "report_url": meta.get("report_url"),
         }
-    
+
     @app.get("/agents", response_model=list[AgentSummaryResponse])
     async def list_agents():
         """List distinct agents that have at least one run (from tasks or pushed runs)."""
         global _pushed_runs
-        agent_info: dict[str, dict[str, Any]] = {}  # agent_id -> {agent_name, last_run_at, run_count}
+        agent_info: dict[
+            str, dict[str, Any]
+        ] = {}  # agent_id -> {agent_name, last_run_at, run_count}
         if task_manager:
             tasks = await task_manager.list_tasks(limit=500)
             for task in tasks:
@@ -412,10 +426,20 @@ def create_app() -> FastAPI:
                 if not aid:
                     continue
                 if aid not in agent_info:
-                    agent_info[aid] = {"agent_name": meta.get("agent_name"), "last_run_at": None, "run_count": 0}
+                    agent_info[aid] = {
+                        "agent_name": meta.get("agent_name"),
+                        "last_run_at": None,
+                        "run_count": 0,
+                    }
                 agent_info[aid]["run_count"] += 1
-                t = (task.completed_at or task.created_at).isoformat() if getattr(task, "completed_at", None) else task.created_at.isoformat()
-                if agent_info[aid]["last_run_at"] is None or t > (agent_info[aid]["last_run_at"] or ""):
+                t = (
+                    (task.completed_at or task.created_at).isoformat()
+                    if getattr(task, "completed_at", None)
+                    else task.created_at.isoformat()
+                )
+                if agent_info[aid]["last_run_at"] is None or t > (
+                    agent_info[aid]["last_run_at"] or ""
+                ):
                     agent_info[aid]["last_run_at"] = t
         for entry in _pushed_runs:
             aid = entry.get("agent_id")
@@ -429,13 +453,20 @@ def create_app() -> FastAPI:
             if not agent_info[aid]["agent_name"] and meta.get("agent_name"):
                 agent_info[aid]["agent_name"] = meta.get("agent_name")
             t = entry.get("created_at", "")
-            if t and (agent_info[aid]["last_run_at"] is None or t > (agent_info[aid]["last_run_at"] or "")):
+            if t and (
+                agent_info[aid]["last_run_at"] is None or t > (agent_info[aid]["last_run_at"] or "")
+            ):
                 agent_info[aid]["last_run_at"] = t
         return [
-            AgentSummaryResponse(agent_id=aid, agent_name=info.get("agent_name"), last_run_at=info.get("last_run_at"), run_count=info["run_count"])
+            AgentSummaryResponse(
+                agent_id=aid,
+                agent_name=info.get("agent_name"),
+                last_run_at=info.get("last_run_at"),
+                run_count=info["run_count"],
+            )
             for aid, info in sorted(agent_info.items())
         ]
-    
+
     @app.get("/agents/{agent_id}/runs", response_model=list[AgentRunSummaryResponse])
     async def list_agent_runs(agent_id: str, limit: int = 50, offset: int = 0):
         """List run summaries for an agent (from tasks and pushed runs)."""
@@ -457,21 +488,28 @@ def create_app() -> FastAPI:
             run_dict = entry.get("run", {})
             scores = run_dict.get("scores", [])
             total = len({s.get("metadata", {}).get("test_id") for s in scores}) or 1
-            passed = sum(1 for s in scores if s.get("value") is True or (isinstance(s.get("value"), (int, float)) and float(s["value"]) >= 0.99))
-            runs_list.append({
-                "run_id": run_dict.get("run_id", ""),
-                "task_id": None,
-                "created_at": entry.get("created_at", ""),
-                "model": run_dict.get("metadata", {}).get("model"),
-                "total": total,
-                "passed": passed,
-                "failed": total - passed,
-                "report_url": run_dict.get("metadata", {}).get("report_url"),
-            })
+            passed = sum(
+                1
+                for s in scores
+                if s.get("value") is True
+                or (isinstance(s.get("value"), (int, float)) and float(s["value"]) >= 0.99)
+            )
+            runs_list.append(
+                {
+                    "run_id": run_dict.get("run_id", ""),
+                    "task_id": None,
+                    "created_at": entry.get("created_at", ""),
+                    "model": run_dict.get("metadata", {}).get("model"),
+                    "total": total,
+                    "passed": passed,
+                    "failed": total - passed,
+                    "report_url": run_dict.get("metadata", {}).get("report_url"),
+                }
+            )
         runs_list.sort(key=lambda x: x.get("created_at") or "", reverse=True)
         page = runs_list[offset : offset + limit]
         return [AgentRunSummaryResponse(**r) for r in page]
-    
+
     @app.get("/runs/{run_id}", response_model=EvalResultResponse)
     async def get_run(run_id: str):
         """Get run detail by run_id (from task result or pushed run)."""
@@ -486,7 +524,7 @@ def create_app() -> FastAPI:
             if entry.get("run", {}).get("run_id") == run_id:
                 return EvalResultResponse(**entry["run"])
         raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
-    
+
     @app.post("/agents/{agent_id}/runs", response_model=dict[str, Any], status_code=201)
     async def push_agent_run(agent_id: str, request: PushRunRequest):
         """Push a run from consumer (e.g. CI) so it appears under this agent."""
@@ -502,7 +540,7 @@ def create_app() -> FastAPI:
         }
         _pushed_runs.append({"agent_id": agent_id, "run": run_dict, "created_at": created_at})
         return {"run_id": request.run_id, "agent_id": agent_id}
-    
+
     @app.get("/runs/{run_id}/report", response_class=HTMLResponse)
     async def get_run_report(run_id: str):
         """Get HTML report for a run (rendered from run data)."""
@@ -523,19 +561,20 @@ def create_app() -> FastAPI:
         if run_dict is None:
             raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
         from aieval.sinks.html_report import render_run_to_html
+
         html_content = render_run_to_html(run_dict, title=f"Run {run_id}")
         return HTMLResponse(content=html_content)
-    
+
     # ============================================================================
     # Dataset Agent Endpoints
     # ============================================================================
-    
+
     @app.post("/evaluate/dataset/load", response_model=DatasetLoadResponse, status_code=200)
     async def load_dataset(request: DatasetLoadRequest):
         """Load a dataset."""
         if not dataset_agent:
             raise HTTPException(status_code=503, detail="Dataset agent not initialized")
-        
+
         try:
             dataset = await dataset_agent.load_dataset(
                 dataset_type=request.dataset_type,
@@ -564,13 +603,13 @@ def create_app() -> FastAPI:
                 exc_info=True,
             )
             raise HTTPException(status_code=500, detail=str(e))
-    
+
     @app.post("/evaluate/dataset/validate", response_model=DatasetValidateResponse, status_code=200)
     async def validate_dataset(request: DatasetValidateRequest):
         """Validate dataset format."""
         if not dataset_agent:
             raise HTTPException(status_code=503, detail="Dataset agent not initialized")
-        
+
         try:
             result = await dataset_agent.validate_dataset(
                 dataset_type=request.dataset_type,
@@ -592,13 +631,13 @@ def create_app() -> FastAPI:
                 exc_info=True,
             )
             raise HTTPException(status_code=500, detail=str(e))
-    
+
     @app.get("/evaluate/dataset/list", response_model=DatasetListResponse, status_code=200)
     async def list_datasets(base_dir: str | None = None):
         """List available datasets."""
         if not dataset_agent:
             raise HTTPException(status_code=503, detail="Dataset agent not initialized")
-        
+
         try:
             datasets = await dataset_agent.list_datasets(base_dir=base_dir)
             logger.info(
@@ -615,17 +654,17 @@ def create_app() -> FastAPI:
                 exc_info=True,
             )
             raise HTTPException(status_code=500, detail=str(e))
-    
+
     # ============================================================================
     # Scorer Agent Endpoints
     # ============================================================================
-    
+
     @app.post("/evaluate/scorer/create", response_model=ScorerCreateResponse, status_code=201)
     async def create_scorer(request: ScorerCreateRequest):
         """Create a scorer."""
         if not scorer_agent:
             raise HTTPException(status_code=503, detail="Scorer agent not initialized")
-        
+
         try:
             scorer = await scorer_agent.create_scorer(
                 scorer_type=request.scorer_type,
@@ -651,13 +690,13 @@ def create_app() -> FastAPI:
                 exc_info=True,
             )
             raise HTTPException(status_code=500, detail=str(e))
-    
+
     @app.post("/evaluate/scorer/score", response_model=ScorerScoreResponse, status_code=200)
     async def score_item(request: ScorerScoreRequest):
         """Score a single item."""
         if not scorer_agent:
             raise HTTPException(status_code=503, detail="Scorer agent not initialized")
-        
+
         try:
             item = DatasetItem(**request.item)
             score = await scorer_agent.score_item(
@@ -674,13 +713,13 @@ def create_app() -> FastAPI:
                 exc_info=True,
             )
             raise HTTPException(status_code=500, detail=str(e))
-    
+
     @app.get("/evaluate/scorer/list", response_model=ScorerListResponse, status_code=200)
     async def list_scorers():
         """List available scorers."""
         if not scorer_agent:
             raise HTTPException(status_code=503, detail="Scorer agent not initialized")
-        
+
         try:
             result = await scorer_agent.list_scorers()
             return ScorerListResponse(**result)
@@ -691,17 +730,17 @@ def create_app() -> FastAPI:
                 exc_info=True,
             )
             raise HTTPException(status_code=500, detail=str(e))
-    
+
     # ============================================================================
     # Adapter Agent Endpoints
     # ============================================================================
-    
+
     @app.post("/evaluate/adapter/create", response_model=AdapterCreateResponse, status_code=201)
     async def create_adapter(request: AdapterCreateRequest):
         """Create an adapter."""
         if not adapter_agent:
             raise HTTPException(status_code=503, detail="Adapter agent not initialized")
-        
+
         try:
             adapter = await adapter_agent.create_adapter(
                 adapter_type=request.adapter_type,
@@ -727,13 +766,13 @@ def create_app() -> FastAPI:
                 exc_info=True,
             )
             raise HTTPException(status_code=500, detail=str(e))
-    
+
     @app.post("/evaluate/adapter/generate", response_model=AdapterGenerateResponse, status_code=200)
     async def generate_output(request: AdapterGenerateRequest):
         """Generate output using adapter."""
         if not adapter_agent:
             raise HTTPException(status_code=503, detail="Adapter agent not initialized")
-        
+
         try:
             output = await adapter_agent.generate(
                 adapter=request.adapter_id,
@@ -751,13 +790,13 @@ def create_app() -> FastAPI:
                 exc_info=True,
             )
             raise HTTPException(status_code=500, detail=str(e))
-    
+
     @app.get("/evaluate/adapter/list", response_model=AdapterListResponse, status_code=200)
     async def list_adapters():
         """List available adapters."""
         if not adapter_agent:
             raise HTTPException(status_code=503, detail="Adapter agent not initialized")
-        
+
         try:
             result = await adapter_agent.list_adapters()
             return AdapterListResponse(**result)
@@ -768,13 +807,13 @@ def create_app() -> FastAPI:
                 exc_info=True,
             )
             raise HTTPException(status_code=500, detail=str(e))
-    
+
     @app.post("/evaluate/adapter/register", response_model=AdapterRegisterResponse, status_code=201)
     async def register_adapter(request: AdapterRegisterRequest):
         """Register a custom adapter dynamically."""
         if not adapter_agent:
             raise HTTPException(status_code=503, detail="Adapter agent not initialized")
-        
+
         try:
             adapter_agent.register_adapter(
                 adapter_type=request.adapter_type,
@@ -803,7 +842,7 @@ def create_app() -> FastAPI:
                 exc_info=True,
             )
             raise HTTPException(status_code=500, detail=str(e))
-    
+
     # ============================================================================
     # Eval Agent Endpoints
     # ============================================================================
@@ -900,11 +939,11 @@ def create_app() -> FastAPI:
                 exc_info=True,
             )
             raise HTTPException(status_code=500, detail=str(e))
-    
+
     # ============================================================================
     # Task Agent Endpoints (Enhanced)
     # ============================================================================
-    
+
     @app.post("/evaluate/task/create", response_model=TaskResponse, status_code=201)
     async def create_task_agent(
         eval_name: str,
@@ -913,7 +952,7 @@ def create_app() -> FastAPI:
         """Create evaluation task."""
         if not task_agent:
             raise HTTPException(status_code=503, detail="Task agent not initialized")
-        
+
         try:
             task = await task_agent.create_task(
                 eval_name=eval_name,
@@ -933,13 +972,13 @@ def create_app() -> FastAPI:
                 exc_info=True,
             )
             raise HTTPException(status_code=500, detail=str(e))
-    
+
     @app.get("/evaluate/task/{task_id}", response_model=TaskResponse)
     async def get_task_agent(task_id: str):
         """Get task status."""
         if not task_agent:
             raise HTTPException(status_code=503, detail="Task agent not initialized")
-        
+
         try:
             task = await task_agent.get_task_status(task_id=task_id)
             return TaskResponse(**task.to_dict())
@@ -953,13 +992,13 @@ def create_app() -> FastAPI:
                 exc_info=True,
             )
             raise HTTPException(status_code=500, detail=str(e))
-    
+
     @app.delete("/evaluate/task/{task_id}", status_code=200)
     async def cancel_task_agent(task_id: str):
         """Cancel a task."""
         if not task_agent:
             raise HTTPException(status_code=503, detail="Task agent not initialized")
-        
+
         try:
             task = await task_agent.cancel_task(task_id=task_id)
             return TaskResponse(**task.to_dict())
@@ -973,21 +1012,21 @@ def create_app() -> FastAPI:
                 exc_info=True,
             )
             raise HTTPException(status_code=500, detail=str(e))
-    
+
     # ============================================================================
     # Unified Evaluation Endpoint
     # ============================================================================
-    
+
     @app.post("/evaluate/unified", response_model=EvaluationResponse, status_code=200)
     async def unified_evaluation(request: EvaluationRequest):
         """Unified evaluation endpoint (like /chat/unified in ml-infra)."""
         if not evaluation_agent:
             raise HTTPException(status_code=503, detail="Evaluation agent not initialized")
-        
+
         try:
             # Get normalized models list
             models_list = request.get_models_list()
-            
+
             result = await evaluation_agent.evaluate(
                 eval_name=request.eval_name,
                 dataset_config=request.dataset_config,
@@ -1001,7 +1040,7 @@ def create_app() -> FastAPI:
                 agent_name=request.agent_name,
                 agent_version=request.agent_version,
             )
-            
+
             if request.run_async:
                 # Return task
                 task = result
@@ -1019,10 +1058,10 @@ def create_app() -> FastAPI:
                 if isinstance(result, list):
                     # Multiple models - return comparison
                     from aieval.sdk.comparison import compare_multiple_runs
-                    
+
                     runs = result
                     comparison = compare_multiple_runs(runs, models_list)
-                    
+
                     return EvaluationResponse(
                         task_id=None,
                         run_id=None,  # No single run_id for multiple models
@@ -1036,7 +1075,9 @@ def create_app() -> FastAPI:
                     # Single model - backward compatibility
                     run = result
                     # Get metadata from run, handling both 'metadata' and 'meta' attributes
-                    run_metadata = getattr(run, 'metadata', None) or getattr(run, 'meta', None) or {}
+                    run_metadata = (
+                        getattr(run, "metadata", None) or getattr(run, "meta", None) or {}
+                    )
                     return EvaluationResponse(
                         task_id=None,
                         run_id=run.run_id,
@@ -1056,11 +1097,11 @@ def create_app() -> FastAPI:
                 exc_info=True,
             )
             raise HTTPException(status_code=500, detail=str(e))
-    
+
     # ============================================================================
     # Guardrail Validation Endpoints
     # ============================================================================
-    
+
     @app.post("/api/v1/validate/prompt", response_model=ValidationResultResponse, status_code=200)
     async def validate_prompt(request: PromptValidationRequest):
         """Validate a prompt before sending to LLM."""
@@ -1068,10 +1109,10 @@ def create_app() -> FastAPI:
             from aieval.policies.policy_engine import PolicyEngine
             from aieval.repositories.inference_repository import InferenceRepository
             from aieval.db.session import get_session
-            
+
             # Get policy engine (singleton)
             policy_engine = PolicyEngine()
-            
+
             # Validate prompt
             validation_result = policy_engine.validate(
                 text=request.prompt,
@@ -1079,7 +1120,7 @@ def create_app() -> FastAPI:
                 rule_ids=request.rule_ids,
                 metadata=request.metadata,
             )
-            
+
             # Save to database if task_id provided
             inference_id = None
             if request.task_id:
@@ -1089,7 +1130,9 @@ def create_app() -> FastAPI:
                         inference = await repo.create(
                             prompt=request.prompt,
                             task_id=request.task_id,
-                            rule_results={r.rule_id: r.to_dict() for r in validation_result.rule_results},
+                            rule_results={
+                                r.rule_id: r.to_dict() for r in validation_result.rule_results
+                            },
                             passed=validation_result.passed,
                             blocked=validation_result.blocked,
                             metadata=request.metadata,
@@ -1098,13 +1141,12 @@ def create_app() -> FastAPI:
                         break
                 except Exception as e:
                     logger.warning(f"Failed to save inference to database: {e}")
-            
+
             return ValidationResultResponse(
                 passed=validation_result.passed,
                 blocked=validation_result.blocked,
                 rule_results=[
-                    RuleResultResponse(**r.to_dict())
-                    for r in validation_result.rule_results
+                    RuleResultResponse(**r.to_dict()) for r in validation_result.rule_results
                 ],
                 inference_id=inference_id,
             )
@@ -1115,7 +1157,7 @@ def create_app() -> FastAPI:
                 exc_info=True,
             )
             raise HTTPException(status_code=500, detail=str(e))
-    
+
     @app.post("/api/v1/validate/response", response_model=ValidationResultResponse, status_code=200)
     async def validate_response(request: ResponseValidationRequest):
         """Validate an LLM response."""
@@ -1123,17 +1165,17 @@ def create_app() -> FastAPI:
             from aieval.policies.policy_engine import PolicyEngine
             from aieval.repositories.inference_repository import InferenceRepository
             from aieval.db.session import get_session
-            
+
             # Get policy engine
             policy_engine = PolicyEngine()
-            
+
             # Prepare metadata with context for hallucination checks
             metadata = {
                 **request.metadata,
                 "context": request.context,
                 "prompt": request.prompt,
             }
-            
+
             # Validate response
             validation_result = policy_engine.validate(
                 text=request.response,
@@ -1141,7 +1183,7 @@ def create_app() -> FastAPI:
                 rule_ids=request.rule_ids,
                 metadata=metadata,
             )
-            
+
             # Save to database if task_id provided
             inference_id = None
             if request.task_id:
@@ -1153,7 +1195,9 @@ def create_app() -> FastAPI:
                             response=request.response,
                             context=request.context,
                             task_id=request.task_id,
-                            rule_results={r.rule_id: r.to_dict() for r in validation_result.rule_results},
+                            rule_results={
+                                r.rule_id: r.to_dict() for r in validation_result.rule_results
+                            },
                             passed=validation_result.passed,
                             blocked=validation_result.blocked,
                             metadata=request.metadata,
@@ -1162,13 +1206,12 @@ def create_app() -> FastAPI:
                         break
                 except Exception as e:
                     logger.warning(f"Failed to save inference to database: {e}")
-            
+
             return ValidationResultResponse(
                 passed=validation_result.passed,
                 blocked=validation_result.blocked,
                 rule_results=[
-                    RuleResultResponse(**r.to_dict())
-                    for r in validation_result.rule_results
+                    RuleResultResponse(**r.to_dict()) for r in validation_result.rule_results
                 ],
                 inference_id=inference_id,
             )
@@ -1179,43 +1222,43 @@ def create_app() -> FastAPI:
                 exc_info=True,
             )
             raise HTTPException(status_code=500, detail=str(e))
-    
+
     @app.post("/api/v1/validate/batch", response_model=BatchValidationResponse, status_code=200)
     async def validate_batch(request: BatchValidationRequest):
         """Batch validate multiple items."""
         try:
             from aieval.policies.policy_engine import PolicyEngine
-            
+
             # Get policy engine
             policy_engine = PolicyEngine()
-            
+
             results = []
             passed_count = 0
             failed_count = 0
             blocked_count = 0
-            
+
             for item in request.items:
                 text = item.get("prompt") or item.get("response", "")
                 metadata = {
                     **item.get("metadata", {}),
                     "context": item.get("context"),
                 }
-                
+
                 validation_result = policy_engine.validate(
                     text=text,
                     policy_name=request.policy_name,
                     rule_ids=None,
                     metadata=metadata,
                 )
-                
+
                 if validation_result.passed:
                     passed_count += 1
                 else:
                     failed_count += 1
-                
+
                 if validation_result.blocked:
                     blocked_count += 1
-                
+
                 results.append(
                     ValidationResultResponse(
                         passed=validation_result.passed,
@@ -1226,7 +1269,7 @@ def create_app() -> FastAPI:
                         ],
                     )
                 )
-            
+
             return BatchValidationResponse(
                 results=results,
                 total=len(results),
@@ -1241,7 +1284,7 @@ def create_app() -> FastAPI:
                 exc_info=True,
             )
             raise HTTPException(status_code=500, detail=str(e))
-    
+
     # Register error handlers
     from aieval.api.errors import (
         APIError,
@@ -1249,18 +1292,18 @@ def create_app() -> FastAPI:
         http_exception_handler,
         general_exception_handler,
     )
-    
+
     # ============================================================================
     # Conversational Agent Endpoint
     # ============================================================================
-    
+
     @app.post("/chat", response_model=ChatResponse, status_code=200)
     async def chat(request: ChatRequest):
         """Chat with the conversational agent using natural language."""
         try:
             from aieval.agents.conversational import ConversationalAgent
             from aieval.llm import LLMConfig
-            
+
             # Initialize agent (may fail if LiteLLM not available)
             try:
                 agent = ConversationalAgent()
@@ -1269,13 +1312,13 @@ def create_app() -> FastAPI:
                     status_code=503,
                     detail="Conversational interface requires LiteLLM. Install with: pip install 'ai-evolution[conversational]' or pip install litellm",
                 )
-            
+
             # Chat with agent
             response_message = await agent.chat(
                 user_input=request.message,
                 context=request.context,
             )
-            
+
             # Note: Session management would be added here in future
             return ChatResponse(
                 message=response_message,
@@ -1290,11 +1333,11 @@ def create_app() -> FastAPI:
                 exc_info=True,
             )
             raise HTTPException(status_code=500, detail=str(e))
-    
+
     app.add_exception_handler(APIError, api_error_handler)
     app.add_exception_handler(HTTPException, http_exception_handler)
     app.add_exception_handler(Exception, general_exception_handler)
-    
+
     return app
 
 
