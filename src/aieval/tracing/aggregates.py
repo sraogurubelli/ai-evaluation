@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from aieval.core.types import Run, Score
+from aieval.core.types import EvalResult, Score
 from aieval.tracing.base import CostData, TracingAdapter
 
 
 def enrich_run_aggregate_metrics(
-    run: Run,
+    run: EvalResult,
     tracing_adapter: TracingAdapter | None,
 ) -> None:
     """
@@ -60,7 +60,7 @@ def enrich_run_aggregate_metrics(
     run.metadata["aggregate_metrics"] = agg
 
 
-def _accuracy_dict(run: Run) -> dict:
+def _accuracy_dict(run: EvalResult) -> dict:
     """Compute accuracy (mean of score values) and return base aggregate dict."""
     numeric = [s.value for s in run.scores if isinstance(s.value, (int, float))]
     acc = sum(numeric) / len(numeric) if numeric else None
@@ -70,7 +70,7 @@ def _accuracy_dict(run: Run) -> dict:
     return d
 
 
-def _set_accuracy_only(run: Run) -> None:
+def _set_accuracy_only(run: EvalResult) -> None:
     """Set only accuracy in aggregate_metrics when no tracing adapter."""
     d = _accuracy_dict(run)
     if d:

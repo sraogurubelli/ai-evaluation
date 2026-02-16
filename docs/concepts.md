@@ -1,6 +1,6 @@
 # Concepts
 
-This project is **agent evaluation**: you define evals, run them over data sets, and get runs with scores. The core concepts are:
+This project is **agent evaluation**: you define evals, run them over data sets, and get EvalResults with scores. The core concepts are:
 
 **This is agent evaluation. Not ML experimentation. Not feature-flag experimentation.**
 
@@ -10,9 +10,9 @@ This project is **agent evaluation**: you define evals, run them over data sets,
 
 An **Eval** (evaluation) is the definition of what you want to measure: a name, a **Task** (what you're evaluating), a **Data Set** (the cases), and one or more **Scorers** (how to score each case). In the SDK it is represented by the `Experiment` class.
 
-## Run
+## EvalResult
 
-A **Run** is one execution of an Eval. You run an Eval (e.g. over a data set, with a given adapter and model) and get back a Run that contains **Scores** for each case, plus optional metadata (model, trace IDs, cost). Compare runs to check regressions (e.g. prompt v1 vs v2, model A vs B).
+An **EvalResult** is the result of executing an Eval. You run an Eval (e.g. over a data set, with a given adapter and model) and get back an EvalResult that contains **Scores** for each case, plus optional metadata (model, trace IDs, cost). Compare EvalResults to check regressions (e.g. prompt v1 vs v2, model A vs B).
 
 ## Data Set
 
@@ -28,10 +28,10 @@ A **Trace** is the execution trace of the agent (or model) for a task—steps, t
 
 ## Scores
 
-**Scores** are the results of running Scorers on the adapter output for each task. A Run contains scores per task (and optionally aggregate metrics). Scores can carry a `trace_id` when BYOT tracing is configured.
+**Scores** are the results of running Scorers on the adapter output for each task. An EvalResult contains scores per task (and optionally aggregate metrics). Scores can carry a `trace_id` when BYOT tracing is configured.
 
 ---
 
 ## AgentEval
 
-When the Eval is focused on evaluating **agents** (e.g. DevOps agents, SRE agents), we sometimes call it an **AgentEval**. The same concepts apply: Eval, Run, Data Set, Task, Trace, Scores.
+When the Eval is focused on evaluating **agents** (e.g. DevOps agents, SRE agents), we sometimes call it an **AgentEval**. The same concepts apply: Eval, EvalResult, Data Set, Task, Trace, Scores.

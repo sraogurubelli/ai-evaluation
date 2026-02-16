@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from aieval.sinks.base import Sink
-from aieval.core.types import Score, Run
+from aieval.core.types import Score, EvalResult
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +48,7 @@ class CSVSink(Sink):
         
         self.scores.append(score_dict)
     
-    def emit_run(self, run: Run) -> None:
+    def emit_run(self, run: EvalResult) -> None:
         """Emit all scores from run."""
         for score in run.scores:
             self.emit(score)

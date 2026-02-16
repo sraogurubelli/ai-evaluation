@@ -15,12 +15,14 @@ from aieval.api.models import (
     EvalConfigRequest,
     TaskResponse,
     TaskResultResponse,
-    RunResponse,
+    EvalResultResponse,
     AgentSummaryResponse,
     AgentRunSummaryResponse,
     PushRunRequest,
     ErrorResponse,
     HealthResponse,
+    ChatRequest,
+    ChatResponse,
     # Dataset Agent models
     DatasetLoadRequest,
     DatasetLoadResponse,
@@ -159,7 +161,7 @@ def create_app() -> FastAPI:
     """Create and configure FastAPI application."""
     app = FastAPI(
         title="AI Evolution API",
-        description="Unified AI agent evaluation (Eval, Run, Data Set, Scores)",
+        description="Unified AI agent evaluation (Eval, EvalResult, Data Set, Scores)",
         version="0.1.0",
         lifespan=lifespan,
     )
@@ -337,7 +339,7 @@ def create_app() -> FastAPI:
                 detail=f"Task {task_id} has no result yet (status: {task.status})",
             )
         
-        return RunResponse(**task.result.run.to_dict())
+                return EvalResultResponse(**task.result.eval_result.to_dict())
     
     @app.delete("/tasks/{task_id}", status_code=204)
     async def cancel_task(task_id: str):
@@ -479,7 +481,7 @@ def create_app() -> FastAPI:
             for task in tasks:
                 if not task.result or task.result.run.run_id != run_id:
                     continue
-                return RunResponse(**task.result.run.to_dict())
+                return EvalResultResponse(**task.result.eval_result.to_dict())
         for entry in _pushed_runs:
             if entry.get("run", {}).get("run_id") == run_id:
                 return RunResponse(**entry["run"])
@@ -1026,7 +1028,6 @@ def create_app() -> FastAPI:
                         run_id=None,  # No single run_id for multiple models
                         runs=[run.to_dict() for run in runs],
                         eval_id=runs[0].eval_id if runs else request.eval_name,
-                    experiment_id=runs[0].eval_id if runs else request.eval_name,  # Backward compatibility
                         scores=None,  # Scores are in individual runs
                         comparison=comparison,
                         metadata={"model_count": len(runs)},
@@ -1248,6 +1249,47 @@ def create_app() -> FastAPI:
         http_exception_handler,
         general_exception_handler,
     )
+    
+    # ============================================================================
+    # Conversational Agent Endpoint
+    # ============================================================================
+    
+    @app.post("/chat", response_model=ChatResponse, status_code=200)
+    async def chat(request: ChatRequest):
+        """Chat with the conversational agent using natural language."""
+        try:
+            from aieval.agents.conversational import ConversationalAgent
+            from aieval.llm import LLMConfig
+            
+            # Initialize agent (may fail if LiteLLM not available)
+            try:
+                agent = ConversationalAgent()
+            except ImportError as e:
+                raise HTTPException(
+                    status_code=503,
+                    detail="Conversational interface requires LiteLLM. Install with: pip install 'ai-evolution[conversational]' or pip install litellm",
+                )
+            
+            # Chat with agent
+            response_message = await agent.chat(
+                user_input=request.message,
+                context=request.context,
+            )
+            
+            # Note: Session management would be added here in future
+            return ChatResponse(
+                message=response_message,
+                session_id=request.session_id,
+            )
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(
+                "Error in chat endpoint",
+                error=str(e),
+                exc_info=True,
+            )
+            raise HTTPException(status_code=500, detail=str(e))
     
     app.add_exception_handler(APIError, api_error_handler)
     app.add_exception_handler(HTTPException, http_exception_handler)

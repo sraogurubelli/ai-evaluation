@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from aieval.sinks.base import Sink
-from aieval.core.types import Score, Run
+from aieval.core.types import Score, EvalResult
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ def _escape(s: str) -> str:
     )
 
 
-def _scores_by_test_id(run: Run) -> dict[str, list[Score]]:
+def _scores_by_test_id(run: EvalResult) -> dict[str, list[Score]]:
     """Group scores by test_id from metadata."""
     by_id: dict[str, list[Score]] = {}
     for score in run.scores:
@@ -65,13 +65,13 @@ class JUnitSink(Sink):
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.testsuite_name = testsuite_name
-        self._runs: list[ExperimentRun] = []
+        self._runs: list[EvalResult] = []
 
     def emit(self, score: Score) -> None:
         """No-op for individual scores (use emit_run instead)."""
         pass
 
-    def emit_run(self, run: Run) -> None:
+    def emit_run(self, run: EvalResult) -> None:
         """Buffer run for flush."""
         self._runs.append(run)
 

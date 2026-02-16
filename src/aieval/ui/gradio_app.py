@@ -175,6 +175,22 @@ def create_ui():
         gr.Markdown("Run experiments, view results, and manage evaluations.")
         
         with gr.Tabs():
+            # Add playground tabs
+            from aieval.ui.playground import (
+                create_prompt_playground,
+                create_scorer_playground,
+                create_agent_debugging_playground,
+            )
+            
+            with gr.TabItem("Prompt Playground"):
+                prompt_playground = create_prompt_playground()
+            
+            with gr.TabItem("Scorer Playground"):
+                scorer_playground = create_scorer_playground()
+            
+            with gr.TabItem("Agent Debugging"):
+                agent_playground = create_agent_debugging_playground()
+            
             with gr.TabItem("Run Experiment"):
                 with gr.Row():
                     with gr.Column():

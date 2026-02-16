@@ -61,7 +61,7 @@ async def example_offline_evaluation():
     ]
     
     # Score the outputs (since they're already in dataset.items[].output)
-    from aieval.core.types import ExperimentRun
+    from aieval.core.types import EvalResult
     import uuid
     from datetime import datetime
     
@@ -81,8 +81,8 @@ async def example_offline_evaluation():
             all_scores.append(score)
     
     # Create experiment run
-    run = ExperimentRun(
-        experiment_id=str(uuid.uuid4()),
+    run = EvalResult(
+        eval_id=str(uuid.uuid4()),
         run_id=str(uuid.uuid4()),
         dataset_id="offline_dataset",
         scores=all_scores,

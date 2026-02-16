@@ -1,7 +1,7 @@
 """Tests for core types."""
 
 import pytest
-from aieval.core.types import Score, Run, DatasetItem
+from aieval.core.types import Score, EvalResult, DatasetItem
 from datetime import datetime
 
 
@@ -40,14 +40,14 @@ def test_experiment_run_creation():
         Score(name="score2", value=0.9, eval_id="test.v1"),
     ]
     
-    run = ExperimentRun(
+    run = EvalResult(
         eval_id="exp1",
         run_id="run1",
         dataset_id="dataset1",
         scores=scores,
     )
     
-    assert run.experiment_id == "exp1"
+    assert run.eval_id == "exp1"
     assert len(run.scores) == 2
 
 

@@ -42,8 +42,8 @@ class TaskResultResponse(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
-class RunResponse(BaseModel):
-    """Run response model."""
+class EvalResultResponse(BaseModel):
+    """EvalResult response model."""
 
     eval_id: str
     run_id: str
@@ -58,6 +58,23 @@ class ErrorResponse(BaseModel):
     
     error: str
     detail: str | None = None
+
+
+# Conversational Agent Models
+class ChatRequest(BaseModel):
+    """Request for conversational chat."""
+    
+    message: str = Field(..., description="User's natural language message")
+    context: dict[str, Any] | None = Field(None, description="Optional conversation context")
+    session_id: str | None = Field(None, description="Optional session ID for conversation continuity")
+
+
+class ChatResponse(BaseModel):
+    """Response from conversational chat."""
+    
+    message: str = Field(..., description="Agent's response message")
+    session_id: str | None = Field(None, description="Session ID (if session management enabled)")
+    tool_calls: list[dict[str, Any]] | None = Field(None, description="Tool calls made (for debugging)")
 
 
 class HealthResponse(BaseModel):

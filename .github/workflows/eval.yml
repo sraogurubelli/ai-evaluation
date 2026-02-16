@@ -1,0 +1,295 @@
+name: Run Evaluations
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main, develop]
+  workflow_dispatch:
+    inputs:
+      eval_config:
+        description: 'Path to eval config file'
+        required: true
+        default: 'evals/config.yaml'
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+      
+      - name: Run evaluation
+        id: eval_run
+        env:
+          CHAT_BASE_URL: ${{ secrets.CHAT_BASE_URL }}
+          CHAT_PLATFORM_AUTH_TOKEN: ${{ secrets.CHAT_PLATFORM_AUTH_TOKEN }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          CONFIG_PATH="${{ github.event.inputs.eval_config || 'evals/config.yaml' }}"
+          aieval run --config "$CONFIG_PATH"
+          
+          # Extract run ID from results if available
+          if [ -f "results/results.json" ]; then
+            RUN_ID=$(python -c "import json; print(json.load(open('results/results.json')).get('run_id', ''))" 2>/dev/null || echo "")
+            echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
+            echo "results_file=results/results.json" >> $GITHUB_OUTPUT
+          fi
+        continue-on-error: true
+      
+      - name: Get baseline run ID
+        id: baseline
+        run: |
+          CONFIG_PATH="${{ github.event.inputs.eval_config || 'evals/config.yaml' }}"
+          EVAL_NAME=$(python -c "import yaml; print(yaml.safe_load(open('$CONFIG_PATH')).get('eval', {}).get('name', 'default'))" 2>/dev/null || echo "default")
+          
+          # Try to get baseline from baseline manager
+          # Try to get baseline from baseline manager
+          # BaselineManager stores eval_id -> run_id mappings
+          # For CI, we'll try to load baseline run JSON from .baselines/ directory
+          BASELINE_FILE=".baselines/$EVAL_NAME.json"
+          if [ -f "$BASELINE_FILE" ]; then
+            BASELINE_RUN_ID=$(python -c "import json; print(json.load(open('$BASELINE_FILE')).get('run_id', ''))" 2>/dev/null || echo "")
+            if [ -n "$BASELINE_RUN_ID" ]; then
+              echo "baseline_run_id=$BASELINE_RUN_ID" >> $GITHUB_OUTPUT
+              echo "baseline_file=$BASELINE_FILE" >> $GITHUB_OUTPUT
+            fi
+          fi
+        continue-on-error: true
+      
+      - name: Compare with baseline
+        id: comparison
+        if: steps.baseline.outputs.baseline_run_id != '' && steps.eval_run.outputs.results_file != ''
+        run: |
+          python << 'EOF'
+          import json
+          import sys
+          from aieval.cli.ci_utils import load_run_from_json, compare_runs
+          
+          current_run = load_run_from_json("${{ steps.eval_run.outputs.results_file }}")
+          baseline_run = load_run_from_json("${{ steps.baseline.outputs.baseline_file }}")
+          
+          comparison = compare_runs(current_run, baseline_run)
+          
+          # Write comparison results
+          with open("comparison_results.json", "w") as f:
+              json.dump(comparison, f, indent=2)
+          
+          # Output regression count
+          regression_count = len(comparison.get("regressions", []))
+          print(f"regression_count={regression_count}", file=sys.stdout)
+          
+          # Output summary
+          print(f"Found {regression_count} regressions and {len(comparison.get('improvements', []))} improvements")
+          EOF
+          
+          REGRESSION_COUNT=$(python -c "import json; print(len(json.load(open('comparison_results.json')).get('regressions', [])))" 2>/dev/null || echo "0")
+          echo "regression_count=$REGRESSION_COUNT" >> $GITHUB_OUTPUT
+        continue-on-error: true
+      
+      - name: Check deployment gate
+        id: gate_check
+        if: steps.eval_run.outputs.results_file != ''
+        run: |
+          python << 'EOF'
+          import json
+          import sys
+          from aieval.cli.ci_utils import check_deployment_gate
+          
+          # Load gate config from eval config if available
+          CONFIG_PATH="${{ github.event.inputs.eval_config || 'evals/config.yaml' }}"
+          score_thresholds = {}
+          max_regressions = 0
+          
+          try:
+              import yaml
+              with open(CONFIG_PATH) as f:
+                  config = yaml.safe_load(f)
+                  gate_config = config.get("gate", {})
+                  score_thresholds = gate_config.get("score_thresholds", {})
+                  max_regressions = gate_config.get("max_regressions", 0)
+          except:
+              pass
+          
+          baseline_path = "${{ steps.baseline.outputs.baseline_file }}" if "${{ steps.baseline.outputs.baseline_file }}" else None
+          
+          check_result = check_deployment_gate(
+              run_path="${{ steps.eval_run.outputs.results_file }}",
+              baseline_run_path=baseline_path,
+              score_thresholds=score_thresholds if score_thresholds else None,
+              max_regressions=max_regressions,
+          )
+          
+          # Write gate check results
+          with open("gate_check.json", "w") as f:
+              json.dump(check_result, f, indent=2)
+          
+          # Output allowed status
+          allowed = check_result.get("allowed", False)
+          print(f"deployment_allowed={str(allowed).lower()}", file=sys.stdout)
+          
+          if not allowed:
+              print("Deployment blocked by gate checks", file=sys.stderr)
+              sys.exit(1)
+          EOF
+        continue-on-error: true
+      
+      - name: Publish JUnit test results
+        if: always() && steps.eval_run.outputs.results_file != ''
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        with:
+          files: results/junit.xml
+          check_name: Evaluation Results
+        continue-on-error: true
+      
+      - name: Comment PR with results
+        if: github.event_name == 'pull_request' && steps.eval_run.outputs.results_file != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            
+            let results = null;
+            let comparison = null;
+            let gateCheck = null;
+            
+            try {
+              if (fs.existsSync('${{ steps.eval_run.outputs.results_file }}')) {
+                results = JSON.parse(fs.readFileSync('${{ steps.eval_run.outputs.results_file }}', 'utf8'));
+              }
+            } catch (e) {
+              console.error('Failed to load results:', e);
+            }
+            
+            try {
+              if (fs.existsSync('comparison_results.json')) {
+                comparison = JSON.parse(fs.readFileSync('comparison_results.json', 'utf8'));
+              }
+            } catch (e) {
+              // Comparison not available
+            }
+            
+            try {
+              if (fs.existsSync('gate_check.json')) {
+                gateCheck = JSON.parse(fs.readFileSync('gate_check.json', 'utf8'));
+              }
+            } catch (e) {
+              // Gate check not available
+            }
+            
+            if (!results) {
+              return;
+            }
+            
+            let body = '## 📊 Evaluation Results\n\n';
+            body += `**Run ID:** \`${results.run_id || 'unknown'}\`\n`;
+            body += `**Eval ID:** \`${results.eval_id || 'unknown'}\`\n`;
+            body += `**Dataset ID:** \`${results.dataset_id || 'unknown'}\`\n\n`;
+            
+            // Score summary
+            const scores = results.scores || [];
+            if (scores.length > 0) {
+              body += '### Scores\n\n';
+              const scoreGroups = {};
+              scores.forEach(s => {
+                if (!scoreGroups[s.name]) {
+                  scoreGroups[s.name] = { count: 0, passed: 0, failed: 0, avg: 0 };
+                }
+                scoreGroups[s.name].count++;
+                const val = typeof s.value === 'boolean' ? (s.value ? 1 : 0) : (typeof s.value === 'number' ? s.value : 0);
+                scoreGroups[s.name].avg += val;
+                if (val > 0) scoreGroups[s.name].passed++;
+                else scoreGroups[s.name].failed++;
+              });
+              
+              Object.keys(scoreGroups).forEach(name => {
+                const g = scoreGroups[name];
+                g.avg = g.avg / g.count;
+                const status = g.failed === 0 ? '✅' : '⚠️';
+                body += `${status} **${name}**: ${g.passed}/${g.count} passed (avg: ${g.avg.toFixed(3)})\n`;
+              });
+              body += '\n';
+            }
+            
+            // Comparison results
+            if (comparison) {
+              const regressions = comparison.regressions || [];
+              const improvements = comparison.improvements || [];
+              
+              if (regressions.length > 0 || improvements.length > 0) {
+                body += '### Comparison with Baseline\n\n';
+                
+                if (regressions.length > 0) {
+                  body += `⚠️ **${regressions.length} Regressions Detected**\n\n`;
+                  regressions.slice(0, 10).forEach(r => {
+                    body += `- \`${r.item_id}\`: ${r.score_name} dropped from ${r.baseline_value.toFixed(3)} to ${r.current_value.toFixed(3)} (${r.change.toFixed(3)})\n`;
+                  });
+                  if (regressions.length > 10) {
+                    body += `\n*... and ${regressions.length - 10} more regressions*\n`;
+                  }
+                  body += '\n';
+                }
+                
+                if (improvements.length > 0) {
+                  body += `✅ **${improvements.length} Improvements**\n\n`;
+                  improvements.slice(0, 5).forEach(i => {
+                    body += `- \`${i.item_id}\`: ${i.score_name} improved from ${i.baseline_value.toFixed(3)} to ${i.current_value.toFixed(3)} (+${i.change.toFixed(3)})\n`;
+                  });
+                  if (improvements.length > 5) {
+                    body += `\n*... and ${improvements.length - 5} more improvements*\n`;
+                  }
+                  body += '\n';
+                }
+              }
+            }
+            
+            // Gate check results
+            if (gateCheck) {
+              const allowed = gateCheck.allowed;
+              body += `### Deployment Gate\n\n`;
+              body += allowed ? '✅ **Deployment Allowed**\n\n' : '❌ **Deployment Blocked**\n\n';
+              
+              if (gateCheck.reasons && gateCheck.reasons.length > 0) {
+                body += '**Reasons:**\n';
+                gateCheck.reasons.forEach(r => body += `- ${r}\n`);
+                body += '\n';
+              }
+            }
+            
+            body += '---\n';
+            body += '*Generated by AI Evaluation CI/CD*';
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
+      
+      - name: Fail on deployment gate failure
+        if: steps.gate_check.outputs.deployment_allowed == 'false'
+        run: |
+          echo "❌ Deployment blocked by gate checks"
+          exit 1
+      
+      - name: Fail on regressions (if configured)
+        if: steps.comparison.outputs.regression_count != '' && steps.comparison.outputs.regression_count != '0'
+        run: |
+          MAX_REGRESSIONS="${{ github.event.inputs.max_regressions || '0' }}"
+          if [ "$MAX_REGRESSIONS" != "0" ] && [ "${{ steps.comparison.outputs.regression_count }}" -gt "$MAX_REGRESSIONS" ]; then
+            echo "❌ Too many regressions: ${{ steps.comparison.outputs.regression_count }} (max allowed: $MAX_REGRESSIONS)"
+            exit 1
+          fi

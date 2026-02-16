@@ -4,7 +4,7 @@ import uuid
 import asyncio
 from typing import Any
 
-from aieval.core.types import DatasetItem, Run, Score, normalize_adapter_output
+from aieval.core.types import DatasetItem, EvalResult, Score, normalize_adapter_output
 from aieval.adapters.base import Adapter
 from aieval.scorers.base import Scorer
 
@@ -32,7 +32,7 @@ class Eval:
         self.dataset = dataset
         self.scorers = scorers
         self.eval_id = eval_id or str(uuid.uuid4())
-        self.runs: list[Run] = []
+        self.runs: list[EvalResult] = []
 
     async def run(
         self,
@@ -40,7 +40,7 @@ class Eval:
         model: str | None = None,
         concurrency_limit: int = 5,
         **kwargs: Any,
-    ) -> Run:
+    ) -> EvalResult:
         """
         Run eval against dataset.
 
@@ -138,7 +138,7 @@ class Eval:
         for key in ("agent_id", "agent_name", "agent_version"):
             if key in kwargs:
                 run_metadata[key] = kwargs.pop(key)
-        run = Run(
+        run = EvalResult(
             eval_id=self.eval_id,
             run_id=run_id,
             dataset_id=str(uuid.uuid4()),  # Could be dataset hash
@@ -150,7 +150,7 @@ class Eval:
         return run
 
     def compare(
-        self, run1: Run, run2: Run
+        self, run1: EvalResult, run2: EvalResult
     ) -> dict[str, Any]:
         """
         Compare two runs.

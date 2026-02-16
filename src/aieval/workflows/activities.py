@@ -11,7 +11,7 @@ from temporalio import activity
 from temporalio.common import RetryPolicy
 
 from aieval.core.eval import Eval
-from aieval.core.types import DatasetItem, Score, Run
+from aieval.core.types import DatasetItem, Score, EvalResult
 from aieval.datasets import load_jsonl_dataset, load_index_csv_dataset
 from aieval.adapters.base import Adapter
 from aieval.scorers.base import Scorer
@@ -88,7 +88,7 @@ async def run_experiment_activity(
         concurrency_limit: Maximum concurrent API calls
         
     Returns:
-        Run as dictionary
+        EvalResult as dictionary
     """
     activity.logger.info(f"Running experiment with {len(dataset_items)} items")
     
@@ -187,13 +187,13 @@ async def emit_results_activity(
     """
     activity.logger.info(f"Emitting results to {len(sinks_config)} sinks")
     
-    from aieval.core.types import Run
+    from aieval.core.types import EvalResult
     from aieval.sinks.csv import CSVSink
     from aieval.sinks.json import JSONSink
     from aieval.sinks.stdout import StdoutSink
     
-    # Convert result back to Run
-    run = Run(
+    # Convert result back to EvalResult
+    run = EvalResult(
         eval_id=result["eval_id"],
         run_id=result["run_id"],
         dataset_id=result["dataset_id"],

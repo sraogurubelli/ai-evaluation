@@ -76,13 +76,13 @@ class TaskResult(Base):
     
     # Relationships
     task = relationship("Task", back_populates="result")
-    run = relationship("Run", back_populates="task_results")
+    eval_result = relationship("EvalResult", back_populates="task_results")
     
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "task_id": str(self.task_id),
-            "run": self.run.to_dict() if self.run else None,
+            "run": self.eval_result.to_dict() if self.eval_result else None,
             "execution_time_seconds": self.execution_time_seconds,
             "metadata": self.meta or {},
         }
@@ -103,7 +103,7 @@ class Eval(Base):
     meta = Column("meta_data", JSON, nullable=True, default=dict)
     
     # Relationships
-    runs = relationship("Run", back_populates="eval", cascade="all, delete-orphan")
+    runs = relationship("EvalResult", back_populates="eval", cascade="all, delete-orphan")
     
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
@@ -119,8 +119,8 @@ class Eval(Base):
         }
 
 
-class Run(Base):
-    """Run model (formerly ExperimentRun)."""
+class EvalResult(Base):
+    """EvalResult model (formerly ExperimentRun, then Run)."""
     
     __tablename__ = "runs"  # Will be migrated from "experiment_runs"
     
@@ -134,8 +134,8 @@ class Run(Base):
     
     # Relationships
     eval = relationship("Eval", back_populates="runs")
-    scores = relationship("Score", back_populates="run", cascade="all, delete-orphan")
-    task_results = relationship("TaskResult", back_populates="run")
+    scores = relationship("Score", back_populates="eval_result", cascade="all, delete-orphan")
+    task_results = relationship("TaskResult", back_populates="eval_result")
     
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
@@ -166,7 +166,7 @@ class Score(Base):
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
     
     # Relationships
-    run = relationship("Run", back_populates="scores")
+    eval_result = relationship("EvalResult", back_populates="scores")
     
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
@@ -302,7 +302,7 @@ class Inference(Base):
     
     # Relationships
     task = relationship("GuardrailTask", back_populates="inferences")
-    run = relationship("Run", foreign_keys=[run_id])
+    eval_result = relationship("EvalResult", foreign_keys=[run_id])
     
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""

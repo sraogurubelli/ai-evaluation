@@ -21,7 +21,7 @@ from aieval import (
 from aieval.adapters.sse_streaming import SSEStreamingAdapter
 from aieval.scorers.enriched import EnrichedOutputScorer
 from aieval.scorers.metrics import LatencyScorer, ToolCallScorer, TokenUsageScorer
-from aieval.core.types import DatasetItem, Run, Score
+from aieval.core.types import DatasetItem, EvalResult, Score
 from aieval.scorers.base import Scorer
 from aieval.adapters.base import Adapter
 from aieval.sdk.unit_test import score_single_output, run_single_item
@@ -361,7 +361,7 @@ async def run_single_test(
     model: str | None = None,
     base_dir: str | Path = "benchmarks/datasets",
     concurrency_limit: int = 1,
-) -> Run:
+) -> EvalResult:
     """
     Run a single test case end-to-end (convenience function for unit testing).
     Uses framework run_single_item under the hood.

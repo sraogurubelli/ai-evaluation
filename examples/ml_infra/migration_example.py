@@ -162,7 +162,7 @@ async def migration_example_offline():
     )
     
     # Score pre-generated outputs (no adapter needed)
-    from aieval.core.types import ExperimentRun
+    from aieval.core.types import EvalResult
     import uuid
     
     all_scores = []
@@ -176,7 +176,8 @@ async def migration_example_offline():
                 )
                 all_scores.append(score)
     
-    run = Run(
+    from aieval.core.types import EvalResult
+    run = EvalResult(
         eval_id=str(uuid.uuid4()),
         run_id=str(uuid.uuid4()),
         dataset_id="offline",

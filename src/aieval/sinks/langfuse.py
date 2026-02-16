@@ -3,7 +3,7 @@
 from typing import Any
 
 from aieval.sinks.base import Sink
-from aieval.core.types import Score, Run
+from aieval.core.types import Score, EvalResult
 
 
 class LangfuseSink(Sink):
@@ -56,7 +56,7 @@ class LangfuseSink(Sink):
         except Exception as e:
             print(f"Warning: Failed to send score to Langfuse: {e}")
     
-    def emit_run(self, run: Run) -> None:
+    def emit_run(self, run: EvalResult) -> None:
         """Send all scores from run to Langfuse."""
         for score in run.scores:
             self.emit(score)

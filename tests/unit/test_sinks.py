@@ -9,7 +9,7 @@ from aieval.sinks.json import JSONSink
 from aieval.sinks.stdout import StdoutSink
 from aieval.sinks.junit import JUnitSink
 from aieval.sinks.html_report import HTMLReportSink, render_run_to_html
-from aieval.core.types import ExperimentRun, Score, DatasetItem
+from aieval.core.types import EvalResult, Score, DatasetItem
 
 
 class TestCSVSink:
@@ -20,7 +20,7 @@ class TestCSVSink:
         csv_path = tmp_path / "results.csv"
         sink = CSVSink(csv_path)
         
-        run = Run(
+        run = EvalResult(
             eval_id="exp-001",
             run_id="run-001",
             dataset_id="dataset-001",
@@ -44,7 +44,7 @@ class TestCSVSink:
         csv_path = tmp_path / "results.csv"
         sink = CSVSink(csv_path)
         
-        run = Run(
+        run = EvalResult(
             eval_id="exp-001",
             run_id="run-001",
             dataset_id="dataset-001",
@@ -77,7 +77,7 @@ class TestJSONSink:
         json_path = tmp_path / "results.json"
         sink = JSONSink(json_path)
         
-        run = Run(
+        run = EvalResult(
             eval_id="exp-001",
             run_id="run-001",
             dataset_id="dataset-001",
@@ -104,7 +104,7 @@ class TestStdoutSink:
         """Test emitting experiment run to stdout."""
         sink = StdoutSink()
         
-        run = Run(
+        run = EvalResult(
             eval_id="exp-001",
             run_id="run-001",
             dataset_id="dataset-001",
@@ -127,7 +127,7 @@ class TestJUnitSink:
         """Test emitting run produces valid JUnit-style XML."""
         junit_path = tmp_path / "junit.xml"
         sink = JUnitSink(junit_path)
-        run = Run(
+        run = EvalResult(
             eval_id="exp-001",
             run_id="run-001",
             dataset_id="dataset-001",
@@ -153,7 +153,7 @@ class TestHTMLReportSink:
         """Test emitting run produces HTML with summary and table."""
         html_path = tmp_path / "report.html"
         sink = HTMLReportSink(html_path)
-        run = Run(
+        run = EvalResult(
             eval_id="exp-001",
             run_id="run-001",
             dataset_id="dataset-001",
@@ -176,7 +176,7 @@ class TestHTMLReportSink:
         """Test render_run_to_html accepts run dict (for API)."""
         run_dict = {
             "run_id": "r1",
-            "experiment_id": "e1",
+            "eval_id": "e1",
             "dataset_id": "d1",
             "scores": [
                 {"name": "s1", "value": 1.0, "metadata": {"test_id": "t1"}},

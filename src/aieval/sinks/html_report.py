@@ -10,12 +10,12 @@ from pathlib import Path
 from typing import Any
 
 from aieval.sinks.base import Sink
-from aieval.core.types import Score, ExperimentRun
+from aieval.core.types import Score, EvalResult
 
 logger = logging.getLogger(__name__)
 
 
-def _scores_by_test_id(run: Run) -> dict[str, list[Score]]:
+def _scores_by_test_id(run: EvalResult) -> dict[str, list[Score]]:
     """Group scores by test_id from metadata."""
     by_id: dict[str, list[Score]] = {}
     for score in run.scores:
@@ -37,7 +37,7 @@ def _test_passed(scores: list[Score]) -> bool:
     return True
 
 
-def _scorer_names(run: Run) -> list[str]:
+def _scorer_names(run: EvalResult) -> list[str]:
     """Unique scorer names in order of first appearance."""
     seen: set[str] = set()
     names: list[str] = []
@@ -48,7 +48,7 @@ def _scorer_names(run: Run) -> list[str]:
     return names
 
 
-def render_run_to_html(run: Run | dict[str, Any], title: str = "Evaluation Report") -> str:
+def render_run_to_html(run: EvalResult | dict[str, Any], title: str = "Evaluation Report") -> str:
     """
     Render a single run (Run or run dict from to_dict()) to HTML string.
     Used by API GET /runs/{run_id}/report.
@@ -165,13 +165,13 @@ class HTMLReportSink(Sink):
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.title = title
-        self._runs: list[Run] = []
+        self._runs: list[EvalResult] = []
 
     def emit(self, score: Score) -> None:
         """No-op for individual scores (use emit_run instead)."""
         pass
 
-    def emit_run(self, run: Run) -> None:
+    def emit_run(self, run: EvalResult) -> None:
         """Buffer run for flush."""
         self._runs.append(run)
 
@@ -189,6 +189,7 @@ class HTMLReportSink(Sink):
         run_meta = run.metadata or {}
         agent_id = run_meta.get("agent_id", "")
         eval_name = run_meta.get("name", run.eval_id)
+        experiment_name = eval_name  # For backward compatibility in HTML template
 
         rows: list[str] = []
         for test_id, scores in sorted(by_test.items()):
@@ -235,7 +236,7 @@ class HTMLReportSink(Sink):
 </head>
 <body>
 <h1>{html.escape(self.title)}</h1>
-<div class="meta">Run: {html.escape(run.run_id)} | Experiment: {html.escape(experiment_name)} | Agent: {html.escape(agent_id or "-")}</div>
+<div class="meta">Run: {html.escape(run.run_id)} | Eval: {html.escape(eval_name)} | Agent: {html.escape(agent_id or "-")}</div>
 <div class="summary">
   <span>Total: {total}</span>
   <span class="pass">Passed: {passed}</span>

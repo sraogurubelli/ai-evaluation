@@ -5,7 +5,7 @@ from typing import Any
 from aieval.agents.base import BaseEvaluationAgent
 from aieval.agents.eval_agent import EvalAgent
 from aieval.agents.task_agent import TaskAgent
-from aieval.core.types import Run
+from aieval.core.types import EvalResult
 from aieval.tasks.models import Task, TaskResult
 
 
@@ -58,7 +58,7 @@ class EvaluationAgent(BaseEvaluationAgent):
         agent_name: str | None = None,
         agent_version: str | None = None,
         **kwargs: Any,
-    ) -> Task | Run | list[Run]:
+    ) -> Task | EvalResult | list[EvalResult]:
         """
         Run a complete evaluation workflow.
 
@@ -79,7 +79,7 @@ class EvaluationAgent(BaseEvaluationAgent):
             **kwargs: Additional parameters
 
         Returns:
-            Task (if run_async=True) or Run/list[Run] (if run_async=False)
+            Task (if run_async=True) or EvalResult/list[EvalResult] (if run_async=False)
         """
         self.logger.info(f"Starting evaluation: {eval_name}")
         

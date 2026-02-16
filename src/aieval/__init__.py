@@ -18,7 +18,7 @@ except ImportError:
 from aieval.sdk import (
     # Core types
     DatasetItem,
-    Run,
+    EvalResult,
     Score,
     # Eval system
     Eval,
@@ -64,7 +64,7 @@ __version__ = "0.1.0"
 __all__ = [
     # Core types
     "DatasetItem",
-    "Run",
+    "EvalResult",
     "Score",
     # Eval system
     "Eval",

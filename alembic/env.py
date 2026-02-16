@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 # Import Base and models
 from aieval.db.models import Base
 from aieval.db.session import get_database_url
-from aieval.db.models import Task, TaskResult, Experiment, ExperimentRun, Score
+from aieval.db.models import Task, TaskResult, Experiment, EvalResult, Score
 
 # this is the Alembic Config object
 config = context.config

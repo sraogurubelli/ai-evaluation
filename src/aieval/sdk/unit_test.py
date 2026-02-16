@@ -8,13 +8,13 @@ in consumer samples (e.g. samples_sdk/consumers/devops).
 from typing import Any
 
 from aieval.core.eval import Eval
-from aieval.core.types import DatasetItem, Run, Score
+from aieval.core.types import DatasetItem, EvalResult, Score
 from aieval.adapters.base import Adapter
 from aieval.scorers.base import Scorer
 
 
 def assert_score_min(
-    result: Run,
+    result: EvalResult,
     min_value: float,
     score_name: str | None = None,
 ) -> None:
@@ -24,7 +24,7 @@ def assert_score_min(
     Purely generic; keeps assertions in the caller's control.
 
     Args:
-        result: Run from eval.run() or run_single_item()
+        result: EvalResult from eval.run() or run_single_item()
         min_value: Minimum acceptable score value (inclusive).
         score_name: If set, use the score with this name; otherwise use the first score.
 
@@ -98,7 +98,7 @@ async def run_single_item(
     model: str | None = None,
     concurrency_limit: int = 1,
     **kwargs: Any,
-) -> Run:
+) -> EvalResult:
     """
     Run a single dataset item end-to-end (convenience for unit/integration tests).
 

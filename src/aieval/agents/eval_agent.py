@@ -8,7 +8,7 @@ from aieval.agents.dataset_agent import DatasetAgent
 from aieval.agents.scorer_agent import ScorerAgent
 from aieval.agents.adapter_agent import AdapterAgent
 from aieval.core.eval import Eval
-from aieval.core.types import Run, DatasetItem
+from aieval.core.types import EvalResult, DatasetItem
 from aieval.adapters.base import Adapter
 from aieval.scorers.base import Scorer
 
@@ -111,7 +111,7 @@ class EvalAgent(BaseEvaluationAgent):
         model: str | None = None,
         concurrency_limit: int = 5,
         **kwargs: Any,
-    ) -> Run:
+    ) -> EvalResult:
         """
         Run an eval.
 
@@ -153,8 +153,8 @@ class EvalAgent(BaseEvaluationAgent):
 
     async def compare_runs(
         self,
-        run1: Run | str,
-        run2: Run | str,
+        run1: EvalResult | str,
+        run2: EvalResult | str,
         **kwargs: Any,
     ) -> dict[str, Any]:
         """
@@ -171,7 +171,7 @@ class EvalAgent(BaseEvaluationAgent):
         self.logger.info("Comparing runs")
 
         return {
-            "run1_id": run1.run_id if isinstance(run1, Run) else run1,
-            "run2_id": run2.run_id if isinstance(run2, Run) else run2,
+            "run1_id": run1.run_id if isinstance(run1, EvalResult) else run1,
+            "run2_id": run2.run_id if isinstance(run2, EvalResult) else run2,
             "comparison": "Not implemented yet",
         }

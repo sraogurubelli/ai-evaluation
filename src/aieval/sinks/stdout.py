@@ -1,7 +1,7 @@
 """Stdout sink for console output."""
 
 from aieval.sinks.base import Sink
-from aieval.core.types import Score, Run
+from aieval.core.types import Score, EvalResult
 
 
 class StdoutSink(Sink):
@@ -13,7 +13,7 @@ class StdoutSink(Sink):
         if score.comment:
             print(f"  Comment: {score.comment}")
     
-    def emit_run(self, run: Run) -> None:
+    def emit_run(self, run: EvalResult) -> None:
         """Print run summary to stdout."""
         print(f"\nRun: {run.run_id}")
         print(f"  Eval: {run.eval_id}")

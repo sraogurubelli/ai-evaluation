@@ -3,7 +3,7 @@
 import pytest
 import asyncio
 from aieval.core.eval import Eval
-from aieval.core.types import DatasetItem, Run
+from aieval.core.types import DatasetItem, EvalResult
 from aieval.scorers.deep_diff import DeepDiffScorer
 
 
@@ -58,15 +58,15 @@ def test_eval_compare():
         scorers=[],
     )
 
-    # Create two runs
-    run1 = Run(
+    # Create two eval results
+    eval_result1 = EvalResult(
         eval_id="eval1",
         run_id="run1",
         dataset_id="dataset1",
         scores=[Score(name="score1", value=0.8, eval_id="test.v1")],
     )
 
-    run2 = Run(
+    eval_result2 = EvalResult(
         eval_id="eval1",
         run_id="run2",
         dataset_id="dataset1",
@@ -74,7 +74,7 @@ def test_eval_compare():
     )
 
     # Compare
-    comparison = eval_.compare(run1, run2)
+    comparison = eval_.compare(eval_result1, eval_result2)
     
     assert "score1" in comparison["score_changes"]
     assert comparison["score_changes"]["score1"]["change"] > 0  # Improvement

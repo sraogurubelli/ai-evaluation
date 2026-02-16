@@ -21,7 +21,7 @@ Usage:
 """
 
 # Core types
-from aieval.core.types import DatasetItem, ExperimentRun, Score
+from aieval.core.types import DatasetItem, EvalResult, Score
 
 # Eval system
 from aieval.core.eval import Eval
@@ -67,6 +67,37 @@ from aieval.sinks.base import Sink
 # Runner
 from aieval.sdk.runner import EvaluationRunner, run_evaluation
 
+# Online evaluation
+from aieval.evaluation.online import OnlineEvaluationAgent
+from aieval.monitoring.evaluator import ContinuousEvaluator
+from aieval.feedback.collector import FeedbackCollector
+from aieval.feedback.integrator import FeedbackIntegrator
+
+# Incremental evaluation
+from aieval.evaluation.incremental import IncrementalEvaluator
+
+# Agent tracing
+from aieval.tracing import AgentTrace, parse_langgraph_trace, parse_openai_agents_trace, parse_pydantic_ai_trace
+
+# CI/CD
+from aieval.ci.gates import DeploymentGate
+
+# Scorer templates
+from aieval.scorers.templates import (
+    HallucinationScorer,
+    HelpfulnessScorer,
+    RelevanceScorer,
+    ToxicityScorer,
+    CorrectnessScorer,
+)
+
+# Agent scorers
+from aieval.scorers.agent import (
+    ToolCallAccuracyScorer,
+    ParameterCorrectnessScorer,
+    StepSelectionScorer,
+)
+
 # Task abstraction (Braintrust-style)
 from aieval.sdk.task import Task, FunctionTask, AdapterTask
 
@@ -83,9 +114,9 @@ from aieval.sdk.assertions import (
 
 # Comparison (Braintrust-style)
 from aieval.sdk.comparison import (
-    compare_runs,
-    compare_multiple_runs,
-    RunComparison,
+    compare_eval_results,
+    compare_multiple_eval_results,
+    EvalResultComparison,
     get_regressions,
 )
 
@@ -124,10 +155,28 @@ try:
 except ImportError:
     GUARDRAILS_AVAILABLE = False
 
+# Tools system
+from aieval.agents.tools import (
+    get_tool_registry,
+    execute_tool,
+    LoadDatasetTool,
+    CreateScorerTool,
+    CreateEvalTool,
+    EvalTool,
+    CompareEvalResultsTool,
+    SetBaselineTool,
+    GetBaselineTool,
+    EvaluateTraceTool,
+    EvaluateTracesTool,
+    ConvertTracesToDatasetTool,
+    MonitorTracesTool,
+    CollectFeedbackTool,
+)
+
 __all__ = [
     # Core types
     "DatasetItem",
-    "Run",
+    "EvalResult",
     "Score",
     # Eval system
     "Eval",
@@ -171,9 +220,9 @@ __all__ = [
     "FunctionAssertion",
     "AssertionScorer",
     # Comparison
-    "compare_runs",
-    "compare_multiple_runs",
-    "RunComparison",
+    "compare_eval_results",
+    "compare_multiple_eval_results",
+    "EvalResultComparison",
     "get_regressions",
     # Unit-test helpers (agent-agnostic)
     "score_single_output",
@@ -181,4 +230,44 @@ __all__ = [
     "assert_score_min",
     # Guardrail SDK (if available)
     *(["validate_prompt", "validate_response", "load_policy", "validate_policy_config", "get_policy_engine", "GuardrailScorer", "HallucinationScorer", "PromptInjectionScorer", "ToxicityScorer", "PIIScorer", "SensitiveDataScorer", "RegexScorer", "KeywordScorer"] if GUARDRAILS_AVAILABLE else []),
+    # Tools system
+    "get_tool_registry",
+    "execute_tool",
+    "LoadDatasetTool",
+    "CreateScorerTool",
+    "CreateEvalTool",
+    "EvalTool",
+    "CompareEvalResultsTool",
+    "SetBaselineTool",
+    "GetBaselineTool",
+    # Online evaluation
+    "EvaluateTraceTool",
+    "EvaluateTracesTool",
+    "ConvertTracesToDatasetTool",
+    "MonitorTracesTool",
+    "CollectFeedbackTool",
+    # Online evaluation components
+    "OnlineEvaluationAgent",
+    "ContinuousEvaluator",
+    "FeedbackCollector",
+    "FeedbackIntegrator",
+    # Incremental evaluation
+    "IncrementalEvaluator",
+    # Agent tracing
+    "AgentTrace",
+    "parse_langgraph_trace",
+    "parse_openai_agents_trace",
+    "parse_pydantic_ai_trace",
+    # CI/CD
+    "DeploymentGate",
+    # Scorer templates
+    "HallucinationScorer",
+    "HelpfulnessScorer",
+    "RelevanceScorer",
+    "ToxicityScorer",
+    "CorrectnessScorer",
+    # Agent scorers
+    "ToolCallAccuracyScorer",
+    "ParameterCorrectnessScorer",
+    "StepSelectionScorer",
 ]

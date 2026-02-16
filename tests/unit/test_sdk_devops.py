@@ -8,7 +8,7 @@ from samples_sdk.consumers.devops import (
     compare_csv_results,
     create_devops_sinks,
 )
-from aieval.core.types import Run
+from aieval.core.types import EvalResult
 from aieval.sinks.stdout import StdoutSink
 from aieval.sinks.csv import CSVSink
 

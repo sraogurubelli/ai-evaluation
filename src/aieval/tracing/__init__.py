@@ -1,20 +1,10 @@
-"""Tracing adapters for reading traces and cost from external systems (BYOT).
+"""Agent trace support for various frameworks."""
 
-Use TracingAdapter implementations to read traces from Langfuse or OpenTelemetry/Jaeger
-and extract cost/token data. Distinct from adapters.Adapter (which generates outputs).
-
-Optional: install aieval[tracing-langfuse] or aieval[tracing-otel] for adapter support.
-"""
-
-from aieval.tracing.base import CostData, Span, Trace, TracingAdapter
-from aieval.tracing.factory import create_tracing_adapter
-from aieval.tracing.langfuse import LangfuseTracingAdapter
+from aieval.tracing.agent_trace import AgentTrace, parse_langgraph_trace, parse_openai_agents_trace, parse_pydantic_ai_trace
 
 __all__ = [
-    "CostData",
-    "LangfuseTracingAdapter",
-    "Span",
-    "Trace",
-    "TracingAdapter",
-    "create_tracing_adapter",
+    "AgentTrace",
+    "parse_langgraph_trace",
+    "parse_openai_agents_trace",
+    "parse_pydantic_ai_trace",
 ]

@@ -41,7 +41,7 @@ from aieval.scorers.deep_diff import DeepDiffScorer
 from aieval.scorers.metrics import LatencyScorer, TokenUsageScorer
 from aieval.datasets.index_csv import load_index_csv_dataset
 from aieval.core.eval import Eval
-from aieval.core.types import Run, Score
+from aieval.core.types import EvalResult, Score
 from aieval.sinks.csv import CSVSink
 from aieval.sinks.stdout import StdoutSink
 
@@ -155,7 +155,7 @@ def calculate_avg_metric(scores: list[Score], metric_name: str) -> float:
     return sum(values) / len(values) if values else 0.0
 
 
-def print_summary_report(result: ExperimentRun, args: argparse.Namespace):
+def print_summary_report(result, args: argparse.Namespace):
     """Print comprehensive summary report."""
     print("\n" + "=" * 80)
     print("STREAMING EVALUATION SUMMARY")
@@ -283,17 +283,16 @@ async def main():
         name="streaming_eval",
         dataset=dataset,
         scorers=scorers,
-        experiment_id="streaming_eval",
     )
     print(f"   ✅ Eval created")
     
-    # Run experiment
+    # Run eval
     print(f"\n🚀 Running evaluation...")
     print(f"   Model: {args.model}")
     print(f"   Concurrency: {args.concurrency}")
     print(f"   This may take a few minutes...\n")
     
-    result = await experiment.run(
+    result = await eval_.run(
         adapter=adapter,
         model=args.model,
         concurrency_limit=args.concurrency,

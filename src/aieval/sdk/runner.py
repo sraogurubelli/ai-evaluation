@@ -66,7 +66,7 @@ class EvaluationRunner:
             **kwargs: Additional arguments passed to adapter/scorers
         
         Returns:
-            ExperimentRun result
+            EvalResult result
         """
         sinks = sinks or [StdoutSink()]
         
@@ -252,7 +252,7 @@ async def run_evaluation(
     model: str | None = None,
     eval_name: str = "evaluation",
     **kwargs: Any,
-) -> Run:
+) -> EvalResult:
     """
     Convenience function for running an evaluation.
 

@@ -113,6 +113,8 @@ class DatasetAgent(BaseEvaluationAgent):
         dataset: list[DatasetItem] | None = None,
         dataset_type: str | None = None,
         path: str | None = None,
+        schema: dict[str, Any] | None = None,
+        schema_file: str | Path | None = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
         """
@@ -122,6 +124,8 @@ class DatasetAgent(BaseEvaluationAgent):
             dataset: Dataset items to validate (if already loaded)
             dataset_type: Type of dataset (if loading from file)
             path: Path to dataset file (if loading from file)
+            schema: Optional JSON schema dict for schema validation
+            schema_file: Optional path to JSON schema file
             **kwargs: Additional parameters
             
         Returns:
@@ -137,6 +141,11 @@ class DatasetAgent(BaseEvaluationAgent):
         # Check dataset is not empty
         if not dataset:
             issues.append("Dataset is empty")
+            return {
+                "valid": False,
+                "item_count": 0,
+                "issues": issues,
+            }
         
         # Check each item has required fields
         for i, item in enumerate(dataset):
@@ -144,18 +153,33 @@ class DatasetAgent(BaseEvaluationAgent):
                 issues.append(f"Item {i} missing id")
             if not hasattr(item, "input") or item.input is None:
                 issues.append(f"Item {i} missing input")
-            if not hasattr(item, "expected") or item.expected is None:
-                issues.append(f"Item {i} missing expected")
+            # Note: expected is optional (for production evals)
+        
+        # Schema validation if provided
+        schema_validation = None
+        if schema or schema_file:
+            from aieval.datasets.validation import validate_dataset_schema
+            try:
+                schema_validation = validate_dataset_schema(dataset, schema=schema, schema_file=schema_file)
+                if not schema_validation["valid"]:
+                    issues.append(f"Schema validation failed: {schema_validation['invalid_count']} items invalid")
+            except Exception as e:
+                issues.append(f"Schema validation error: {str(e)}")
         
         is_valid = len(issues) == 0
         
         self.logger.info(f"Dataset validation: {'valid' if is_valid else 'invalid'} ({len(issues)} issues)")
         
-        return {
+        result = {
             "valid": is_valid,
             "item_count": len(dataset),
             "issues": issues,
         }
+        
+        if schema_validation:
+            result["schema_validation"] = schema_validation
+        
+        return result
     
     async def list_datasets(self, base_dir: str | None = None, **kwargs: Any) -> list[dict[str, Any]]:
         """

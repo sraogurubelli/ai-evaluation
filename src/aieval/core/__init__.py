@@ -2,7 +2,7 @@
 
 from aieval.core.types import (
     DatasetItem,
-    Run,
+    EvalResult,
     GenerateResult,
     Score,
     normalize_adapter_output,
@@ -11,7 +11,7 @@ from aieval.core.eval import Eval
 
 __all__ = [
     "DatasetItem",
-    "Run",
+    "EvalResult",
     "Eval",
     "GenerateResult",
     "Score",

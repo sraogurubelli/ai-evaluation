@@ -10,6 +10,7 @@ from aieval.adapters.base import Adapter
 from aieval.adapters.http import HTTPAdapter
 from aieval.adapters.langfuse import LangfuseAdapter
 from aieval.adapters.sse_streaming import SSEStreamingAdapter
+from aieval.adapters.function import FunctionAdapter
 from aieval.adapters.registry import (
     AdapterRegistry,
     register_adapter,
@@ -21,6 +22,7 @@ __all__ = [
     "HTTPAdapter",  # Generic HTTP adapter (recommended)
     "LangfuseAdapter",  # Langfuse integration
     "SSEStreamingAdapter",  # SSE streaming adapter with enriched output
+    "FunctionAdapter",  # Function-based adapter for Python callables
     "AdapterRegistry",  # Adapter registry for plugin system
     "register_adapter",  # Decorator for registering adapters
     "get_registry",  # Get default registry instance

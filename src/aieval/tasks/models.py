@@ -5,7 +5,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
-from aieval.core.types import Run
+from aieval.core.types import EvalResult
 
 
 class TaskStatus(str, Enum):
@@ -53,7 +53,7 @@ class TaskResult:
     """Result of a completed task."""
 
     task_id: str
-    run: Run
+    eval_result: EvalResult
     execution_time_seconds: float
     metadata: dict[str, Any] = field(default_factory=dict)
 
@@ -61,7 +61,7 @@ class TaskResult:
         """Convert to dictionary."""
         return {
             "task_id": self.task_id,
-            "run": self.run.to_dict(),
+            "eval_result": self.eval_result.to_dict(),
             "execution_time_seconds": self.execution_time_seconds,
             "metadata": self.metadata,
         }
